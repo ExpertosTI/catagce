@@ -12,6 +12,4 @@ COPY --from=builder /app/workers/media-processor/package.json ./workers/media-pr
 COPY --from=builder /app/workers/media-processor/dist ./workers/media-processor/dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-
-ENV NODE_ENV=production
 CMD ["node", "workers/media-processor/dist/main.js"]

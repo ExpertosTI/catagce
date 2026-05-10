@@ -1,30 +1,24 @@
 #!/bin/bash
 
 # ==============================================================================
-# 🚀 CATAGCE DEPLOYMENT PROTOCOL (RENACE VPS)
+# 🚀 CATAGCE DEPLOYMENT PROTOCOL (RENACE VPS) - STAGE 4
 # ==============================================================================
 
 PROJECT_DIR="/opt/QuickCtgo"
 REPO_URL="https://github.com/ExpertosTI/catagce"
 
 echo "-----------------------------------"
-echo "🛰️  Starting Deployment Protocol..."
+echo "🛰️  Starting Renace Protocol..."
 echo "-----------------------------------"
 
-# 1. Sync Code from Git
-echo "📥 Syncing code from repository..."
-if [ ! -d "$PROJECT_DIR/.git" ]; then
-    echo "⚠️  Cloning repository for the first time..."
-    git clone $REPO_URL $PROJECT_DIR
-fi
-
+# 1. Sync Code
 cd $PROJECT_DIR
+echo "📥 Syncing code from Git..."
 git fetch origin main
 git reset --hard origin/main
 
-# 2. Setup Secrets (.env)
-echo "🔐 Configuring environment secrets..."
-# Generamos el .env si no existe, o lo actualizamos
+# 2. Setup Secrets
+echo "🔐 Configuring environment..."
 if [ ! -f .env ]; then
     cat <<EOF > .env
 DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD:-$(openssl rand -base64 24)}@db:5432/catagce_prod
@@ -33,23 +27,19 @@ JWT_SECRET=${JWT_SECRET:-$(openssl rand -base64 32)}
 REDIS_HOST=redis
 REDIS_PORT=6379
 EOF
-    echo "✅ Secrets generated."
-else
-    echo "✅ Using existing .env file."
 fi
 
-# 3. Build Images Locally (Renace Monorepo Protocol)
-# Swarm no tiene registry, así que construimos en el nodo
-echo "🏗️  Building Docker images (Local Node)..."
+# 3. Build & Deploy (The Renace Way)
+echo "🏗️  Building images locally..."
 export $(grep -v '^#' .env | xargs)
 docker compose build --parallel
 
-# 4. Deploy to Docker Swarm
-echo "🚢 Deploying to Docker Swarm (catagce)..."
-docker stack deploy -c docker-compose.yml --with-registry-auth catagce
+echo "🚢 Deploying Stack (using resolved config)..."
+# CRITICAL: Using <(docker compose config) to resolve variables and paths for Swarm
+docker stack deploy -c <(docker compose config) catagce
 
-# 5. Health Check & Force Update
-echo "🔄 Forcing service updates to ensure latest code..."
+# 4. Service Hardening
+echo "🔄 Forcing updates to ensure service health..."
 docker service update --force catagce_api
 docker service update --force catagce_web
 docker service update --force catagce_media-processor
@@ -57,5 +47,5 @@ docker service update --force catagce_catalog-renderer
 docker service update --force catagce_notifications
 
 echo "-----------------------------------"
-echo "✅ DEPLOYMENT COMPLETE"
+echo "✅ RENACE PROTOCOL EXECUTED"
 echo "-----------------------------------"

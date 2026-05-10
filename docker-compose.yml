@@ -5,7 +5,7 @@ services:
     image: catagce-api:latest
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: apps/api/Dockerfile
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
@@ -14,7 +14,7 @@ services:
     networks:
       - RenaceNet
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -33,12 +33,10 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        # HTTP Redirect
         - "traefik.http.routers.catagce-api-http.rule=Host(`api.catagce.renace.tech`)"
         - "traefik.http.routers.catagce-api-http.entrypoints=web"
         - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
         - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
-        # HTTPS
         - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`)"
         - "traefik.http.routers.catagce-api.entrypoints=websecure"
         - "traefik.http.routers.catagce-api.tls=true"
@@ -49,7 +47,7 @@ services:
     image: catagce-web:latest
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: apps/buyer-web/Dockerfile
     environment:
       - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech
       - DATABASE_URL=${DATABASE_URL}
@@ -75,12 +73,10 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        # HTTP Redirect
         - "traefik.http.routers.catagce-web-http.rule=Host(`catagce.renace.tech`)"
         - "traefik.http.routers.catagce-web-http.entrypoints=web"
         - "traefik.http.routers.catagce-web-http.middlewares=catagce-web-redirect"
         - "traefik.http.middlewares.catagce-web-redirect.redirectscheme.scheme=https"
-        # HTTPS
         - "traefik.http.routers.catagce-web.rule=Host(`catagce.renace.tech`)"
         - "traefik.http.routers.catagce-web.entrypoints=websecure"
         - "traefik.http.routers.catagce-web.tls=true"
@@ -114,7 +110,7 @@ services:
     image: catagce-media:latest
     build:
       context: .
-      dockerfile: Dockerfile.media-processor
+      dockerfile: workers/media-processor/Dockerfile
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=${REDIS_HOST}
@@ -134,7 +130,7 @@ services:
     image: catagce-renderer:latest
     build:
       context: .
-      dockerfile: Dockerfile.catalog-renderer
+      dockerfile: workers/catalog-renderer/Dockerfile
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=${REDIS_HOST}
@@ -145,6 +141,7 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
+        max-size: "10m"
         max-file: "3"
     deploy:
       restart_policy:
@@ -154,7 +151,7 @@ services:
     image: catagce-notifications:latest
     build:
       context: .
-      dockerfile: Dockerfile.notifications
+      dockerfile: workers/notifications/Dockerfile
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=${REDIS_HOST}
