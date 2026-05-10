@@ -6,7 +6,8 @@ COPY workers/catalog-renderer/package.json ./workers/catalog-renderer/
 COPY workers/catalog-renderer/dist ./workers/catalog-renderer/dist
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-RUN pnpm install --prod --no-frozen-lockfile
+COPY node_modules ./node_modules
+
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV NODE_ENV=production
 CMD ["node", "workers/catalog-renderer/dist/main.js"]

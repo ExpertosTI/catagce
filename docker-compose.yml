@@ -35,7 +35,6 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: 0.50
           memory: 512M
       labels:
         - "traefik.enable=true"
@@ -80,7 +79,6 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: 0.50
           memory: 512M
       labels:
         - "traefik.enable=true"
@@ -121,7 +119,6 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: 0.50
           memory: 1024M
 
   media-processor:
@@ -150,7 +147,6 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: 0.25
           memory: 256M
 
   catalog-renderer:
@@ -180,7 +176,6 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: 0.50
           memory: 1024M
 
   notifications:
@@ -209,7 +204,6 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: 0.25
           memory: 256M
 
   redis:
@@ -228,7 +222,6 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: 0.25
           memory: 256M
 
 networks:

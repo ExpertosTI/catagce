@@ -15,23 +15,63 @@ echo "📦 Installing dependencies..."
 pnpm install --prefer-offline --no-frozen-lockfile || pnpm install --no-frozen-lockfile
 
 # 2. Compile — ABORT entirely on any TS or build error
-#    Si falla aquí, el script se detiene por set -e. NADA llega a git.
 echo "🏗️  Compiling project (Turbo Build Force)..."
 pnpm exec turbo build --force
 
-echo "✅ Build succeeded — staging artifacts"
+# 3. Prepare Production Dependencies for Linux Alpine (Zero-CPU VPS)
+echo "🧹 Cleaning local node_modules..."
+rm -rf node_modules
+git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
 
-# 3. Stage artifacts + code
-git add .
-if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-    git commit -m "🚀 Deploy: Zero-Build Artifacts Update"
+echo "📦 Downloading Linux production dependencies..."
+npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile
+
+# 3.1. Extreme Purge of non-Linux binaries
+echo "🧹 Extreme Purge of non-Linux assets..."
+# Borrar específicamente el culpable de 109MB
+rm -rf node_modules/.pnpm/@next+swc-darwin-arm64@14.2.29 2>/dev/null || true
+# Borrar cualquier rastro de darwin, win32 o archivos .node que no sean linux
+find node_modules -name "*darwin*" -exec rm -rf {} +
+find node_modules -name "*win32*" -exec rm -rf {} +
+find node_modules -name "*.node" ! -name "*linux*" -exec rm -rf {} +
+
+# 3.2. Extra: Borrar CUALQUIER archivo mayor a 50MB (GitHub límite es 100, vamos a lo seguro)
+find node_modules -type f -size +50M -delete
+
+# 3.3. VERIFICATION
+echo "🔍 Verifying no large files (>90MB) exist..."
+LARGE_FILES=$(find node_modules -type f -size +90M)
+if [ -n "$LARGE_FILES" ]; then
+    echo "❌ ERROR: Large files still exist in node_modules:"
+    echo "$LARGE_FILES"
+    echo "Aborting push."
+    exit 1
 fi
 
-# 4. Push to deploy branch
-echo "🛰️  Pushing to GitHub (deploy/stable-production)..."
-git push origin deploy/stable-production
+
+echo "✅ Build succeeded — staging artifacts and dependencies"
+
+
+
+# 4. Stage EVERYTHING + dependencies + artifacts
+git add .
+git add -f apps/api/dist apps/buyer-web/.next workers/*/dist packages/*/dist
+git add -f node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules
+
+
+if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    git commit -m "🚀 Deploy: Static Zero-CPU Artifacts & Dependencies Update"
+fi
+
+# 5. Push to deploy branch
+echo "🛰️  Pushing to GitHub (deploy/stable-production) --force..."
+git push origin deploy/stable-production --force
+
+# 6. Restore Mac Local Dependencies for Development
+echo "🔄 Restoring Mac local dependencies..."
+pnpm install --no-frozen-lockfile
 
 echo "-----------------------------------"
-echo "✅ LOCAL BUILD COMPLETE"
+echo "✅ LOCAL BUILD COMPLETE (Zero-CPU Mode)"
 echo "👉 SSH al VPS y ejecuta: bash deploy.sh"
 echo "-----------------------------------"

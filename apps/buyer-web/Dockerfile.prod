@@ -7,7 +7,8 @@ COPY apps/buyer-web/public ./apps/buyer-web/public
 COPY apps/buyer-web/.next ./apps/buyer-web/.next
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-RUN pnpm install --prod --no-frozen-lockfile
+COPY node_modules ./node_modules
+
 EXPOSE 3000
 ENV NODE_ENV=production
 CMD ["node_modules/.bin/next", "start", "--dir", "apps/buyer-web"]

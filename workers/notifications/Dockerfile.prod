@@ -6,6 +6,7 @@ COPY workers/notifications/package.json ./workers/notifications/
 COPY workers/notifications/dist ./workers/notifications/dist
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-RUN pnpm install --prod --no-frozen-lockfile
+COPY node_modules ./node_modules
+
 ENV NODE_ENV=production
 CMD ["node", "workers/notifications/dist/main.js"]
