@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+echo "🚀 Iniciando Protocolo Pre-push (Compilación + Git Push)..."
+
+# 1. Validación de compilación
+echo "🏗️  Validando compilación local..."
+pnpm install
+pnpm build
+
+# 2. Sincronización Git
+echo "📤 Subiendo cambios al repositorio..."
+git add .
+if ! git diff-index --quiet HEAD --; then
+    git commit -m "🚀 Deploy: Catagce Platform Production Update"
+fi
+git push
+
+echo "✅ PROCESO COMPLETADO."
+echo "👉 Ahora ve a tu terminal SSH (VPS) y ejecuta: ./deploy.sh"

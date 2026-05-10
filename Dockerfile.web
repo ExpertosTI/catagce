@@ -1,0 +1,12 @@
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV production
+
+# Copiar artefactos ya construidos localmente (Protocolo Fast-Pipe)
+COPY apps/buyer-web/public ./apps/buyer-web/public
+COPY apps/buyer-web/.next ./apps/buyer-web/.next
+COPY node_modules ./node_modules
+COPY apps/buyer-web/package.json ./apps/buyer-web/package.json
+
+EXPOSE 3000
+CMD ["npx", "next", "start", "apps/buyer-web"]

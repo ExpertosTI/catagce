@@ -1,0 +1,10 @@
+{
+  "extends": "./packages/typescript-config/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@catagce/db": ["./packages/db/src"],
+      "@catagce/ui": ["./packages/ui/src"]
+    }
+  }
+}

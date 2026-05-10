@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  api:
+    image: catagce-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`)"
+        - "traefik.http.routers.catagce-api.entrypoints=websecure"
+        - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.catagce-api.loadbalancer.server.port=3000"
+
+  web:
+    image: catagce-web:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech
+      - DATABASE_URL=${DATABASE_URL}
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.catagce-web.rule=Host(`catagce.renace.tech`)"
+        - "traefik.http.routers.catagce-web.entrypoints=websecure"
+        - "traefik.http.routers.catagce-web.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.catagce-web.loadbalancer.server.port=3000"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=catagce_admin
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=catagce_prod
+    volumes:
+      - catagce_db_data:/var/lib/postgresql/data
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 1G
+
+  media-processor:
+    image: catagce-media:latest
+    build:
+      context: .
+      dockerfile: workers/media-processor/Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  catalog-renderer:
+    image: catagce-renderer:latest
+    build:
+      context: .
+      dockerfile: workers/catalog-renderer/Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  notifications:
+    image: catagce-notifications:latest
+    build:
+      context: .
+      dockerfile: workers/notifications/Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+networks:
+  RenaceNet:
+    external: true
+
+volumes:
+  catagce_db_data:
