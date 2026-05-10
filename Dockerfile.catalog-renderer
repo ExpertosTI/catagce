@@ -7,15 +7,7 @@ RUN pnpm --filter @catagce/catalog-renderer build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-# Instalar dependencias necesarias para Puppeteer/PDF en Alpine
-RUN apk add --no-cache \
-      chromium \
-      nss \
-      freetype \
-      harfbuzz \
-      ca-certificates \
-      ttf-freefont
-
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
 RUN npm install -g pnpm
 COPY --from=builder /app/workers/catalog-renderer/package.json ./workers/catalog-renderer/
 COPY --from=builder /app/workers/catalog-renderer/dist ./workers/catalog-renderer/dist
