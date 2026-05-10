@@ -12,4 +12,5 @@ COPY --from=builder /app/workers/notifications/package.json ./workers/notificati
 COPY --from=builder /app/workers/notifications/dist ./workers/notifications/dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
+ENV NODE_ENV=production
 CMD ["node", "workers/notifications/dist/main.js"]

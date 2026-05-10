@@ -9,6 +9,7 @@ RUN pnpm --filter @catagce/buyer-web build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
+ENV NODE_ENV=production
 RUN npm install -g pnpm
 COPY --from=builder /app/apps/buyer-web/package.json ./apps/buyer-web/
 COPY --from=builder /app/apps/buyer-web/public ./apps/buyer-web/public
