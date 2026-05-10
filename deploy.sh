@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# 🚀 CATAGCE DEPLOYMENT PROTOCOL (RENACE VPS) - STAGE 4
+# 🚀 CATAGCE DEPLOYMENT PROTOCOL (RENACE VPS) - DIAGNOSTIC MODE
 # ==============================================================================
 
 PROJECT_DIR="/opt/QuickCtgo"
@@ -11,11 +11,14 @@ echo "-----------------------------------"
 echo "🛰️  Starting Renace Protocol..."
 echo "-----------------------------------"
 
-# 1. Sync Code
+# 1. Sync & Diagnostic
 cd $PROJECT_DIR
 echo "📥 Syncing code from Git..."
-git fetch origin main
+git fetch --all
 git reset --hard origin/main
+
+echo "🔍 DIAGNOSTIC: Checking Dockerfile sizes on VPS..."
+ls -l apps/api/Dockerfile apps/buyer-web/Dockerfile workers/*/Dockerfile
 
 # 2. Setup Secrets
 echo "🔐 Configuring environment..."
@@ -29,17 +32,16 @@ REDIS_PORT=6379
 EOF
 fi
 
-# 3. Build & Deploy (The Renace Way)
+# 3. Build & Deploy
 echo "🏗️  Building images locally..."
 export $(grep -v '^#' .env | xargs)
 docker compose build --parallel
 
-echo "🚢 Deploying Stack (using resolved config)..."
-# CRITICAL: Using <(docker compose config) to resolve variables and paths for Swarm
+echo "🚢 Deploying Stack..."
 docker stack deploy -c <(docker compose config) catagce
 
 # 4. Service Hardening
-echo "🔄 Forcing updates to ensure service health..."
+echo "🔄 Forcing updates..."
 docker service update --force catagce_api
 docker service update --force catagce_web
 docker service update --force catagce_media-processor
