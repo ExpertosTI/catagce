@@ -1,0 +1,240 @@
+version: "3.8"
+services:
+
+  api:
+    image: catagce-api:latest
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.prod
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://catalogo.jhosuacomercial.com}
+      - PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - RenaceNet
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: 0.50
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=RenaceNet"
+        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-api-http.entrypoints=web"
+        - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
+        - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.catagce-api.rule=Host(`api.catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-api.entrypoints=websecure"
+        - "traefik.http.routers.catagce-api.tls=true"
+        - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.catagce-api.loadbalancer.server.port=3000"
+
+  web:
+    image: catagce-web:latest
+    build:
+      context: .
+      dockerfile: apps/buyer-web/Dockerfile.prod
+      args:
+        - NEXT_PUBLIC_API_URL=https://api.catalogo.jhosuacomercial.com
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.catalogo.jhosuacomercial.com
+      - NODE_ENV=production
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - RenaceNet
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: 0.50
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=RenaceNet"
+        - "traefik.http.routers.catagce-web-http.rule=Host(`catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-web-http.entrypoints=web"
+        - "traefik.http.routers.catagce-web-http.middlewares=catagce-web-redirect"
+        - "traefik.http.middlewares.catagce-web-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.catagce-web.rule=Host(`catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-web.entrypoints=websecure"
+        - "traefik.http.routers.catagce-web.tls=true"
+        - "traefik.http.routers.catagce-web.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.catagce-web.loadbalancer.server.port=3000"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=catagce_admin
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=catagce_prod
+    volumes:
+      - catagce_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catagce_admin -d catagce_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: 0.50
+          memory: 1024M
+
+  media-processor:
+    image: catagce-media:latest
+    build:
+      context: .
+      dockerfile: workers/media-processor/Dockerfile.prod
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: 0.25
+          memory: 256M
+
+  catalog-renderer:
+    image: catagce-renderer:latest
+    build:
+      context: .
+      dockerfile: workers/catalog-renderer/Dockerfile.prod
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: 0.50
+          memory: 1024M
+
+  notifications:
+    image: catagce-notifications:latest
+    build:
+      context: .
+      dockerfile: workers/notifications/Dockerfile.prod
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN:-}
+      - WHATSAPP_PHONE_ID=${WHATSAPP_PHONE_ID:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: 0.25
+          memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - catagce_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: 0.25
+          memory: 256M
+
+networks:
+  RenaceNet:
+    external: true
+
+volumes:
+  catagce_db_data:
+  catagce_redis_data:

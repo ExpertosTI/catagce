@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+.turbo
+.git
+.env
+*.log
+docker-compose.yml
+deploy.sh
+prepush
+docs

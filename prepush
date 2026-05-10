@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# ==============================================================================
+# 🚀 CATAGCE PRE-PUSH (LOCAL BUILD PROTOCOL)
+# Zero-Build: Mac compila, VPS solo orquesta contenedores.
+# ==============================================================================
+set -euo pipefail
+
+echo "-----------------------------------"
+echo "💻 Starting Local Build (Mac)..."
+echo "-----------------------------------"
+
+# 1. Install dependencies (prefer offline store, no-interactive)
+echo "📦 Installing dependencies..."
+pnpm install --prefer-offline --no-frozen-lockfile || pnpm install --no-frozen-lockfile
+
+# 2. Compile — ABORT entirely on any TS or build error
+#    Si falla aquí, el script se detiene por set -e. NADA llega a git.
+echo "🏗️  Compiling project (Turbo Build Force)..."
+pnpm exec turbo build --force
+
+echo "✅ Build succeeded — staging artifacts"
+
+# 3. Stage artifacts + code
+git add .
+if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    git commit -m "🚀 Deploy: Zero-Build Artifacts Update"
+fi
+
+# 4. Push to deploy branch
+echo "🛰️  Pushing to GitHub (deploy/stable-production)..."
+git push origin deploy/stable-production
+
+echo "-----------------------------------"
+echo "✅ LOCAL BUILD COMPLETE"
+echo "👉 SSH al VPS y ejecuta: bash deploy.sh"
+echo "-----------------------------------"

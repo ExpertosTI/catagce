@@ -1,0 +1,14 @@
+FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+# Solo copiamos lo necesario para producción
+COPY apps/api/package.json ./apps/api/
+COPY apps/api/dist ./apps/api/dist
+COPY packages ./packages
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+# Instalamos solo dependencias de producción (rápido)
+RUN pnpm install --prod --no-frozen-lockfile
+EXPOSE 3000
+ENV NODE_ENV=production
+CMD ["node", "apps/api/dist/main.js"]

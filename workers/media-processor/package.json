@@ -1,0 +1,24 @@
+{
+  "name": "@catagce/media-processor",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsup src/main.ts --format cjs --minify",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.0.0",
+    "sharp": "^0.33.0",
+    "drizzle-orm": "latest",
+    "@catagce/db": "workspace:*",
+    "@catagce/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@catagce/typescript-config": "workspace:*",
+    "tsup": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

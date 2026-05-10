@@ -1,0 +1,11 @@
+FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+COPY workers/notifications/package.json ./workers/notifications/
+COPY workers/notifications/dist ./workers/notifications/dist
+COPY packages ./packages
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+RUN pnpm install --prod --no-frozen-lockfile
+ENV NODE_ENV=production
+CMD ["node", "workers/notifications/dist/main.js"]

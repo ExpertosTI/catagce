@@ -1,0 +1,9 @@
+import * as drizzle_orm_postgres_js from 'drizzle-orm/postgres-js';
+import { s as schema } from './schema-C7pHLijI.js';
+export { c as catalogProducts, a as catalogProductsRelations, b as catalogs, d as catalogsRelations, m as movementTypeEnum, o as orderItems, e as orderItemsRelations, f as orderStatusEnum, g as orders, h as ordersRelations, p as productMedia, i as productMediaRelations, j as products, k as productsRelations, r as reservationStatusEnum, l as sellerBranding, n as sellers, q as sellersRelations, t as stockLevels, u as stockLevelsRelations, v as stockMovements, w as stockMovementsRelations, x as stockReservations, y as stockReservationsRelations, z as uoms, A as uomsRelations, B as warehouses, C as warehousesRelations } from './schema-C7pHLijI.js';
+import 'drizzle-orm';
+import 'drizzle-orm/pg-core';
+
+declare const createClient: (connectionString: string) => drizzle_orm_postgres_js.PostgresJsDatabase<typeof schema>;
+
+export { createClient };
