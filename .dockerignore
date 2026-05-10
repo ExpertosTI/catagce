@@ -1,11 +1,20 @@
 node_modules
+.git
 .next
 dist
 .turbo
-.git
-.env
 *.log
-docker-compose.yml
-deploy.sh
-prepush
-docs
+.env
+.env.local
+.vscode
+.DS_Store
+
+# EXCEPTION: Allow node_modules for static production delivery
+!node_modules
+!apps/*/node_modules
+!workers/*/node_modules
+!packages/*/node_modules
+!apps/api/dist
+!apps/buyer-web/.next
+!workers/*/dist
+!packages/*/dist
