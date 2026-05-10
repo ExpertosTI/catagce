@@ -8,12 +8,21 @@ services:
       dockerfile: Dockerfile.api
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - PORT=3000
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
     networks:
       - RenaceNet
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
@@ -23,8 +32,16 @@ services:
           memory: 512M
       labels:
         - "traefik.enable=true"
+        - "traefik.docker.network=RenaceNet"
+        # HTTP Redirect
+        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catagce.renace.tech`)"
+        - "traefik.http.routers.catagce-api-http.entrypoints=web"
+        - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
+        - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
+        # HTTPS
         - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`)"
         - "traefik.http.routers.catagce-api.entrypoints=websecure"
+        - "traefik.http.routers.catagce-api.tls=true"
         - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.catagce-api.loadbalancer.server.port=3000"
 
@@ -38,6 +55,16 @@ services:
       - DATABASE_URL=${DATABASE_URL}
     networks:
       - RenaceNet
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
@@ -47,8 +74,16 @@ services:
           memory: 512M
       labels:
         - "traefik.enable=true"
+        - "traefik.docker.network=RenaceNet"
+        # HTTP Redirect
+        - "traefik.http.routers.catagce-web-http.rule=Host(`catagce.renace.tech`)"
+        - "traefik.http.routers.catagce-web-http.entrypoints=web"
+        - "traefik.http.routers.catagce-web-http.middlewares=catagce-web-redirect"
+        - "traefik.http.middlewares.catagce-web-redirect.redirectscheme.scheme=https"
+        # HTTPS
         - "traefik.http.routers.catagce-web.rule=Host(`catagce.renace.tech`)"
         - "traefik.http.routers.catagce-web.entrypoints=websecure"
+        - "traefik.http.routers.catagce-web.tls=true"
         - "traefik.http.routers.catagce-web.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.catagce-web.loadbalancer.server.port=3000"
 
@@ -62,6 +97,11 @@ services:
       - catagce_db_data:/var/lib/postgresql/data
     networks:
       - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
@@ -74,13 +114,18 @@ services:
     image: catagce-media:latest
     build:
       context: .
-      dockerfile: workers/media-processor/Dockerfile
+      dockerfile: Dockerfile.media-processor
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
     networks:
       - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
@@ -89,13 +134,18 @@ services:
     image: catagce-renderer:latest
     build:
       context: .
-      dockerfile: workers/catalog-renderer/Dockerfile
+      dockerfile: Dockerfile.catalog-renderer
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
     networks:
       - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
@@ -104,13 +154,18 @@ services:
     image: catagce-notifications:latest
     build:
       context: .
-      dockerfile: workers/notifications/Dockerfile
+      dockerfile: Dockerfile.notifications
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
     networks:
       - RenaceNet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
