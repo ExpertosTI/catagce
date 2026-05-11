@@ -12,11 +12,11 @@ services:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://catalogo.jhosuacomercial.com}
-      - PORT=3000
+      - PORT=5060
     networks:
       - RenaceNet
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:5060/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -42,7 +42,7 @@ services:
         - "traefik.http.routers.catagce-api.entrypoints=websecure"
         - "traefik.http.routers.catagce-api.tls=true"
         - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.catagce-api.loadbalancer.server.port=3000"
+        - "traefik.http.services.catagce-api.loadbalancer.server.port=5060"
 
   web:
     image: catagce-web:latest
@@ -57,7 +57,7 @@ services:
     networks:
       - RenaceNet
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:5061"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -83,7 +83,7 @@ services:
         - "traefik.http.routers.catagce-web.entrypoints=websecure"
         - "traefik.http.routers.catagce-web.tls=true"
         - "traefik.http.routers.catagce-web.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.catagce-web.loadbalancer.server.port=3000"
+        - "traefik.http.services.catagce-web.loadbalancer.server.port=5061"
 
   db:
     image: postgres:16-alpine
