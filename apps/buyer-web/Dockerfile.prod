@@ -1,15 +1,24 @@
 FROM node:20-alpine
+
+# Instalar dependencias necesarias para el healthcheck
+RUN apk add --no-cache wget
+
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
-COPY apps/buyer-web/package.json ./apps/buyer-web/
+
+# Copiamos la estructura del monorepo
 COPY apps/buyer-web/public ./apps/buyer-web/public
 COPY apps/buyer-web/.next ./apps/buyer-web/.next
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+
+# Extraemos los node_modules en la raíz /app
 ADD deps.tar.gz ./
 
+# Cambiamos al directorio del app para el arranque
 WORKDIR /app/apps/buyer-web
+
 EXPOSE 42101
 ENV NODE_ENV=production
-CMD ["node", "../../node_modules/next/dist/bin/next", "start", "-p", "42101"]
+
+# Usamos npx para que resuelva Next.js desde la raíz automáticamente
+CMD ["npx", "next", "start", "-p", "42101"]
