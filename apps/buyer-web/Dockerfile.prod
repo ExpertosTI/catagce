@@ -9,7 +9,7 @@ COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 ADD deps.tar.gz ./
 
-WORKDIR /app
+WORKDIR /app/apps/buyer-web
 EXPOSE 5061
 ENV NODE_ENV=production
-CMD ["npx", "next", "start", "apps/buyer-web", "-p", "5061"]
+CMD ["node", "../../node_modules/next/dist/bin/next", "start", "-p", "5061"]
