@@ -67,10 +67,19 @@ export const sellerBranding = pgTable('seller_branding', {
     .references(() => sellers.id)
     .notNull(),
   logoUrl: text('logo_url'),
-  primaryColor: text('primary_color').default('#000000'),
-  accentColor: text('accent_color').default('#ffffff'),
+  bannerUrl: text('banner_url'),
+  primaryColor: text('primary_color').default('#00D1FF'),
+  accentColor: text('accent_color').default('#000000'),
+  phone: text('phone'),
+  whatsapp: text('whatsapp'),
+  address: text('address'),
+  instagram: text('instagram'),
+  website: text('website'),
+  description: text('description'),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
+}, (table) => ({
+  uniqueSeller: uniqueIndex('seller_branding_seller_unique').on(table.sellerId),
+}));
 
 // ---------------------------------------------------------------------------
 // UOM and product tables
@@ -261,13 +270,24 @@ export const orderItems = pgTable('order_items', {
 // Relations
 // ---------------------------------------------------------------------------
 
-export const sellersRelations = relations(sellers, ({ many }) => ({
+export const sellersRelations = relations(sellers, ({ one, many }) => ({
   products: many(products),
   warehouses: many(warehouses),
   catalogs: many(catalogs),
   orders: many(orders),
   stockLevels: many(stockLevels),
   stockMovements: many(stockMovements),
+  branding: one(sellerBranding, {
+    fields: [sellers.id],
+    references: [sellerBranding.sellerId],
+  }),
+}));
+
+export const sellerBrandingRelations = relations(sellerBranding, ({ one }) => ({
+  seller: one(sellers, {
+    fields: [sellerBranding.sellerId],
+    references: [sellers.id],
+  }),
 }));
 
 export const uomsRelations = relations(uoms, ({ one }) => ({

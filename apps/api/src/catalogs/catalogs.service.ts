@@ -30,6 +30,9 @@ export class CatalogsService {
         catalogProducts: {
           with: { product: true },
         },
+        seller: {
+          with: { branding: true }
+        }
       },
     });
 

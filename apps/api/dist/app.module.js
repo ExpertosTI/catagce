@@ -15,6 +15,7 @@ const auth_module_1 = require("./auth/auth.module");
 const products_module_1 = require("./products/products.module");
 const catalogs_module_1 = require("./catalogs/catalogs.module");
 const orders_module_1 = require("./orders/orders.module");
+const sellers_module_1 = require("./sellers/sellers.module");
 const bullmq_1 = require("@nestjs/bullmq");
 let AppModule = class AppModule {
 };
@@ -28,6 +29,7 @@ exports.AppModule = AppModule = __decorate([
             products_module_1.ProductsModule,
             catalogs_module_1.CatalogsModule,
             orders_module_1.OrdersModule,
+            sellers_module_1.SellersModule,
             bullmq_1.BullModule.forRoot({
                 connection: {
                     host: process.env.REDIS_HOST ?? 'localhost',

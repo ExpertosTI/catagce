@@ -15,6 +15,7 @@ import {
   productsRelations,
   reservationStatusEnum,
   sellerBranding,
+  sellerBrandingRelations,
   sellers,
   sellersRelations,
   stockLevels,
@@ -27,7 +28,7 @@ import {
   uomsRelations,
   warehouses,
   warehousesRelations
-} from "./chunk-SY3WRSYN.mjs";
+} from "./chunk-FJF7DAOC.mjs";
 export {
   catalogProducts,
   catalogProductsRelations,
@@ -45,6 +46,7 @@ export {
   productsRelations,
   reservationStatusEnum,
   sellerBranding,
+  sellerBrandingRelations,
   sellers,
   sellersRelations,
   stockLevels,

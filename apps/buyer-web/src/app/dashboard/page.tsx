@@ -5,7 +5,8 @@ import {
   Search, User, Plus, Package, FileText, LayoutGrid,
   Settings, Home, ShoppingCart, LogIn, Camera, Maximize2,
   ChevronRight, ExternalLink, X, Bell, LogOut, BarChart3,
-  Box, ArrowRight, Zap, Globe, ArrowLeft, Lock, Mail, ClipboardCheck, Share2
+  Box, ArrowRight, Zap, Globe, ArrowLeft, Lock, Mail, ClipboardCheck, Share2,
+  Instagram, MapPin, Phone, MessageSquare, Layout, Palette
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
@@ -35,32 +36,40 @@ async function fetchWithAuth(path: string, options: any = {}) {
 
 /* ── UI Components ─────────────────────────────────────────── */
 
-function LogoMark() {
+function LogoMark({ color = "#00D1FF" }: { color?: string }) {
   return (
-    <div className="relative w-10 h-10 bg-[#00D1FF] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(0,209,255,0.4)] transition-transform hover:rotate-12">
+    <div 
+      className="relative w-10 h-10 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(0,209,255,0.4)] transition-transform hover:rotate-12"
+      style={{ backgroundColor: color }}
+    >
       <Box className="text-black w-6 h-6" />
     </div>
   );
 }
 
 function NavItem({
-  icon, label, active = false, onClick,
-}: { icon: React.ReactNode; label: string; active?: boolean; onClick: () => void }) {
+  icon, label, active = false, onClick, color = "#00D1FF"
+}: { icon: React.ReactNode; label: string; active?: boolean; onClick: () => void; color?: string }) {
   return (
     <button
       onClick={onClick}
       className={`flex flex-col items-center gap-1.5 transition-all relative px-4 py-2 rounded-2xl ${
-        active ? 'text-[#00D1FF]' : 'text-gray-500 hover:text-gray-300'
+        active ? '' : 'text-gray-500 hover:text-gray-300'
       }`}
+      style={{ color: active ? color : undefined }}
     >
-      <div className={`p-2 rounded-xl transition-all ${active ? 'bg-[#00D1FF]/10 shadow-[0_0_20px_rgba(0,209,255,0.1)]' : ''}`}>
+      <div 
+        className={`p-2 rounded-xl transition-all ${active ? 'bg-white/10 shadow-[0_0_20px_rgba(0,209,255,0.1)]' : ''}`}
+        style={{ color: active ? color : undefined }}
+      >
         {icon}
       </div>
       <span className="font-rajdhani text-[9px] font-bold uppercase tracking-[0.2em]">{label}</span>
       {active && (
         <motion.span
           layoutId="nav-indicator"
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#00D1FF] rounded-full shadow-[0_0_10px_#00D1FF]"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full shadow-[0_0_10px_#00D1FF]"
+          style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}` }}
         />
       )}
     </button>
@@ -72,6 +81,7 @@ function NavItem({
    ══════════════════════════════════════════════════════════════ */
 
 export default function DashboardPage() {
+  const [profile, setProfile] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [catalogs, setCatalogs] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -89,6 +99,8 @@ export default function DashboardPage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const prevTabIndex = useRef(0);
 
+  const primaryColor = profile?.branding?.primaryColor || "#00D1FF";
+
   const TAB_ORDER: Tab[] = ['home', 'products', 'catalogs', 'orders', 'settings'];
   const tabIndex = TAB_ORDER.indexOf(activeTab);
   const direction = tabIndex - prevTabIndex.current;
@@ -105,6 +117,15 @@ export default function DashboardPage() {
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const data = await fetchWithAuth('/sellers/profile');
+      setProfile(data);
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   const loadProducts = useCallback(async () => {
@@ -145,11 +166,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (token) {
+      loadProfile();
       loadProducts();
     } else {
       setLoading(false);
     }
-  }, [token, loadProducts]);
+  }, [token, loadProfile, loadProducts]);
 
   useEffect(() => {
     if (token && activeTab === 'catalogs') loadCatalogs();
@@ -168,7 +190,7 @@ export default function DashboardPage() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
       if (!res.ok) throw new Error('Unauthorized');
       const { token: newToken } = await res.json();
@@ -191,6 +213,19 @@ export default function DashboardPage() {
       showToast('NUEVO CATÁLOGO GENERADO');
     } catch {
       showToast('ERROR AL GENERAR CATÁLOGO');
+    }
+  };
+
+  const handleUpdateBranding = async (data: any) => {
+    try {
+      await fetchWithAuth('/sellers/branding', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      loadProfile();
+      showToast('PERFIL ACTUALIZADO CORRECTAMENTE');
+    } catch {
+      showToast('ERROR AL ACTUALIZAR PERFIL');
     }
   };
 
@@ -236,7 +271,7 @@ export default function DashboardPage() {
                   <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input
                     className="w-full h-14 pl-14 pr-6 bg-white/5 border border-white/10 rounded-2xl focus:border-[#00D1FF] focus:outline-none text-white font-rajdhani text-sm tracking-widest placeholder:text-white/10 transition-all"
-                    placeholder="catalogo@jhosuacomercial.com"
+                    placeholder="admin@renace.tech"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -294,7 +329,7 @@ export default function DashboardPage() {
         <div 
           className="absolute inset-0 opacity-10 transition-opacity duration-1000"
           style={{
-            background: `radial-gradient(800px circle at ${mousePos.x}px ${mousePos.y}px, rgba(0, 209, 255, 0.1), transparent 80%)`
+            background: `radial-gradient(800px circle at ${mousePos.x}px ${mousePos.y}px, ${primaryColor}22, transparent 80%)`
           }}
         />
         <div className="absolute inset-0 grid-pattern opacity-5" />
@@ -304,7 +339,8 @@ export default function DashboardPage() {
         {toast && (
           <motion.div
             initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -60, opacity: 0 }}
-            className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] glass px-8 py-4 rounded-2xl font-rajdhani text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl border-[#00D1FF]/20"
+            className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] glass px-8 py-4 rounded-2xl font-rajdhani text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl border-white/10"
+            style={{ borderLeft: `2px solid ${primaryColor}` }}
           >
             ✦ {toast}
           </motion.div>
@@ -313,22 +349,29 @@ export default function DashboardPage() {
 
       <header className="relative z-50 flex items-center justify-between px-6 pt-8 pb-6 mx-auto max-w-7xl">
         <div className="flex items-center gap-4">
-          <LogoMark />
+          {profile?.branding?.logoUrl ? (
+            <img src={profile.branding.logoUrl} className="w-10 h-10 rounded-xl object-contain bg-white/5" />
+          ) : (
+            <LogoMark color={primaryColor} />
+          )}
           <div className="hidden sm:block">
             <h1 className="text-2xl font-bebas tracking-widest uppercase">
-              CATAGCE<span className="text-[#00D1FF]">.</span>OPERATIONS
+              {profile?.name || 'CATAGCE'}<span style={{ color: primaryColor }}>.</span>OPERATIONS
             </h1>
-            <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-[0.4em]">ADMINISTRATION CORE v2.1</p>
+            <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-[0.4em]">ADMINISTRATION CORE v2.2</p>
           </div>
         </div>
         
         <div className="flex items-center gap-6">
           <button
             onClick={() => { localStorage.removeItem('catagce_token'); setToken(null); showToast('SESIÓN CERRADA'); }}
-            className="relative w-12 h-12 rounded-xl glass flex items-center justify-center border-white/10 hover:border-[#00D1FF]/40 transition-all hover:scale-105 active:scale-95"
+            className="relative w-12 h-12 rounded-xl glass flex items-center justify-center border-white/10 hover:border-white/20 transition-all hover:scale-105 active:scale-95"
           >
-            <User className="w-5 h-5 text-[#00D1FF]" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#00D1FF] rounded-full border-2 border-[#050505] shadow-[0_0_10px_#00D1FF]" />
+            <User className="w-5 h-5" style={{ color: primaryColor }} />
+            <span 
+              className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-[#050505]"
+              style={{ backgroundColor: primaryColor, boxShadow: `0 0 10px ${primaryColor}` }}
+            />
           </button>
         </div>
       </header>
@@ -348,13 +391,14 @@ export default function DashboardPage() {
             exit="exit"
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            {activeTab === 'home' && <HomeView products={products} loading={loading} onExportPdf={() => showToast('GENERANDO PDF...')} />}
-            {activeTab === 'products' && <ProductsView products={products} loading={loading} />}
+            {activeTab === 'home' && <HomeView products={products} loading={loading} color={primaryColor} onExportPdf={() => showToast('GENERANDO PDF...')} />}
+            {activeTab === 'products' && <ProductsView products={products} loading={loading} color={primaryColor} />}
             {activeTab === 'catalogs' && (
               <CatalogsView
                 catalogs={catalogs}
                 loading={catalogLoading}
                 selected={selectedCatalog}
+                color={primaryColor}
                 onSelect={setSelectedCatalog}
                 onClose={() => setSelectedCatalog(null)}
                 onOrder={(slug: string) => window.open(`/order/${slug}`, '_blank')}
@@ -362,8 +406,14 @@ export default function DashboardPage() {
                 onCreate={() => setIsCreateModalOpen(true)}
               />
             )}
-            {activeTab === 'orders' && <OrdersView orders={orders} loading={ordersLoading} />}
-            {activeTab === 'settings' && <SettingsView onLogout={() => { localStorage.removeItem('catagce_token'); setToken(null); }} />}
+            {activeTab === 'orders' && <OrdersView orders={orders} loading={ordersLoading} color={primaryColor} />}
+            {activeTab === 'settings' && (
+              <SettingsView 
+                profile={profile} 
+                onUpdate={handleUpdateBranding} 
+                onLogout={() => { localStorage.removeItem('catagce_token'); setToken(null); }} 
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -372,18 +422,19 @@ export default function DashboardPage() {
         {isCreateModalOpen && (
           <CreateCatalogModal 
             onClose={() => setIsCreateModalOpen(false)} 
-            onSubmit={handleCreateCatalog} 
+            onSubmit={handleCreateCatalog}
+            color={primaryColor}
           />
         )}
       </AnimatePresence>
 
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-50">
         <div className="glass backdrop-blur-2xl border-white/5 rounded-[32px] px-6 py-4 flex justify-around items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-          <NavItem icon={<Home className="w-5 h-5" />} label="Home" active={activeTab === 'home'} onClick={() => switchTab('home')} />
-          <NavItem icon={<LayoutGrid className="w-5 h-5" />} label="Stock" active={activeTab === 'products'} onClick={() => switchTab('products')} />
-          <NavItem icon={<Package className="w-5 h-5" />} label="CTGO" active={activeTab === 'catalogs'} onClick={() => switchTab('catalogs')} />
-          <NavItem icon={<ShoppingCart className="w-5 h-5" />} label="Pedidos" active={activeTab === 'orders'} onClick={() => switchTab('orders')} />
-          <NavItem icon={<Settings className="w-5 h-5" />} label="Config" active={activeTab === 'settings'} onClick={() => switchTab('settings')} />
+          <NavItem icon={<Home className="w-5 h-5" />} label="Home" active={activeTab === 'home'} onClick={() => switchTab('home')} color={primaryColor} />
+          <NavItem icon={<LayoutGrid className="w-5 h-5" />} label="Stock" active={activeTab === 'products'} onClick={() => switchTab('products')} color={primaryColor} />
+          <NavItem icon={<Package className="w-5 h-5" />} label="CTGO" active={activeTab === 'catalogs'} onClick={() => switchTab('catalogs')} color={primaryColor} />
+          <NavItem icon={<ShoppingCart className="w-5 h-5" />} label="Pedidos" active={activeTab === 'orders'} onClick={() => switchTab('orders')} color={primaryColor} />
+          <NavItem icon={<Settings className="w-5 h-5" />} label="Config" active={activeTab === 'settings'} onClick={() => switchTab('settings')} color={primaryColor} />
         </div>
       </nav>
     </div>
@@ -392,12 +443,12 @@ export default function DashboardPage() {
 
 /* ── View Components ────────────────────────────────────────── */
 
-function HomeView({ products, loading, onExportPdf }: { products: any[]; loading: boolean; onExportPdf: () => void }) {
+function HomeView({ products, loading, color, onExportPdf }: any) {
   return (
     <div className="space-y-12">
       <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
-          <h2 className="text-6xl font-bebas tracking-wide mb-2 uppercase">INVENTARIO <span className="text-[#00D1FF]">GLOBAL</span></h2>
+          <h2 className="text-6xl font-bebas tracking-wide mb-2 uppercase">INVENTARIO <span style={{ color }}>GLOBAL</span></h2>
           <p className="font-rajdhani text-[10px] font-black text-gray-600 uppercase tracking-[0.4em]">MONITOREO DE ACTIVOS EN TIEMPO REAL</p>
         </div>
         <button
@@ -411,40 +462,41 @@ function HomeView({ products, loading, onExportPdf }: { products: any[]; loading
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {loading
           ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
-          : products.map((p) => <ProductCard key={p.id} product={p} />)
+          : products.map((p: any) => <ProductCard key={p.id} product={p} color={color} />)
         }
       </div>
     </div>
   );
 }
 
-function ProductsView({ products, loading }: { products: any[]; loading: boolean }) {
+function ProductsView({ products, loading, color }: any) {
   return (
     <div className="space-y-12">
       <div className="flex justify-between items-end">
-        <h2 className="text-6xl font-bebas tracking-wide uppercase">GESTIÓN DE <span className="text-[#00D1FF]">SKU</span></h2>
+        <h2 className="text-6xl font-bebas tracking-wide uppercase">GESTIÓN DE <span style={{ color }}>SKU</span></h2>
         <span className="font-bebas text-2xl text-gray-700">{products.length} ITEMS</span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {loading
           ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
-          : products.map((p) => <ProductCard key={p.id} product={p} />)
+          : products.map((p: any) => <ProductCard key={p.id} product={p} color={color} />)
         }
       </div>
     </div>
   );
 }
 
-function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder, onShare, onCreate }: any) {
+function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder, onShare, onCreate, color }: any) {
   return (
     <div className="space-y-12">
       <div className="flex justify-between items-end">
-        <h2 className="text-6xl font-bebas tracking-wide uppercase">CATÁLOGOS <span className="text-[#00D1FF]">ACTIVOS</span></h2>
+        <h2 className="text-6xl font-bebas tracking-wide uppercase">CATÁLOGOS <span style={{ color }}>ACTIVOS</span></h2>
         <button 
           onClick={onCreate}
-          className="w-14 h-14 bg-[#00D1FF] text-black rounded-2xl flex items-center justify-center hover:scale-110 transition-all shadow-[0_0_20px_rgba(0,209,255,0.4)]"
+          className="w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-110 transition-all shadow-[0_0_20px_rgba(0,209,255,0.4)]"
+          style={{ backgroundColor: color }}
         >
-          <Plus className="w-8 h-8" />
+          <Plus className="w-8 h-8 text-black" />
         </button>
       </div>
       
@@ -463,8 +515,11 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
               onClick={() => onSelect(cat)}
               className="group glass glass-hover p-8 rounded-[40px] flex items-center gap-6 cursor-pointer"
             >
-              <div className="w-20 h-20 bg-[#00D1FF]/10 rounded-[28px] flex items-center justify-center group-hover:bg-[#00D1FF] group-hover:text-black transition-all">
-                <Package className="w-10 h-10" />
+              <div 
+                className="w-20 h-20 rounded-[28px] flex items-center justify-center group-hover:text-black transition-all"
+                style={{ backgroundColor: `${color}11` }}
+              >
+                <Package className="w-10 h-10" style={{ color }} />
               </div>
               <div className="flex-1">
                 <h3 className="text-3xl font-bebas tracking-wide uppercase">{cat.name}</h3>
@@ -472,7 +527,7 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
                   {cat.catalogProducts?.length ?? 0} ITEMS · /{cat.slug}
                 </p>
               </div>
-              <ChevronRight className="w-8 h-8 text-gray-800 group-hover:text-[#00D1FF] transition-colors" />
+              <ChevronRight className="w-8 h-8 text-gray-800 group-hover:translate-x-2 transition-transform" />
             </motion.div>
           ))}
         </div>
@@ -491,7 +546,7 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
                     <ArrowLeft className="w-4 h-4" /> VOLVER A CATÁLOGOS
                   </button>
                   <h2 className="text-7xl font-bebas tracking-tight uppercase leading-none">{selected.name}</h2>
-                  <p className="font-rajdhani text-xs font-bold text-[#00D1FF] uppercase tracking-[0.4em] mt-2">CONFIGURACIÓN DE CATÁLOGO PRIVADO</p>
+                  <p className="font-rajdhani text-xs font-bold uppercase tracking-[0.4em] mt-2" style={{ color }}>CONFIGURACIÓN DE CATÁLOGO PRIVADO</p>
                 </div>
                 <button onClick={onClose} className="w-16 h-16 glass rounded-full flex items-center justify-center hover:bg-red-500/20 transition-all">
                   <X className="w-8 h-8" />
@@ -506,7 +561,7 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
                     </div>
                     <div className="p-4">
                       <p className="font-bebas text-lg tracking-wide uppercase truncate">{cp.product?.name}</p>
-                      <p className="font-rajdhani text-[10px] font-black text-[#00D1FF] mt-1">${cp.product?.basePrice}</p>
+                      <p className="font-rajdhani text-[10px] font-black mt-1" style={{ color }}>${cp.product?.basePrice}</p>
                     </div>
                   </div>
                 ))}
@@ -515,7 +570,8 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
               <div className="mt-20 flex flex-col md:flex-row gap-6">
                 <button
                   onClick={() => onOrder(selected.slug)}
-                  className="flex-1 py-8 bg-[#00D1FF] text-black rounded-[32px] font-bebas text-3xl tracking-widest uppercase hover:scale-[1.02] transition-all shadow-[0_20px_50px_rgba(0,209,255,0.3)]"
+                  className="flex-1 py-8 text-black rounded-[32px] font-bebas text-3xl tracking-widest uppercase hover:scale-[1.02] transition-all shadow-[0_20px_50px_rgba(0,209,255,0.3)]"
+                  style={{ backgroundColor: color }}
                 >
                   ABRIR VISTA PÚBLICA <ArrowRight className="inline ml-4" />
                 </button>
@@ -534,10 +590,10 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
   );
 }
 
-function OrdersView({ orders, loading }: any) {
+function OrdersView({ orders, loading, color }: any) {
   return (
     <div className="space-y-12">
-      <h2 className="text-6xl font-bebas tracking-wide uppercase">COLA DE <span className="text-[#00D1FF]">PEDIDOS</span></h2>
+      <h2 className="text-6xl font-bebas tracking-wide uppercase">COLA DE <span style={{ color }}>PEDIDOS</span></h2>
       
       {loading ? (
         <div className="space-y-4">
@@ -553,7 +609,7 @@ function OrdersView({ orders, loading }: any) {
       ) : (
         <div className="space-y-4">
           {orders.map((order: any) => (
-            <div key={order.id} className="glass p-8 rounded-[32px] flex flex-col md:flex-row justify-between items-center gap-6 border-white/5 hover:border-[#00D1FF]/20 transition-all">
+            <div key={order.id} className="glass p-8 rounded-[32px] flex flex-col md:flex-row justify-between items-center gap-6 border-white/5 hover:border-white/20 transition-all">
               <div className="flex items-center gap-6">
                 <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center">
                   <User className="text-gray-500" />
@@ -567,11 +623,14 @@ function OrdersView({ orders, loading }: any) {
               <div className="flex-1 flex justify-center gap-12">
                 <div className="text-center">
                   <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-widest mb-1">MONTO</p>
-                  <p className="font-bebas text-2xl text-[#00D1FF]">${order.totalAmount}</p>
+                  <p className="font-bebas text-2xl" style={{ color }}>${order.totalAmount}</p>
                 </div>
                 <div className="text-center">
                   <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-widest mb-1">ESTADO</p>
-                  <span className="px-3 py-1 bg-[#00D1FF]/10 text-[#00D1FF] border border-[#00D1FF]/20 rounded-full font-rajdhani text-[9px] font-bold uppercase tracking-widest">
+                  <span 
+                    className="px-3 py-1 rounded-full font-rajdhani text-[9px] font-bold uppercase tracking-widest border"
+                    style={{ backgroundColor: `${color}11`, color, borderColor: `${color}22` }}
+                  >
                     {order.status}
                   </span>
                 </div>
@@ -588,52 +647,210 @@ function OrdersView({ orders, loading }: any) {
   );
 }
 
-function SettingsView({ onLogout }: { onLogout: () => void }) {
+function SettingsView({ profile, onUpdate, onLogout }: any) {
+  const [formData, setFormData] = useState<any>({
+    name: '',
+    logoUrl: '',
+    bannerUrl: '',
+    primaryColor: '#00D1FF',
+    phone: '',
+    whatsapp: '',
+    address: '',
+    instagram: '',
+    website: '',
+    description: '',
+  });
+
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'branding' | 'security'>('profile');
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        name: profile.name || '',
+        logoUrl: profile.branding?.logoUrl || '',
+        bannerUrl: profile.branding?.bannerUrl || '',
+        primaryColor: profile.branding?.primaryColor || '#00D1FF',
+        phone: profile.branding?.phone || '',
+        whatsapp: profile.branding?.whatsapp || '',
+        address: profile.branding?.address || '',
+        instagram: profile.branding?.instagram || '',
+        website: profile.branding?.website || '',
+        description: profile.branding?.description || '',
+      });
+    }
+  }, [profile]);
+
+  const handleChange = (e: any) => {
+    const { name, value } = e.target;
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: any) => {
+    e.preventDefault();
+    onUpdate(formData);
+  };
+
+  const primaryColor = profile?.branding?.primaryColor || "#00D1FF";
+
   return (
     <div className="space-y-12">
-      <h2 className="text-6xl font-bebas tracking-wide uppercase">CONFIG <span className="text-[#00D1FF]">CORE</span></h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[
-          { label: 'PERFIL EMPRESARIAL', sub: 'NOMBRE, IDENTIDAD VISUAL, CONTACTO', icon: <User /> },
-          { label: 'DOMINIO Y DNS', sub: 'ESTADO DE DESPLIEGUE EN RENACE.TECH', icon: <Globe /> },
-          { label: 'NOTIFICACIONES PUSH', sub: 'CONFIGURACIÓN DE WEBHOOKS Y WHATSAPP', icon: <Bell /> },
-          { label: 'SEGURIDAD DE PROTOCOLO', sub: 'LLAVES API Y PERMISOS DE ACCESO', icon: <Zap /> },
-        ].map((item) => (
-          <button key={item.label} className="group glass glass-hover p-10 rounded-[40px] flex items-center gap-8 text-left">
-            <div className="w-16 h-16 glass rounded-2xl flex items-center justify-center text-gray-500 group-hover:text-[#00D1FF] transition-all">{item.icon}</div>
-            <div className="flex-1">
-              <p className="font-bebas text-2xl tracking-widest uppercase">{item.label}</p>
-              <p className="font-rajdhani text-[10px] font-bold text-gray-600 uppercase tracking-widest mt-1">{item.sub}</p>
-            </div>
-            <ChevronRight className="w-6 h-6 text-gray-800 group-hover:translate-x-2 transition-transform" />
-          </button>
-        ))}
+      <div className="flex justify-between items-end">
+        <h2 className="text-6xl font-bebas tracking-wide uppercase">CONFIG <span style={{ color: primaryColor }}>CORE</span></h2>
+        <div className="flex gap-4 glass p-2 rounded-2xl">
+          {(['profile', 'branding', 'security'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveSubTab(t)}
+              className={`px-6 py-2 rounded-xl font-rajdhani text-[10px] font-black uppercase tracking-widest transition-all ${
+                activeSubTab === t ? 'bg-white text-black shadow-xl' : 'text-gray-500 hover:text-white'
+              }`}
+            >
+              {t === 'profile' ? 'PERFIL' : t === 'branding' ? 'DISEÑO' : 'SEGURIDAD'}
+            </button>
+          ))}
+        </div>
       </div>
-      <button onClick={onLogout} className="w-full py-8 bg-red-500/5 border border-red-500/20 text-red-500 font-bebas text-2xl tracking-widest uppercase rounded-[32px] hover:bg-red-500 hover:text-white transition-all">
-        DETENER SESIÓN ACTUAL <LogOut className="inline ml-3 w-6 h-6" />
-      </button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        {/* Left column: Preview */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="glass rounded-[40px] overflow-hidden group">
+            <div className="h-32 relative bg-gradient-to-r from-gray-900 to-black">
+              {formData.bannerUrl && <img src={formData.bannerUrl} className="w-full h-full object-cover" />}
+              <div className="absolute -bottom-10 left-8">
+                <div className="w-20 h-20 rounded-2xl glass p-2">
+                  <img src={formData.logoUrl || FALLBACK_IMG} className="w-full h-full object-contain rounded-xl" />
+                </div>
+              </div>
+            </div>
+            <div className="p-8 pt-14 space-y-4">
+              <h3 className="text-3xl font-bebas tracking-wide">{formData.name || 'MI EMPRESA'}</h3>
+              <p className="font-rajdhani text-[10px] text-gray-500 uppercase tracking-widest line-clamp-2">{formData.description || 'SIN DESCRIPCIÓN'}</p>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 font-rajdhani text-[10px] text-gray-400">
+                  <Phone className="w-3 h-3" style={{ color: primaryColor }} /> {formData.phone || 'NO CONFIG'}
+                </div>
+                <div className="flex items-center gap-3 font-rajdhani text-[10px] text-gray-400">
+                  <MapPin className="w-3 h-3" style={{ color: primaryColor }} /> {formData.address || 'NO CONFIG'}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <button onClick={onLogout} className="w-full py-6 bg-red-500/5 border border-red-500/20 text-red-500 font-bebas text-xl tracking-widest uppercase rounded-[32px] hover:bg-red-500 hover:text-white transition-all">
+            DETENER SESIÓN ACTUAL <LogOut className="inline ml-3 w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Right column: Form */}
+        <div className="lg:col-span-2">
+          <form onSubmit={handleSubmit} className="glass p-10 rounded-[40px] space-y-8">
+            {activeSubTab === 'profile' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">NOMBRE COMERCIAL</label>
+                  <input name="name" value={formData.name} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="EJ: JHOSUA COMERCIAL" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">WHATSAPP / TELÉFONO</label>
+                  <input name="phone" value={formData.phone} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="+1 809 ..." />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">DIRECCIÓN FÍSICA</label>
+                  <input name="address" value={formData.address} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="CALLE, CIUDAD, PAÍS" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">INSTAGRAM</label>
+                  <input name="instagram" value={formData.instagram} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="@usuario" />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">SITIO WEB</label>
+                  <input name="website" value={formData.website} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="https://..." />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">DESCRIPCIÓN DE MARCA</label>
+                  <textarea name="description" value={formData.description} onChange={handleChange} className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none resize-none" placeholder="Cuentale a tus clientes sobre tu negocio..." />
+                </div>
+              </div>
+            )}
+
+            {activeSubTab === 'branding' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">COLOR DE MARCA (PRIMARY)</label>
+                  <div className="flex gap-4">
+                    <input type="color" name="primaryColor" value={formData.primaryColor} onChange={handleChange} className="w-14 h-14 bg-transparent border-none outline-none cursor-pointer" />
+                    <input name="primaryColor" value={formData.primaryColor} onChange={handleChange} className="flex-1 h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">URL LOGOTIPO</label>
+                  <input name="logoUrl" value={formData.logoUrl} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="https://..." />
+                </div>
+                <div className="space-y-2">
+                  <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">URL BANNER / PORTADA</label>
+                  <input name="bannerUrl" value={formData.bannerUrl} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="https://..." />
+                </div>
+              </div>
+            )}
+
+            {activeSubTab === 'security' && (
+              <div className="space-y-6">
+                <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-2xl">
+                  <p className="font-rajdhani text-[10px] font-black text-red-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                    <Zap className="w-3 h-3" /> ZONA CRÍTICA
+                  </p>
+                  <p className="font-rajdhani text-[10px] text-gray-500 uppercase tracking-widest leading-relaxed">
+                    LOS CAMBIOS EN ESTA SECCIÓN PUEDEN REQUERIR REINICIAR SESIÓN O PUEDEN EXPONER LLAVES DE PROTOCOLO.
+                  </p>
+                </div>
+                <button type="button" className="w-full py-5 glass border-white/10 rounded-2xl font-bebas text-xl tracking-widest uppercase hover:bg-white/10 transition-all">
+                  REGENERAR JWT SECRET
+                </button>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-6 text-black rounded-[28px] font-bebas text-3xl tracking-widest uppercase hover:scale-[1.02] transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+              style={{ backgroundColor: primaryColor }}
+            >
+              GUARDAR CAMBIOS <ArrowRight className="inline ml-3" />
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
 
-function ProductCard({ product }: { product: any }) {
+function ProductCard({ product, color }: { product: any; color: string }) {
   const stock = product.stockLevels?.[0]?.onHandBase ?? 0;
   return (
     <motion.div whileHover={{ y: -8 }} className="group relative glass glass-hover rounded-[32px] overflow-hidden">
       <div className="aspect-square relative overflow-hidden">
-        <img src={product.imageUrl ?? FALLBACK_IMG} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+        <img src={product.imageUrl || FALLBACK_IMG} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-60" />
       </div>
       <div className="p-6 space-y-4">
         <div>
-          <h3 className="font-bebas text-2xl tracking-wide uppercase truncate group-hover:text-[#00D1FF] transition-colors">{product.name}</h3>
-          <p className="font-rajdhani text-sm font-bold text-[#00D1FF]">${product.basePrice} USD</p>
+          <h3 className="font-bebas text-2xl tracking-wide uppercase truncate group-hover:text-white transition-colors" style={{ color: `${color}cc` }}>{product.name}</h3>
+          <p className="font-rajdhani text-sm font-bold" style={{ color }}>${product.basePrice} USD</p>
         </div>
         <div className="flex items-center justify-between font-rajdhani text-[10px] font-bold text-gray-600 uppercase tracking-widest border-t border-white/5 pt-4">
-          <span>STOCK: {stock} {product.baseUom?.symbol ?? 'un'}</span>
-          <div className={`w-2 h-2 rounded-full ${stock > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+          <span>STOCK: {stock} {product.baseUom?.symbol || 'un'}</span>
+          <div 
+            className={`w-2 h-2 rounded-full animate-pulse`} 
+            style={{ backgroundColor: stock > 0 ? '#22c55e' : '#ef4444' }}
+          />
         </div>
-        <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-bebas text-sm tracking-widest uppercase hover:bg-[#00D1FF] hover:text-black transition-all">
+        <button 
+          className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-bebas text-sm tracking-widest uppercase hover:text-black transition-all"
+          style={{ '--hover-bg': color } as any}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = color)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
+        >
           VER DETALLES
         </button>
       </div>
@@ -645,27 +862,33 @@ function SkeletonCard() {
   return <div className="aspect-[3/4] glass rounded-[32px] animate-pulse" />;
 }
 
-function CreateCatalogModal({ onClose, onSubmit }: any) {
+function CreateCatalogModal({ onClose, onSubmit, color }: any) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center px-6">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
       <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative glass p-10 rounded-[40px] w-full max-w-lg space-y-8">
-        <h3 className="text-4xl font-bebas tracking-widest uppercase">GENERAR <span className="text-[#00D1FF]">CATÁLOGO</span></h3>
+        <h3 className="text-4xl font-bebas tracking-widest uppercase">GENERAR <span style={{ color }}>CATÁLOGO</span></h3>
         <div className="space-y-4">
           <div>
-            <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">NOMBRE DEL CATÁLOGO</label>
+            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">NOMBRE DEL CATÁLOGO</label>
             <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none transition-all" value={name} onChange={(e) => setName(e.target.value)} placeholder="EJ: TEMPORADA 2026" />
           </div>
           <div>
-            <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">SLUG DE ACCESO (URL)</label>
+            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">SLUG DE ACCESO (URL)</label>
             <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none transition-all" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/ /g, '-'))} placeholder="ej: temporada-2026" />
           </div>
         </div>
         <div className="flex gap-4 pt-4">
           <button onClick={onClose} className="flex-1 py-5 glass border-white/10 rounded-2xl font-bebas text-xl tracking-widest uppercase">CANCELAR</button>
-          <button onClick={() => onSubmit(name, slug)} className="flex-1 py-5 bg-[#00D1FF] text-black rounded-2xl font-bebas text-xl tracking-widest uppercase shadow-[0_10px_30px_rgba(0,209,255,0.3)]">CREAR</button>
+          <button 
+            onClick={() => onSubmit(name, slug)} 
+            className="flex-1 py-5 text-black rounded-2xl font-bebas text-xl tracking-widest uppercase shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+            style={{ backgroundColor: color }}
+          >
+            CREAR
+          </button>
         </div>
       </motion.div>
     </motion.div>

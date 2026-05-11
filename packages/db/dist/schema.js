@@ -36,6 +36,7 @@ __export(schema_exports, {
   productsRelations: () => productsRelations,
   reservationStatusEnum: () => reservationStatusEnum,
   sellerBranding: () => sellerBranding,
+  sellerBrandingRelations: () => sellerBrandingRelations,
   sellers: () => sellers,
   sellersRelations: () => sellersRelations,
   stockLevels: () => stockLevels,
@@ -94,10 +95,19 @@ var sellerBranding = (0, import_pg_core.pgTable)("seller_branding", {
   id: (0, import_pg_core.uuid)("id").defaultRandom().primaryKey(),
   sellerId: (0, import_pg_core.uuid)("seller_id").references(() => sellers.id).notNull(),
   logoUrl: (0, import_pg_core.text)("logo_url"),
-  primaryColor: (0, import_pg_core.text)("primary_color").default("#000000"),
-  accentColor: (0, import_pg_core.text)("accent_color").default("#ffffff"),
+  bannerUrl: (0, import_pg_core.text)("banner_url"),
+  primaryColor: (0, import_pg_core.text)("primary_color").default("#00D1FF"),
+  accentColor: (0, import_pg_core.text)("accent_color").default("#000000"),
+  phone: (0, import_pg_core.text)("phone"),
+  whatsapp: (0, import_pg_core.text)("whatsapp"),
+  address: (0, import_pg_core.text)("address"),
+  instagram: (0, import_pg_core.text)("instagram"),
+  website: (0, import_pg_core.text)("website"),
+  description: (0, import_pg_core.text)("description"),
   updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
-});
+}, (table) => ({
+  uniqueSeller: (0, import_pg_core.uniqueIndex)("seller_branding_seller_unique").on(table.sellerId)
+}));
 var uoms = (0, import_pg_core.pgTable)("uoms", {
   id: (0, import_pg_core.serial)("id").primaryKey(),
   sellerId: (0, import_pg_core.uuid)("seller_id").references(() => sellers.id).notNull(),
@@ -214,13 +224,23 @@ var orderItems = (0, import_pg_core.pgTable)("order_items", {
   unitPrice: (0, import_pg_core.decimal)("unit_price", { precision: 12, scale: 2 }).notNull(),
   subtotal: (0, import_pg_core.decimal)("subtotal", { precision: 12, scale: 2 }).notNull()
 });
-var sellersRelations = (0, import_drizzle_orm.relations)(sellers, ({ many }) => ({
+var sellersRelations = (0, import_drizzle_orm.relations)(sellers, ({ one, many }) => ({
   products: many(products),
   warehouses: many(warehouses),
   catalogs: many(catalogs),
   orders: many(orders),
   stockLevels: many(stockLevels),
-  stockMovements: many(stockMovements)
+  stockMovements: many(stockMovements),
+  branding: one(sellerBranding, {
+    fields: [sellers.id],
+    references: [sellerBranding.sellerId]
+  })
+}));
+var sellerBrandingRelations = (0, import_drizzle_orm.relations)(sellerBranding, ({ one }) => ({
+  seller: one(sellers, {
+    fields: [sellerBranding.sellerId],
+    references: [sellers.id]
+  })
 }));
 var uomsRelations = (0, import_drizzle_orm.relations)(uoms, ({ one }) => ({
   seller: one(sellers, { fields: [uoms.sellerId], references: [sellers.id] })
@@ -296,6 +316,7 @@ var orderItemsRelations = (0, import_drizzle_orm.relations)(orderItems, ({ one }
   productsRelations,
   reservationStatusEnum,
   sellerBranding,
+  sellerBrandingRelations,
   sellers,
   sellersRelations,
   stockLevels,

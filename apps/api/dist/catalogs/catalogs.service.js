@@ -43,6 +43,9 @@ let CatalogsService = class CatalogsService {
                 catalogProducts: {
                     with: { product: true },
                 },
+                seller: {
+                    with: { branding: true }
+                }
             },
         });
         if (!catalog) {

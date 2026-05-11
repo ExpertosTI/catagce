@@ -16,6 +16,7 @@ import {
   reservationStatusEnum,
   schema_exports,
   sellerBranding,
+  sellerBrandingRelations,
   sellers,
   sellersRelations,
   stockLevels,
@@ -28,7 +29,7 @@ import {
   uomsRelations,
   warehouses,
   warehousesRelations
-} from "./chunk-SY3WRSYN.mjs";
+} from "./chunk-FJF7DAOC.mjs";
 
 // src/index.ts
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -55,6 +56,7 @@ export {
   productsRelations,
   reservationStatusEnum,
   sellerBranding,
+  sellerBrandingRelations,
   sellers,
   sellersRelations,
   stockLevels,

@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { OrdersModule } from './orders/orders.module';
+import { SellersModule } from './sellers/sellers.module';
 import { BullModule } from '@nestjs/bullmq';
 
 @Module({
@@ -16,6 +17,7 @@ import { BullModule } from '@nestjs/bullmq';
     ProductsModule,
     CatalogsModule,
     OrdersModule,
+    SellersModule,
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST ?? 'localhost',
