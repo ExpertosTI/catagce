@@ -23,8 +23,8 @@ echo "🧹 Cleaning local node_modules..."
 rm -rf node_modules
 git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
 
-echo "📦 Downloading Linux production dependencies..."
-npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile
+echo "📦 Downloading Linux production dependencies (HOISTED MODE - No Symlinks)..."
+npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile --node-linker=hoisted
 
 # 3.1. Extreme Purge of non-Linux binaries
 echo "🧹 Extreme Purge of non-Linux assets..."
