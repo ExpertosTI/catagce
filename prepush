@@ -70,9 +70,15 @@ echo "✅ Compression complete: $(du -h deps.tar.gz)"
 echo "✅ Build succeeded — staging artifacts and dependencies"
 
 # 4. Stage EVERYTHING + artifacts + compressed deps
-git add .
-git add -f apps/api/dist apps/buyer-web/.next workers/*/dist packages/*/dist
+echo "git: Staging artifacts with extreme force..."
+git rm -r --cached apps/api/dist apps/buyer-web/.next workers/*/dist packages/*/dist 2>/dev/null || true
+git add -f apps/api/dist/.
+git add -f apps/buyer-web/.next/.
+git add -f workers/*/dist/.
+git add -f packages/*/dist/.
 git add -f deps.tar.gz
+git add .
+
 # Explicitly UNSTAGE node_modules folder (too many files)
 git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
 

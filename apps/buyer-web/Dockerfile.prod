@@ -20,5 +20,5 @@ WORKDIR /app/apps/buyer-web
 EXPOSE 42101
 ENV NODE_ENV=production
 
-# Ejecutamos desde la carpeta del app
-CMD ["npx", "next", "start", "-p", "42101"]
+# Ejecutamos desde la carpeta del app, asegurando que Next vea el .next local
+CMD ["npx", "next", "start", ".", "-p", "42101"]
