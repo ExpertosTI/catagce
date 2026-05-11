@@ -7,7 +7,8 @@ COPY apps/buyer-web/public ./apps/buyer-web/public
 COPY apps/buyer-web/.next ./apps/buyer-web/.next
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY node_modules ./node_modules
+ADD deps.tar.gz ./
+
 
 EXPOSE 3000
 ENV NODE_ENV=production

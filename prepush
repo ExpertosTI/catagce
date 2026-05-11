@@ -26,37 +26,50 @@ git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules pack
 echo "📦 Downloading Linux production dependencies (HOISTED MODE - No Symlinks)..."
 npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile --node-linker=hoisted
 
-# 3.1. Extreme Purge of non-Linux binaries
-echo "🧹 Extreme Purge of non-Linux assets..."
-# Borrar específicamente el culpable de 109MB
-rm -rf node_modules/.pnpm/@next+swc-darwin-arm64@14.2.29 2>/dev/null || true
-# Borrar cualquier rastro de darwin, win32 o archivos .node que no sean linux
+# 3.1. Surgical Purge of non-essential production files
+echo "🧹 Surgical Purge of node_modules (Extreme efficiency)..."
+# Remove non-Linux binaries
 find node_modules -name "*darwin*" -exec rm -rf {} +
 find node_modules -name "*win32*" -exec rm -rf {} +
 find node_modules -name "*.node" ! -name "*linux*" -exec rm -rf {} +
 
-# 3.2. Extra: Borrar CUALQUIER archivo mayor a 50MB (GitHub límite es 100, vamos a lo seguro)
-find node_modules -type f -size +50M -delete
+# Remove Documentation, Tests and Bloat
+find node_modules -type d -name "doc" -exec rm -rf {} +
+find node_modules -type d -name "docs" -exec rm -rf {} +
+find node_modules -type d -name "test" -exec rm -rf {} +
+find node_modules -type d -name "tests" -exec rm -rf {} +
+find node_modules -type d -name "example" -exec rm -rf {} +
+find node_modules -type d -name "examples" -exec rm -rf {} +
+find node_modules -type d -name "sample" -exec rm -rf {} +
+find node_modules -type d -name "samples" -exec rm -rf {} +
+find node_modules -type d -name ".cache" -exec rm -rf {} +
 
-# 3.3. VERIFICATION
-echo "🔍 Verifying no large files (>90MB) exist..."
-LARGE_FILES=$(find node_modules -type f -size +90M)
-if [ -n "$LARGE_FILES" ]; then
-    echo "❌ ERROR: Large files still exist in node_modules:"
-    echo "$LARGE_FILES"
-    echo "Aborting push."
-    exit 1
-fi
+# Remove unneeded file types in production
+find node_modules -name "*.md" -type f -delete
+find node_modules -name "*.map" -type f -delete
+find node_modules -name "*.ts" -type f -delete
+find node_modules -name "*.tsx" -type f -delete
+find node_modules -name "LICENSE" -type f -delete
+find node_modules -name "CHANGELOG" -type f -delete
 
+# Final size check (remove anything > 40MB just in case)
+find node_modules -type f -size +40M -delete
+
+
+# 3.2. COMPRESSION (The Speed Fix)
+echo "🗜️  Compressing dependencies into a single package..."
+tar -czf deps.tar.gz node_modules
+echo "✅ Compression complete: $(du -h deps.tar.gz)"
 
 echo "✅ Build succeeded — staging artifacts and dependencies"
 
-
-
-# 4. Stage EVERYTHING + dependencies + artifacts
+# 4. Stage EVERYTHING + artifacts + compressed deps
 git add .
 git add -f apps/api/dist apps/buyer-web/.next workers/*/dist packages/*/dist
-git add -f node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules
+git add -f deps.tar.gz
+# Explicitly UNSTAGE node_modules folder (too many files)
+git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
+
 
 
 if ! git diff-index --quiet HEAD -- 2>/dev/null; then

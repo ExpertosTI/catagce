@@ -6,7 +6,8 @@ COPY workers/notifications/package.json ./workers/notifications/
 COPY workers/notifications/dist ./workers/notifications/dist
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY node_modules ./node_modules
+ADD deps.tar.gz ./
+
 
 ENV NODE_ENV=production
 CMD ["node", "workers/notifications/dist/main.js"]

@@ -6,7 +6,8 @@ COPY workers/media-processor/package.json ./workers/media-processor/
 COPY workers/media-processor/dist ./workers/media-processor/dist
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY node_modules ./node_modules
+ADD deps.tar.gz ./
+
 
 ENV NODE_ENV=production
 CMD ["node", "workers/media-processor/dist/main.js"]
