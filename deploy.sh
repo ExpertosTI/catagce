@@ -37,9 +37,14 @@ set +a
 [[ -n "${REDIS_HOST:-}" ]]          || { echo "❌  REDIS_HOST is required";         exit 1; }
 [[ -n "${REDIS_PORT:-}" ]]          || { echo "❌  REDIS_PORT is required";         exit 1; }
 
+# ── Maintenance (Renace Protocol) ───────────────────────────────────────────
+echo "🧹 Cleaning up old build cache to free space..."
+docker builder prune -f --filter "until=24h"
+
 # ── Docker images ─────────────────────────────────────────────────────────────
 echo "🐳 Building Docker images (using Zero-Build artifacts)..."
-docker compose build
+# Usamos --pull para asegurar frescura y --parallel 1 para no saturar el disco del VPS
+docker compose build --pull
 
 
 # ── Deploy ────────────────────────────────────────────────────────────────────
@@ -61,7 +66,9 @@ docker service update --force ${STACK_NAME}_api 2>/dev/null || true
 docker service update --force ${STACK_NAME}_web 2>/dev/null || true
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
+echo "🧹 Final system cleanup..."
 docker image prune -f
+docker system prune -f --filter "until=24h"
 
 echo ""
 docker stack services "$STACK_NAME"
