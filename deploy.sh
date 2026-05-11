@@ -41,10 +41,14 @@ set +a
 echo "🧹 Cleaning up old build cache to free space..."
 docker builder prune -f --filter "until=24h"
 
-# ── Docker images ─────────────────────────────────────────────────────────────
-echo "🐳 Building Docker images (using Zero-Build artifacts)..."
-# Usamos --pull para asegurar frescura y --parallel 1 para no saturar el disco del VPS
-docker compose build --pull
+# ── Docker images (Sequential Build to protect CPU) ──────────────────────────
+echo "🐳 Building Docker images one by one (protecting VPS CPU)..."
+# Construimos secuencialmente para no saturar el CPU de Hostinger
+docker compose build --pull api
+docker compose build web
+docker compose build media-processor
+docker compose build catalog-renderer
+docker compose build notifications
 
 
 # ── Deploy ────────────────────────────────────────────────────────────────────
