@@ -50,8 +50,10 @@ docker compose build --pull
 # ── Deploy ────────────────────────────────────────────────────────────────────
 echo "🚢 Deploying stack '$STACK_NAME'..."
 COMPOSE_TMP=$(mktemp /tmp/catagce-stack-XXXXXX.yml)
-docker compose config > "$COMPOSE_TMP"
+# Filtramos la propiedad 'name:' que rompe el despliegue en Swarm
+docker compose config | grep -v "^name:" > "$COMPOSE_TMP"
 docker stack deploy -c "$COMPOSE_TMP" "$STACK_NAME" --with-registry-auth
+
 rm -f "$COMPOSE_TMP"
 
 echo ""
