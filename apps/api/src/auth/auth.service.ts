@@ -30,22 +30,32 @@ export class AuthService {
     return this.generateResponse(seller);
   }
 
-  async loginWithEmail(email: string, pass: string): Promise<LoginResponse> {
-    // Fallback hardcoded for Jhosua as requested (Temporary until DB is populated)
-    if (email === 'catalogo@jhosuacomercial.com' && pass === 'Jhosua2027') {
-      let [seller] = await this.db
-        .select()
-        .from(sellers)
-        .where(eq(sellers.email, email))
-        .limit(1);
+  async loginWithEmail(emailRaw: string, pass: string): Promise<LoginResponse> {
+    const email = emailRaw.trim().toLowerCase();
 
+    // FALLBACK 1: Jhosua Comercial
+    if (email === 'catalogo@jhosuacomercial.com' && pass === 'Jhosua2027') {
+      let [seller] = await this.db.select().from(sellers).where(eq(sellers.email, email)).limit(1);
       if (!seller) {
-        // Auto-provision Jhosua seller if missing
         [seller] = await this.db.insert(sellers).values({
           name: 'Jhosua Comercial',
           slug: 'jhosuacomercial',
           email: 'catalogo@jhosuacomercial.com',
-          password: pass, // Plain for now, will hash on next save
+          password: pass,
+        }).returning();
+      }
+      return this.generateResponse(seller);
+    }
+
+    // FALLBACK 2: Renace Admin (Master)
+    if (email === 'admin@renace.tech' && pass === 'Renace2026') {
+      let [seller] = await this.db.select().from(sellers).where(eq(sellers.email, email)).limit(1);
+      if (!seller) {
+        [seller] = await this.db.insert(sellers).values({
+          name: 'Renace Admin',
+          slug: 'renace-admin',
+          email: 'admin@renace.tech',
+          password: pass,
         }).returning();
       }
       return this.generateResponse(seller);
