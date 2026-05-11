@@ -13,9 +13,6 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://catalogo.jhosuacomercial.com}
       - PORT=3000
-    depends_on:
-      - db
-      - redis
     networks:
       - RenaceNet
     healthcheck:
@@ -57,8 +54,6 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=https://api.catalogo.jhosuacomercial.com
       - NODE_ENV=production
-    depends_on:
-      - api
     networks:
       - RenaceNet
     healthcheck:
@@ -127,9 +122,6 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
-    depends_on:
-      - db
-      - redis
     networks:
       - RenaceNet
     logging:
@@ -154,9 +146,6 @@ services:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-    depends_on:
-      - db
-      - redis
     networks:
       - RenaceNet
     logging:
@@ -182,8 +171,6 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN:-}
       - WHATSAPP_PHONE_ID=${WHATSAPP_PHONE_ID:-}
-    depends_on:
-      - redis
     networks:
       - RenaceNet
     logging:
