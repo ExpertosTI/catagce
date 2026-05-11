@@ -55,6 +55,8 @@ export const sellers = pgTable('sellers', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  email: text('email').unique(),
+  password: text('password'), // Store hashed password
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

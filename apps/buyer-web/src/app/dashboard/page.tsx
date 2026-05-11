@@ -5,7 +5,7 @@ import {
   Search, User, Plus, Package, FileText, LayoutGrid,
   Settings, Home, ShoppingCart, LogIn, Camera, Maximize2,
   ChevronRight, ExternalLink, X, Bell, LogOut, BarChart3,
-  Box, ArrowRight, Zap, Globe, ArrowLeft
+  Box, ArrowRight, Zap, Globe, ArrowLeft, Lock, Mail, ClipboardCheck, Share2
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
@@ -19,10 +19,15 @@ function getToken(): string | null {
   return localStorage.getItem('catagce_token');
 }
 
-async function fetchWithAuth(path: string) {
+async function fetchWithAuth(path: string, options: any = {}) {
   const token = getToken();
   const res = await fetch(`${API_BASE}/api${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
   });
   if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
@@ -69,13 +74,17 @@ function NavItem({
 export default function DashboardPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [catalogs, setCatalogs] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [catalogLoading, setCatalogLoading] = useState(false);
-  const [slug, setSlug] = useState('');
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [token, setToken] = useState<string | null>(null);
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [selectedCatalog, setSelectedCatalog] = useState<any | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const prevTabIndex = useRef(0);
@@ -111,7 +120,6 @@ export default function DashboardPage() {
   }, []);
 
   const loadCatalogs = useCallback(async () => {
-    if (catalogs.length > 0) return;
     setCatalogLoading(true);
     try {
       const data = await fetchWithAuth('/catalogs');
@@ -121,16 +129,32 @@ export default function DashboardPage() {
     } finally {
       setCatalogLoading(false);
     }
-  }, [catalogs.length]);
+  }, []);
+
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    try {
+      const data = await fetchWithAuth('/orders');
+      setOrders(data);
+    } catch {
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (token) loadProducts();
-    else setLoading(false);
+    if (token) {
+      loadProducts();
+    } else {
+      setLoading(false);
+    }
   }, [token, loadProducts]);
 
   useEffect(() => {
     if (token && activeTab === 'catalogs') loadCatalogs();
-  }, [activeTab, token, loadCatalogs]);
+    if (token && activeTab === 'orders') loadOrders();
+  }, [activeTab, token, loadCatalogs, loadOrders]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -144,22 +168,41 @@ export default function DashboardPage() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug }),
+        body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) throw new Error('Not found');
+      if (!res.ok) throw new Error('Unauthorized');
       const { token: newToken } = await res.json();
       localStorage.setItem('catagce_token', newToken);
       setToken(newToken);
+      showToast('PROTOCOLO DE ACCESO VALIDADO');
     } catch {
-      setLoginError('VENDEDOR NO ENCONTRADO. VERIFICA EL SLUG.');
+      setLoginError('CREDENCIALES INVÁLIDAS. VERIFICA EMAIL Y PASSWORD.');
     }
+  };
+
+  const handleCreateCatalog = async (name: string, slug: string) => {
+    try {
+      await fetchWithAuth('/catalogs', {
+        method: 'POST',
+        body: JSON.stringify({ name, slug }),
+      });
+      setIsCreateModalOpen(false);
+      loadCatalogs();
+      showToast('NUEVO CATÁLOGO GENERADO');
+    } catch {
+      showToast('ERROR AL GENERAR CATÁLOGO');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showToast('LINK COPIADO AL PORTAPAPELES');
   };
 
   /* ── Login ───────────────────────────────────────────────── */
   if (!token) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6 font-sans overflow-hidden">
-        {/* Background Layer */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <div 
             className="absolute inset-0 opacity-20 transition-opacity duration-1000"
@@ -177,25 +220,44 @@ export default function DashboardPage() {
         >
           <div className="flex flex-col items-center text-center space-y-4">
             <LogoMark />
-            <h1 className="text-4xl font-bebas tracking-widest text-white mt-2">
-              CATAGCE<span className="text-[#00D1FF]">.</span>DASH
+            <h1 className="text-4xl font-bebas tracking-widest text-white mt-2 uppercase">
+              ADMIN <span className="text-[#00D1FF]">CATAGCE</span>
             </h1>
             <p className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em]">
-              AUTENTICACIÓN DE PROTOCOLO
+              SISTEMA DE GESTIÓN OPERATIVA
             </p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2">SLUG DE ACCESO</label>
-              <input
-                className="w-full h-14 px-6 bg-white/5 border border-white/10 rounded-2xl focus:border-[#00D1FF] focus:outline-none text-white font-bebas text-xl tracking-widest placeholder:text-white/10 transition-all"
-                placeholder="EJ: RENACE-SHOP"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase())}
-                required
-                autoComplete="off"
-              />
+            <div className="space-y-4">
+              <div className="relative">
+                <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2 mb-1 block">USUARIO / EMAIL</label>
+                <div className="relative">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    className="w-full h-14 pl-14 pr-6 bg-white/5 border border-white/10 rounded-2xl focus:border-[#00D1FF] focus:outline-none text-white font-rajdhani text-sm tracking-widest placeholder:text-white/10 transition-all"
+                    placeholder="catalogo@jhosuacomercial.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="relative">
+                <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2 mb-1 block">PASSWORD DE PROTOCOLO</label>
+                <div className="relative">
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type="password"
+                    className="w-full h-14 pl-14 pr-6 bg-white/5 border border-white/10 rounded-2xl focus:border-[#00D1FF] focus:outline-none text-white font-rajdhani text-sm tracking-widest placeholder:text-white/10 transition-all"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
             </div>
             
             <AnimatePresence>
@@ -216,6 +278,10 @@ export default function DashboardPage() {
               <LogIn className="w-6 h-6" /> INICIAR SESIÓN
             </button>
           </form>
+
+          <p className="text-center font-rajdhani text-[8px] text-gray-600 uppercase tracking-widest">
+            ACCESO RESTRINGIDO A PERSONAL AUTORIZADO
+          </p>
         </motion.div>
       </div>
     );
@@ -224,7 +290,6 @@ export default function DashboardPage() {
   /* ── Dashboard shell ─────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden font-sans">
-      {/* Background Layer */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div 
           className="absolute inset-0 opacity-10 transition-opacity duration-1000"
@@ -235,7 +300,6 @@ export default function DashboardPage() {
         <div className="absolute inset-0 grid-pattern opacity-5" />
       </div>
 
-      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -247,28 +311,21 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Top Bar */}
       <header className="relative z-50 flex items-center justify-between px-6 pt-8 pb-6 mx-auto max-w-7xl">
         <div className="flex items-center gap-4">
           <LogoMark />
           <div className="hidden sm:block">
-            <h1 className="text-2xl font-bebas tracking-widest">
-              CATAGCE<span className="text-[#00D1FF]">.</span>
+            <h1 className="text-2xl font-bebas tracking-widest uppercase">
+              CATAGCE<span className="text-[#00D1FF]">.</span>OPERATIONS
             </h1>
-            <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-[0.4em]">CONTROL CENTER v2.0</p>
+            <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-[0.4em]">ADMINISTRATION CORE v2.1</p>
           </div>
         </div>
         
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full glass border-white/5 font-rajdhani text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            <div className="w-1.5 h-1.5 bg-[#00D1FF] rounded-full animate-pulse shadow-[0_0_8px_#00D1FF]" />
-            NETWORK STABLE
-          </div>
-          
           <button
             onClick={() => { localStorage.removeItem('catagce_token'); setToken(null); showToast('SESIÓN CERRADA'); }}
             className="relative w-12 h-12 rounded-xl glass flex items-center justify-center border-white/10 hover:border-[#00D1FF]/40 transition-all hover:scale-105 active:scale-95"
-            aria-label="Cerrar sesión"
           >
             <User className="w-5 h-5 text-[#00D1FF]" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#00D1FF] rounded-full border-2 border-[#050505] shadow-[0_0_10px_#00D1FF]" />
@@ -276,7 +333,6 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Tab content */}
       <main className="relative z-10 px-6 mx-auto max-w-7xl pt-10">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
@@ -302,30 +358,25 @@ export default function DashboardPage() {
                 onSelect={setSelectedCatalog}
                 onClose={() => setSelectedCatalog(null)}
                 onOrder={(slug: string) => window.open(`/order/${slug}`, '_blank')}
+                onShare={(slug: string) => copyToClipboard(`${window.location.origin}/order/${slug}`)}
+                onCreate={() => setIsCreateModalOpen(true)}
               />
             )}
-            {activeTab === 'orders' && <OrdersView />}
+            {activeTab === 'orders' && <OrdersView orders={orders} loading={ordersLoading} />}
             {activeTab === 'settings' && <SettingsView onLogout={() => { localStorage.removeItem('catagce_token'); setToken(null); }} />}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      {/* FAB */}
       <AnimatePresence>
-        {(activeTab === 'home' || activeTab === 'products') && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            className="fixed bottom-32 right-8 w-20 h-20 bg-[#00D1FF] text-black rounded-[28px] flex items-center justify-center shadow-[0_20px_50px_rgba(0,209,255,0.4)] z-50 group"
-            onClick={() => showToast('NUEVO PRODUCTO: ACCESO RESTRINGIDO')}
-          >
-            <Plus className="w-10 h-10 transition-transform group-hover:scale-110" />
-          </motion.button>
+        {isCreateModalOpen && (
+          <CreateCatalogModal 
+            onClose={() => setIsCreateModalOpen(false)} 
+            onSubmit={handleCreateCatalog} 
+          />
         )}
       </AnimatePresence>
 
-      {/* Bottom Navigation */}
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-50">
         <div className="glass backdrop-blur-2xl border-white/5 rounded-[32px] px-6 py-4 flex justify-around items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
           <NavItem icon={<Home className="w-5 h-5" />} label="Home" active={activeTab === 'home'} onClick={() => switchTab('home')} />
@@ -346,7 +397,7 @@ function HomeView({ products, loading, onExportPdf }: { products: any[]; loading
     <div className="space-y-12">
       <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
-          <h2 className="text-6xl font-bebas tracking-wide mb-2">INVENTARIO <span className="text-[#00D1FF]">GLOBAL</span></h2>
+          <h2 className="text-6xl font-bebas tracking-wide mb-2 uppercase">INVENTARIO <span className="text-[#00D1FF]">GLOBAL</span></h2>
           <p className="font-rajdhani text-[10px] font-black text-gray-600 uppercase tracking-[0.4em]">MONITOREO DE ACTIVOS EN TIEMPO REAL</p>
         </div>
         <button
@@ -371,7 +422,7 @@ function ProductsView({ products, loading }: { products: any[]; loading: boolean
   return (
     <div className="space-y-12">
       <div className="flex justify-between items-end">
-        <h2 className="text-6xl font-bebas tracking-wide">GESTIÓN DE <span className="text-[#00D1FF]">SKU</span></h2>
+        <h2 className="text-6xl font-bebas tracking-wide uppercase">GESTIÓN DE <span className="text-[#00D1FF]">SKU</span></h2>
         <span className="font-bebas text-2xl text-gray-700">{products.length} ITEMS</span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -384,10 +435,18 @@ function ProductsView({ products, loading }: { products: any[]; loading: boolean
   );
 }
 
-function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder }: any) {
+function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder, onShare, onCreate }: any) {
   return (
     <div className="space-y-12">
-      <h2 className="text-6xl font-bebas tracking-wide">CATÁLOGOS <span className="text-[#00D1FF]">ACTIVOS</span></h2>
+      <div className="flex justify-between items-end">
+        <h2 className="text-6xl font-bebas tracking-wide uppercase">CATÁLOGOS <span className="text-[#00D1FF]">ACTIVOS</span></h2>
+        <button 
+          onClick={onCreate}
+          className="w-14 h-14 bg-[#00D1FF] text-black rounded-2xl flex items-center justify-center hover:scale-110 transition-all shadow-[0_0_20px_rgba(0,209,255,0.4)]"
+        >
+          <Plus className="w-8 h-8" />
+        </button>
+      </div>
       
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -419,7 +478,6 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder 
         </div>
       )}
 
-      {/* Catalog Detail Panel */}
       <AnimatePresence>
         {selected && (
           <motion.div
@@ -461,8 +519,11 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder 
                 >
                   ABRIR VISTA PÚBLICA <ArrowRight className="inline ml-4" />
                 </button>
-                <button className="px-12 py-8 glass border-white/10 rounded-[32px] font-bebas text-3xl tracking-widest uppercase hover:bg-white/10 transition-all">
-                  COMPARTIR LINK
+                <button 
+                  onClick={() => onShare(selected.slug)}
+                  className="px-12 py-8 glass border-white/10 rounded-[32px] font-bebas text-3xl tracking-widest uppercase hover:bg-white/10 transition-all flex items-center gap-4"
+                >
+                  <Share2 className="w-8 h-8" /> COMPARTIR LINK
                 </button>
               </div>
             </div>
@@ -473,19 +534,56 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder 
   );
 }
 
-function OrdersView() {
+function OrdersView({ orders, loading }: any) {
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-8">
-      <div className="relative w-32 h-32 glass rounded-[40px] flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.05)]">
-        <div className="absolute inset-0 rounded-[40px] border border-[#00D1FF] animate-pulse opacity-20" />
-        <ShoppingCart className="w-16 h-16 text-gray-800" />
-      </div>
-      <div className="text-center">
-        <h2 className="text-4xl font-bebas tracking-widest mb-4">COLA DE PEDIDOS <span className="text-[#00D1FF]">VACÍA</span></h2>
-        <p className="font-rajdhani text-[10px] font-bold text-gray-600 uppercase tracking-[0.4em] max-w-sm">
-          SISTEMA EN ESPERA DE RECEPCIÓN DE ORDENES B2B
-        </p>
-      </div>
+    <div className="space-y-12">
+      <h2 className="text-6xl font-bebas tracking-wide uppercase">COLA DE <span className="text-[#00D1FF]">PEDIDOS</span></h2>
+      
+      {loading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-24 glass rounded-3xl animate-pulse" />
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="min-h-[40vh] flex flex-col items-center justify-center space-y-6">
+          <ShoppingCart className="w-12 h-12 text-gray-800" />
+          <p className="font-rajdhani text-[10px] font-bold text-gray-600 uppercase tracking-[0.4em]">SIN PEDIDOS PENDIENTES</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order: any) => (
+            <div key={order.id} className="glass p-8 rounded-[32px] flex flex-col md:flex-row justify-between items-center gap-6 border-white/5 hover:border-[#00D1FF]/20 transition-all">
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center">
+                  <User className="text-gray-500" />
+                </div>
+                <div>
+                  <p className="font-bebas text-2xl uppercase tracking-wide">{order.buyerName}</p>
+                  <p className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest">{order.buyerPhone}</p>
+                </div>
+              </div>
+              
+              <div className="flex-1 flex justify-center gap-12">
+                <div className="text-center">
+                  <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-widest mb-1">MONTO</p>
+                  <p className="font-bebas text-2xl text-[#00D1FF]">${order.totalAmount}</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-widest mb-1">ESTADO</p>
+                  <span className="px-3 py-1 bg-[#00D1FF]/10 text-[#00D1FF] border border-[#00D1FF]/20 rounded-full font-rajdhani text-[9px] font-bold uppercase tracking-widest">
+                    {order.status}
+                  </span>
+                </div>
+              </div>
+
+              <button className="px-8 py-3 glass border-white/10 rounded-xl font-bebas text-sm tracking-widest uppercase hover:bg-white hover:text-black transition-all">
+                DETALLES
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -493,8 +591,7 @@ function OrdersView() {
 function SettingsView({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="space-y-12">
-      <h2 className="text-6xl font-bebas tracking-wide">CONFIG <span className="text-[#00D1FF]">CORE</span></h2>
-      
+      <h2 className="text-6xl font-bebas tracking-wide uppercase">CONFIG <span className="text-[#00D1FF]">CORE</span></h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {[
           { label: 'PERFIL EMPRESARIAL', sub: 'NOMBRE, IDENTIDAD VISUAL, CONTACTO', icon: <User /> },
@@ -502,13 +599,8 @@ function SettingsView({ onLogout }: { onLogout: () => void }) {
           { label: 'NOTIFICACIONES PUSH', sub: 'CONFIGURACIÓN DE WEBHOOKS Y WHATSAPP', icon: <Bell /> },
           { label: 'SEGURIDAD DE PROTOCOLO', sub: 'LLAVES API Y PERMISOS DE ACCESO', icon: <Zap /> },
         ].map((item) => (
-          <button
-            key={item.label}
-            className="group glass glass-hover p-10 rounded-[40px] flex items-center gap-8 text-left"
-          >
-            <div className="w-16 h-16 glass rounded-2xl flex items-center justify-center text-gray-500 group-hover:text-[#00D1FF] group-hover:border-[#00D1FF]/30 transition-all">
-              {item.icon}
-            </div>
+          <button key={item.label} className="group glass glass-hover p-10 rounded-[40px] flex items-center gap-8 text-left">
+            <div className="w-16 h-16 glass rounded-2xl flex items-center justify-center text-gray-500 group-hover:text-[#00D1FF] transition-all">{item.icon}</div>
             <div className="flex-1">
               <p className="font-bebas text-2xl tracking-widest uppercase">{item.label}</p>
               <p className="font-rajdhani text-[10px] font-bold text-gray-600 uppercase tracking-widest mt-1">{item.sub}</p>
@@ -517,11 +609,7 @@ function SettingsView({ onLogout }: { onLogout: () => void }) {
           </button>
         ))}
       </div>
-
-      <button
-        onClick={onLogout}
-        className="w-full mt-12 py-8 bg-red-500/5 border border-red-500/20 text-red-500 font-bebas text-2xl tracking-widest uppercase rounded-[32px] hover:bg-red-500 hover:text-white transition-all shadow-[0_20px_50px_rgba(239,68,68,0.1)]"
-      >
+      <button onClick={onLogout} className="w-full py-8 bg-red-500/5 border border-red-500/20 text-red-500 font-bebas text-2xl tracking-widest uppercase rounded-[32px] hover:bg-red-500 hover:text-white transition-all">
         DETENER SESIÓN ACTUAL <LogOut className="inline ml-3 w-6 h-6" />
       </button>
     </div>
@@ -531,38 +619,21 @@ function SettingsView({ onLogout }: { onLogout: () => void }) {
 function ProductCard({ product }: { product: any }) {
   const stock = product.stockLevels?.[0]?.onHandBase ?? 0;
   return (
-    <motion.div
-      whileHover={{ y: -8 }}
-      className="group relative glass glass-hover rounded-[32px] overflow-hidden"
-    >
+    <motion.div whileHover={{ y: -8 }} className="group relative glass glass-hover rounded-[32px] overflow-hidden">
       <div className="aspect-square relative overflow-hidden">
-        <img
-          src={product.imageUrl ?? FALLBACK_IMG}
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
+        <img src={product.imageUrl ?? FALLBACK_IMG} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-60" />
-        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-[-10px] group-hover:translate-y-0">
-          <button className="w-10 h-10 glass rounded-xl flex items-center justify-center hover:bg-[#00D1FF] hover:text-black transition-all">
-            <Camera className="w-4 h-4" />
-          </button>
-        </div>
       </div>
-      
       <div className="p-6 space-y-4">
         <div>
           <h3 className="font-bebas text-2xl tracking-wide uppercase truncate group-hover:text-[#00D1FF] transition-colors">{product.name}</h3>
           <p className="font-rajdhani text-sm font-bold text-[#00D1FF]">${product.basePrice} USD</p>
         </div>
-        
         <div className="flex items-center justify-between font-rajdhani text-[10px] font-bold text-gray-600 uppercase tracking-widest border-t border-white/5 pt-4">
           <span>STOCK: {stock} {product.baseUom?.symbol ?? 'un'}</span>
-          <div className="flex gap-1">
-            <div className={`w-2 h-2 rounded-full ${stock > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-          </div>
+          <div className={`w-2 h-2 rounded-full ${stock > 0 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
         </div>
-        
-        <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-bebas text-sm tracking-widest uppercase hover:bg-[#00D1FF] hover:text-black transition-all group-hover:shadow-[0_0_20px_rgba(0,209,255,0.2)]">
+        <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-bebas text-sm tracking-widest uppercase hover:bg-[#00D1FF] hover:text-black transition-all">
           VER DETALLES
         </button>
       </div>
@@ -572,4 +643,31 @@ function ProductCard({ product }: { product: any }) {
 
 function SkeletonCard() {
   return <div className="aspect-[3/4] glass rounded-[32px] animate-pulse" />;
+}
+
+function CreateCatalogModal({ onClose, onSubmit }: any) {
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center px-6">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
+      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative glass p-10 rounded-[40px] w-full max-w-lg space-y-8">
+        <h3 className="text-4xl font-bebas tracking-widest uppercase">GENERAR <span className="text-[#00D1FF]">CATÁLOGO</span></h3>
+        <div className="space-y-4">
+          <div>
+            <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">NOMBRE DEL CATÁLOGO</label>
+            <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none transition-all" value={name} onChange={(e) => setName(e.target.value)} placeholder="EJ: TEMPORADA 2026" />
+          </div>
+          <div>
+            <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">SLUG DE ACCESO (URL)</label>
+            <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none transition-all" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/ /g, '-'))} placeholder="ej: temporada-2026" />
+          </div>
+        </div>
+        <div className="flex gap-4 pt-4">
+          <button onClick={onClose} className="flex-1 py-5 glass border-white/10 rounded-2xl font-bebas text-xl tracking-widest uppercase">CANCELAR</button>
+          <button onClick={() => onSubmit(name, slug)} className="flex-1 py-5 bg-[#00D1FF] text-black rounded-2xl font-bebas text-xl tracking-widest uppercase shadow-[0_10px_30px_rgba(0,209,255,0.3)]">CREAR</button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 }

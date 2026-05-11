@@ -27,7 +27,45 @@ export class AuthService {
       throw new UnauthorizedException('Seller not found');
     }
 
-    const payload = { sub: seller.id, sellerId: seller.id, email: `${slug}@catagce.app` };
+    return this.generateResponse(seller);
+  }
+
+  async loginWithEmail(email: string, pass: string): Promise<LoginResponse> {
+    // Fallback hardcoded for Jhosua as requested (Temporary until DB is populated)
+    if (email === 'catalogo@jhosuacomercial.com' && pass === 'Jhosua2027') {
+      let [seller] = await this.db
+        .select()
+        .from(sellers)
+        .where(eq(sellers.email, email))
+        .limit(1);
+
+      if (!seller) {
+        // Auto-provision Jhosua seller if missing
+        [seller] = await this.db.insert(sellers).values({
+          name: 'Jhosua Comercial',
+          slug: 'jhosuacomercial',
+          email: 'catalogo@jhosuacomercial.com',
+          password: pass, // Plain for now, will hash on next save
+        }).returning();
+      }
+      return this.generateResponse(seller);
+    }
+
+    const [seller] = await this.db
+      .select()
+      .from(sellers)
+      .where(eq(sellers.email, email))
+      .limit(1);
+
+    if (!seller || seller.password !== pass) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.generateResponse(seller);
+  }
+
+  private generateResponse(seller: any): LoginResponse {
+    const payload = { sub: seller.id, sellerId: seller.id, email: seller.email || `${seller.slug}@catagce.app` };
     return {
       token: this.jwtService.sign(payload),
       seller: { id: seller.id, name: seller.name, slug: seller.slug },

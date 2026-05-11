@@ -9,10 +9,13 @@ export class AuthController {
   /** 5 intentos por minuto por IP — previene brute-force */
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
-  login(@Body('slug') slug: string) {
-    if (!slug || typeof slug !== 'string' || slug.trim().length === 0) {
-      throw new BadRequestException('slug is required');
+  login(@Body() body: { slug?: string; email?: string; password?: string }) {
+    if (body.email && body.password) {
+      return this.authService.loginWithEmail(body.email, body.password);
     }
-    return this.authService.loginWithSlug(slug.trim());
+    if (body.slug) {
+      return this.authService.loginWithSlug(body.slug.trim());
+    }
+    throw new BadRequestException('Credentials are required');
   }
 }

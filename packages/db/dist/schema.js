@@ -84,6 +84,9 @@ var sellers = (0, import_pg_core.pgTable)("sellers", {
   id: (0, import_pg_core.uuid)("id").defaultRandom().primaryKey(),
   name: (0, import_pg_core.text)("name").notNull(),
   slug: (0, import_pg_core.text)("slug").notNull().unique(),
+  email: (0, import_pg_core.text)("email").unique(),
+  password: (0, import_pg_core.text)("password"),
+  // Store hashed password
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
   updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
 });

@@ -22,20 +22,23 @@ let AuthController = class AuthController {
         this.authService = authService;
     }
     /** 5 intentos por minuto por IP — previene brute-force */
-    login(slug) {
-        if (!slug || typeof slug !== 'string' || slug.trim().length === 0) {
-            throw new common_1.BadRequestException('slug is required');
+    login(body) {
+        if (body.email && body.password) {
+            return this.authService.loginWithEmail(body.email, body.password);
         }
-        return this.authService.loginWithSlug(slug.trim());
+        if (body.slug) {
+            return this.authService.loginWithSlug(body.slug.trim());
+        }
+        throw new common_1.BadRequestException('Credentials are required');
     }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 5 } }),
     (0, common_1.Post)('login'),
-    __param(0, (0, common_1.Body)('slug')),
+    __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "login", null);
 exports.AuthController = AuthController = __decorate([
