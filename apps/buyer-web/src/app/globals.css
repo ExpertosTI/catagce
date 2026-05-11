@@ -4,28 +4,73 @@
 
 :root {
   --primary: 0 209 255;
+  --primary-glow: rgba(0, 209, 255, 0.4);
   --accent: 255 138 0;
+  --bg: #050505;
+  --card-bg: rgba(20, 20, 20, 0.6);
+  --border: rgba(255, 255, 255, 0.08);
+  --font-rajdhani: 'Rajdhani', sans-serif;
+  --font-bebas: 'Bebas Neue', sans-serif;
+  --font-inter: 'Inter', sans-serif;
 }
 
-body {
-  @apply antialiased bg-[#0A0A0A] text-white;
+@layer base {
+  body {
+    @apply antialiased bg-[#050505] text-white selection:bg-[#00D1FF]/30;
+    overflow-x: hidden;
+  }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-    overflow-wrap: break-word;
+  .text-glow {
+    text-shadow: 0 0 20px var(--primary-glow);
   }
-  .glow-teal {
-    box-shadow: 0 0 20px rgba(0, 209, 255, 0.3);
-  }
-  .glow-orange {
-    box-shadow: 0 0 30px rgba(255, 138, 0, 0.4);
-  }
+  
   .glass {
-    background: rgba(26, 26, 26, 0.8);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
   }
+
+  .glass-hover {
+    @apply transition-all duration-300;
+  }
+  
+  .glass-hover:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(0, 209, 255, 0.3);
+    box-shadow: 0 0 30px rgba(0, 209, 255, 0.1);
+  }
+
+  .grid-pattern {
+    background-image: 
+      linear-gradient(rgba(0, 209, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 209, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  .brutalist-shadow {
+    box-shadow: 6px 6px 0px #00D1FF;
+  }
+
+  .brutalist-shadow-white {
+    box-shadow: 6px 6px 0px white;
+  }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.scanline::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent, rgba(0, 209, 255, 0.05), transparent);
+  height: 20%;
+  width: 100%;
+  animation: scanline 4s linear infinite;
+  pointer-events: none;
 }

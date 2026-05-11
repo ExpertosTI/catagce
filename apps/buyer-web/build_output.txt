@@ -1,0 +1,35 @@
+ WARN  Issue while reading "/Users/brainiac/.npmrc". EPERM: operation not permitted, open '/Users/brainiac/.npmrc'
+
+> @catagce/buyer-web@0.1.0 build /Users/brainiac/Documents/DEVSS2026/QuickCtgo/apps/buyer-web
+> next build
+
+  ▲ Next.js 14.2.29
+
+   Creating an optimized production build ...
+ ⚠ Failed to download the stylesheet for https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@100..900&family=Rajdhani:wght@300;400;500;600;700&display=swap. Skipped optimizing this font.
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/5) ...
+   Generating static pages (1/5) 
+   Generating static pages (2/5) 
+   Generating static pages (3/5) 
+ ✓ Generating static pages (5/5)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    7.53 kB         134 kB
+├ ○ /_not-found                          873 B            88 kB
+├ ○ /dashboard                           7.85 kB         134 kB
+└ ƒ /order/[token]                       5.11 kB         131 kB
++ First Load JS shared by all            87.2 kB
+  ├ chunks/1f49ad56-12c48bf2ec53785c.js  53.7 kB
+  ├ chunks/434-5832c87ab25542c4.js       31.6 kB
+  └ other shared chunks (total)          1.91 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
