@@ -4,21 +4,18 @@ RUN apk add --no-cache wget
 
 WORKDIR /app
 
-# Copiamos la raíz del monorepo (configs y lock)
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY packages ./packages
+# Copiamos solo lo necesario de la web a la raíz de trabajo del contenedor
+COPY apps/buyer-web/package.json ./
+COPY apps/buyer-web/public ./public
+COPY apps/buyer-web/.next ./.next
+COPY apps/buyer-web/next.config.js ./
 
-# Copiamos la carpeta completa del app (incluye .next, package.json, public, etc)
-COPY apps/buyer-web ./apps/buyer-web
-
-# Extraemos los node_modules en la raíz /app
+# Inyectamos las dependencias preparadas en el Mac
 ADD deps.tar.gz ./
-
-# Cambiamos al directorio del app
-WORKDIR /app/apps/buyer-web
 
 EXPOSE 42101
 ENV NODE_ENV=production
 
-# Ejecutamos desde la carpeta del app, asegurando que Next vea el .next local
-CMD ["npx", "next", "start", ".", "-p", "42101"]
+# Ejecutamos Next.js directamente desde la raíz del contenedor
+# Esto asegura que /app/.next sea la ruta por defecto
+CMD ["node_modules/.bin/next", "start", "-p", "42101", "-H", "0.0.0.0"]
