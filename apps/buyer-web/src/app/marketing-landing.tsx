@@ -281,16 +281,15 @@ export default function MarketingLanding({ host }: { host?: string }) {
         </section>
       </main>
 
-      {/* LOGIN OVERLAY */}
       <AnimatePresence>
         {showLogin && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogin(false)} />
+            <div className="absolute inset-0" onClick={() => setShowLogin(false)} />
             
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -369,7 +368,7 @@ export default function MarketingLanding({ host }: { host?: string }) {
         {showRegister && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
