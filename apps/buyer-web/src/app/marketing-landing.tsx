@@ -21,7 +21,14 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
+const getApiBase = () => {
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
+  const host = window.location.hostname;
+  if (host.includes('renace.tech')) return 'https://api.catagce.renace.tech';
+  return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
+};
+
+const API_BASE = getApiBase();
 
 export default function MarketingLanding({ host }: { host?: string }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -50,7 +57,7 @@ export default function MarketingLanding({ host }: { host?: string }) {
       if (!res.ok) throw new Error('Unauthorized');
       const { token } = await res.json();
       localStorage.setItem('catagce_token', token);
-      window.location.reload();
+      window.location.href = '/dashboard';
     } catch {
       setLoginError('CREDENCIALES INVÁLIDAS. VERIFICA TU ACCESO.');
     } finally {

@@ -6,7 +6,11 @@ export default function DispatcherPage() {
   const headersList = headers();
   const host = headersList.get('host') || '';
 
-  // La landing cinematográfica ahora es la puerta de entrada global
-  // con la opción de login integrada.
+  // Si entramos por el dominio de Jhosua Comercial, vamos directo al Dashboard (Login)
+  if (host.includes('jhosuacomercial.com')) {
+    return <DashboardPage />;
+  }
+
+  // Para catagce.renace.tech o cualquier otro, mostramos la Landing
   return <MarketingLanding host={host} />;
 }

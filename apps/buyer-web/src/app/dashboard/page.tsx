@@ -10,7 +10,14 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const getApiBase = () => {
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
+  const host = window.location.hostname;
+  if (host.includes('renace.tech')) return 'https://api.catagce.renace.tech';
+  return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
+};
+
+const API_BASE = getApiBase();
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400&auto=format&fit=crop';
 
 type Tab = 'home' | 'products' | 'catalogs' | 'orders' | 'settings';

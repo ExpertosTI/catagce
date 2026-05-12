@@ -10,7 +10,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
-      - CORS_ORIGIN=${CORS_ORIGIN:-https://catalogo.jhosuacomercial.com}
+      - CORS_ORIGIN=https://catalogo.jhosuacomercial.com,https://catagce.renace.tech
       - PORT=42100
     networks:
       - RenaceNet
