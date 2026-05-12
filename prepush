@@ -26,46 +26,32 @@ git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules pack
 echo "📦 Downloading Linux production dependencies (HOISTED MODE - No Symlinks)..."
 npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile --node-linker=hoisted
 
-# 3.1. Surgical Purge of non-essential production files
-echo "🧹 Surgical Purge of node_modules (Extreme efficiency)..."
-# Remove non-Linux binaries
-find node_modules -name "*darwin*" -exec rm -rf {} +
-find node_modules -name "*win32*" -exec rm -rf {} +
-find node_modules -name "*.node" ! -name "*linux*" -exec rm -rf {} +
-
-# Remove Documentation, Tests and Bloat
+# 3.1. Purga AGRESIVA de node_modules (Solo lo vital para ejecución)
+echo "🧹 Purga extrema de node_modules..."
 find node_modules -type d -name "doc" -exec rm -rf {} +
 find node_modules -type d -name "docs" -exec rm -rf {} +
 find node_modules -type d -name "test" -exec rm -rf {} +
 find node_modules -type d -name "tests" -exec rm -rf {} +
 find node_modules -type d -name "example" -exec rm -rf {} +
 find node_modules -type d -name "examples" -exec rm -rf {} +
-find node_modules -type d -name "sample" -exec rm -rf {} +
-find node_modules -type d -name "samples" -exec rm -rf {} +
-find node_modules -type d -name ".cache" -exec rm -rf {} +
-
-# Remove unneeded file types in production
 find node_modules -name "*.md" -type f -delete
 find node_modules -name "*.map" -type f -delete
+find node_modules -name "*.d.ts" -type f -delete
 find node_modules -name "*.ts" -type f -delete
 find node_modules -name "*.tsx" -type f -delete
-find node_modules -name "LICENSE" -type f -delete
-find node_modules -name "CHANGELOG" -type f -delete
+find node_modules -name "LICENSE*" -type f -delete
+find node_modules -name "CHANGELOG*" -type f -delete
 
-# Final size check (remove anything > 40MB just in case)
-find node_modules -type f -size +40M -delete
-
-
-# 3.2. INTERNAL PACKAGES SOLIDIFICATION (Fix for Monorepos)
+# 3.2. INTERNAL PACKAGES SOLIDIFICATION
 echo "🔗 Solidifying internal workspace packages (@catagce/*)..."
 mkdir -p node_modules/@catagce
 cp -r packages/db node_modules/@catagce/ 2>/dev/null || true
 cp -r packages/ui node_modules/@catagce/ 2>/dev/null || true
 
-# 3.3. COMPRESSION (The Speed Fix)
-echo "🗜️  Compressing dependencies into a single package..."
+# 3.3. COMPRESSION
+echo "🗜️  Compressing dependencies..."
 tar -czf deps.tar.gz node_modules
-echo "✅ Compression complete: $(du -h deps.tar.gz)"
+echo "✅ Final size: $(du -h deps.tar.gz)"
 
 echo "✅ Build succeeded — staging artifacts and dependencies"
 
