@@ -10,6 +10,12 @@ echo "-----------------------------------"
 echo "💻 Starting Local Build (Mac)..."
 echo "-----------------------------------"
 
+# 0. Purge previous installations and broken caches
+echo "🧹 Purging previous installations and broken caches..."
+rm -rf node_modules apps/*/node_modules packages/*/node_modules workers/*/node_modules
+rm -rf apps/*/.next apps/*/dist packages/*/dist workers/*/dist
+rm -rf .turbo apps/*/.turbo packages/*/.turbo workers/*/.turbo
+
 # 1. Install dependencies (prefer offline store, no-interactive)
 echo "📦 Installing dependencies..."
 pnpm install --prefer-offline --no-frozen-lockfile || pnpm install --no-frozen-lockfile
