@@ -57,6 +57,9 @@ let SellersService = class SellersService {
         const branding = await this.getBranding(sellerId);
         return { ...seller, branding };
     }
+    async findAll() {
+        return this.db.select().from(db_1.sellers);
+    }
 };
 exports.SellersService = SellersService;
 exports.SellersService = SellersService = __decorate([

@@ -22,6 +22,12 @@ let SellersController = class SellersController {
     constructor(sellersService) {
         this.sellersService = sellersService;
     }
+    findAll(user) {
+        if (user.role !== 'admin') {
+            throw new common_1.ForbiddenException('Only admins can list all sellers');
+        }
+        return this.sellersService.findAll();
+    }
     getProfile(user) {
         return this.sellersService.getProfile(user.sellerId);
     }
@@ -30,6 +36,14 @@ let SellersController = class SellersController {
     }
 };
 exports.SellersController = SellersController;
+__decorate([
+    (0, common_1.Get)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], SellersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('profile'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

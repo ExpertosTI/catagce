@@ -75,7 +75,13 @@ let AuthService = class AuthService {
         return this.generateResponse(seller);
     }
     generateResponse(seller) {
-        const payload = { sub: seller.id, sellerId: seller.id, email: seller.email || `${seller.slug}@catagce.app` };
+        const payload = {
+            sub: seller.id,
+            sellerId: seller.id,
+            email: seller.email || `${seller.slug}@catagce.app`,
+            role: seller.role || 'seller',
+            status: seller.status || 'active'
+        };
         return {
             token: this.jwtService.sign(payload),
             seller: { id: seller.id, name: seller.name, slug: seller.slug },

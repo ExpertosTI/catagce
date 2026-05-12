@@ -76,11 +76,11 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        - "traefik.http.routers.catagce-web-http.rule=Host(`catalogo.jhosuacomercial.com`) || Host(`catagce.renace.tech`) || Host(`renace.tech`)"
+        - "traefik.http.routers.catagce-web-http.rule=Host(`catalogo.jhosuacomercial.com`) || Host(`catagce.renace.tech`)"
         - "traefik.http.routers.catagce-web-http.entrypoints=web"
         - "traefik.http.routers.catagce-web-http.middlewares=catagce-web-redirect"
         - "traefik.http.middlewares.catagce-web-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.catagce-web.rule=Host(`catalogo.jhosuacomercial.com`) || Host(`catagce.renace.tech`) || Host(`renace.tech`)"
+        - "traefik.http.routers.catagce-web.rule=Host(`catalogo.jhosuacomercial.com`) || Host(`catagce.renace.tech`)"
         - "traefik.http.routers.catagce-web.entrypoints=websecure"
         - "traefik.http.routers.catagce-web.tls=true"
         - "traefik.http.routers.catagce-web.tls.certresolver=letsencryptresolver"

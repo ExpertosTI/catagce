@@ -202,7 +202,7 @@ export default function MarketingLanding({ host }: { host?: string }) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <PricingCard
-                name="Starter"
+                name="Emprendedor"
                 price="Gratis"
                 period=""
                 desc="Para validar tu catálogo digital."
@@ -210,20 +210,20 @@ export default function MarketingLanding({ host }: { host?: string }) {
                 cta="Empezar gratis"
               />
               <PricingCard
-                name="Pro"
-                price="$29"
+                name="Mayorista"
+                price="$5"
                 period="/mes"
                 desc="Para negocios que venden a diario."
                 features={['Catálogos ilimitados', 'Productos ilimitados', 'Precios B2B', 'Métodos de pago personalizados', 'Reportes y analítica']}
-                cta="Empezar Pro"
+                cta="Empezar Mayorista"
                 highlighted
               />
               <PricingCard
-                name="Business"
-                price="$79"
+                name="Empresa"
+                price="$30"
                 period="/mes"
                 desc="Para equipos y mayoristas."
-                features={['Todo de Pro', 'Múltiples usuarios', 'Multi-almacén', 'Dominio personalizado', 'Soporte prioritario']}
+                features={['Todo de Mayorista', 'Múltiples usuarios', 'Multi-almacén', 'Dominio personalizado', 'Soporte prioritario']}
                 cta="Hablar con ventas"
               />
             </div>

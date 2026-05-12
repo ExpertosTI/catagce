@@ -48,4 +48,8 @@ export class SellersService {
     
     return { ...seller, branding };
   }
+
+  async findAll() {
+    return this.db.select().from(sellers);
+  }
 }

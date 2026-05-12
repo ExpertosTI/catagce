@@ -11,9 +11,11 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const user_decorator_1 = require("../common/decorators/user.decorator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const products_service_1 = require("./products.service");
@@ -27,6 +29,13 @@ let ProductsController = class ProductsController {
     }
     create(user, createProductDto) {
         return this.productsService.create(user.sellerId, createProductDto);
+    }
+    uploadFile(file) {
+        // In a real scenario, we would save the file and return the URL
+        // For now, we'll simulate it or return a placeholder
+        return {
+            url: `https://catagce.renace.tech/uploads/${file.filename}`
+        };
     }
     incrementViews(id) {
         return this.productsService.incrementViews(id);
@@ -48,6 +57,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], ProductsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('upload'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    __param(0, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_b = typeof Express !== "undefined" && (_a = Express.Multer) !== void 0 && _a.File) === "function" ? _b : Object]),
+    __metadata("design:returntype", void 0)
+], ProductsController.prototype, "uploadFile", null);
 __decorate([
     (0, common_1.Post)(':id/view'),
     __param(0, (0, common_1.Param)('id')),

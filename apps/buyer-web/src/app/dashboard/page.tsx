@@ -6,7 +6,8 @@ import {
   Settings, Home, ShoppingCart, LogIn, Camera, Maximize2,
   ChevronRight, ExternalLink, X, Bell, LogOut, BarChart3,
   Box, ArrowRight, Zap, Globe, ArrowLeft, Lock, Mail, ClipboardCheck, Share2,
-  Instagram, MapPin, Phone, MessageSquare, Layout, Palette
+  Instagram, MapPin, Phone, MessageSquare, Layout, Palette,
+  TrendingUp, Users, DollarSign, Filter, Edit2
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
@@ -16,7 +17,7 @@ const getApiBase = () => {
 };
 
 const API_BASE = getApiBase();
-const FALLBACK_IMG = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400&auto=format&fit=crop';
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=400&auto=format&fit=crop';
 
 type Tab = 'home' | 'products' | 'catalogs' | 'orders' | 'settings';
 
@@ -41,43 +42,43 @@ async function fetchWithAuth(path: string, options: any = {}) {
 
 /* ── UI Components ─────────────────────────────────────────── */
 
-function LogoMark({ color = "#00D1FF" }: { color?: string }) {
-  return (
-    <div 
-      className="relative w-10 h-10 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(0,209,255,0.4)] transition-transform hover:rotate-12"
-      style={{ backgroundColor: color }}
-    >
-      <Box className="text-black w-6 h-6" />
-    </div>
-  );
-}
-
-function NavItem({
-  icon, label, active = false, onClick, color = "#00D1FF"
-}: { icon: React.ReactNode; label: string; active?: boolean; onClick: () => void; color?: string }) {
+function SidebarItem({ icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1.5 transition-all relative px-4 py-2 rounded-2xl ${
-        active ? '' : 'text-gray-500 hover:text-gray-300'
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all ${
+        active ? 'bg-[#FACD01] text-black shadow-lg shadow-yellow-200/50' : 'text-gray-500 hover:bg-gray-50 hover:text-black'
       }`}
-      style={{ color: active ? color : undefined }}
     >
-      <div 
-        className={`p-2 rounded-xl transition-all ${active ? 'bg-white/10 shadow-[0_0_20px_rgba(0,209,255,0.1)]' : ''}`}
-        style={{ color: active ? color : undefined }}
-      >
-        {icon}
-      </div>
-      <span className="font-rajdhani text-[9px] font-bold uppercase tracking-[0.2em]">{label}</span>
-      {active && (
-        <motion.span
-          layoutId="nav-indicator"
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full shadow-[0_0_10px_#00D1FF]"
-          style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}` }}
-        />
-      )}
+      {icon}
+      <span className="font-bold text-sm tracking-tight">{label}</span>
     </button>
+  );
+}
+
+function StatCard({ title, value, change, icon, trend }: any) {
+  return (
+    <div className="bg-white p-6 rounded-[24px] border border-gray-100 shadow-sm">
+      <div className="flex justify-between items-start mb-4">
+        <p className="text-sm font-bold text-gray-500">{title}</p>
+        <div className="p-2 bg-gray-50 rounded-lg text-gray-400">
+          {icon}
+        </div>
+      </div>
+      <div className="flex items-end justify-between">
+        <div>
+          <h3 className="text-2xl font-black tracking-tight">{value}</h3>
+          {change && (
+            <p className={`text-xs font-bold mt-1 ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+              {trend === 'up' ? '+' : '-'}{change}
+            </p>
+          )}
+        </div>
+        {trend && (
+           <TrendingUp className={`w-5 h-5 ${trend === 'up' ? 'text-green-500' : 'text-red-400'}`} />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -386,156 +387,273 @@ export default function DashboardPage() {
 
   /* ── Dashboard shell ─────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-32 overflow-x-hidden font-sans">
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div 
-          className="absolute inset-0 opacity-10 transition-opacity duration-1000"
-          style={{
-            background: `radial-gradient(800px circle at ${mousePos.x}px ${mousePos.y}px, ${primaryColor}22, transparent 80%)`
-          }}
-        />
-        <div className="absolute inset-0 grid-pattern opacity-5" />
-      </div>
-
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -60, opacity: 0 }}
-            className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] glass px-8 py-4 rounded-2xl font-rajdhani text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl border-white/10"
-            style={{ borderLeft: `2px solid ${primaryColor}` }}
-          >
-            ✦ {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <header className="relative z-50 flex items-center justify-between px-6 pt-8 pb-6 mx-auto max-w-7xl">
-        <div className="flex items-center gap-4">
-          {profile?.branding?.logoUrl ? (
-            <img src={profile.branding.logoUrl} className="w-10 h-10 rounded-xl object-contain bg-white/5" />
-          ) : (
-            <LogoMark color={primaryColor} />
-          )}
-          <div className="hidden sm:block">
-            <h1 className="text-2xl font-bebas tracking-widest uppercase">
-              {profile?.name || 'CATAGCE'}<span style={{ color: primaryColor }}>.</span>OPERATIONS
-            </h1>
-            <p className="font-rajdhani text-[8px] font-black text-gray-600 uppercase tracking-[0.4em]">ADMINISTRATION CORE v2.2</p>
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans flex">
+      {/* SIDEBAR */}
+      <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0">
+        <div className="p-8">
+          <div className="flex items-center gap-3 mb-12">
+            <div className="w-10 h-10 bg-[#FACD01] rounded-xl flex items-center justify-center shadow-lg shadow-yellow-100">
+              <Plus className="text-black w-6 h-6" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">Catagce<span className="text-[#FACD01]">.</span></span>
           </div>
+
+          <nav className="space-y-2">
+            <SidebarItem icon={<Home className="w-5 h-5" />} label="Dashboard" active={activeTab === 'home'} onClick={() => switchTab('home')} />
+            <SidebarItem icon={<LayoutGrid className="w-5 h-5" />} label="Catálogo" active={activeTab === 'products'} onClick={() => switchTab('products')} />
+            <SidebarItem icon={<ShoppingCart className="w-5 h-5" />} label="Ventas" active={activeTab === 'orders'} onClick={() => switchTab('orders')} />
+            {profile?.role === 'admin' && (
+              <SidebarItem icon={<Users className="w-5 h-5" />} label="Clientes" active={activeTab === 'tenants'} onClick={() => switchTab('tenants')} />
+            )}
+            <SidebarItem icon={<Package className="w-5 h-5" />} label="Pedidos" active={activeTab === 'orders'} onClick={() => switchTab('orders')} />
+            <SidebarItem icon={<BarChart3 className="w-5 h-5" />} label="Reportes" active={activeTab === 'home'} onClick={() => switchTab('home')} />
+          </nav>
         </div>
-        
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => { localStorage.removeItem('catagce_token'); setToken(null); showToast('SESIÓN CERRADA'); }}
-            className="relative w-12 h-12 rounded-xl glass flex items-center justify-center border-white/10 hover:border-white/20 transition-all hover:scale-105 active:scale-95"
+
+        <div className="mt-auto p-8 border-t border-gray-50">
+          <SidebarItem icon={<Settings className="w-5 h-5" />} label="Config" active={activeTab === 'settings'} onClick={() => switchTab('settings')} />
+          <button 
+            onClick={() => { localStorage.removeItem('catagce_token'); setToken(null); }}
+            className="w-full flex items-center gap-3 px-4 py-3.5 mt-2 text-red-400 hover:bg-red-50 rounded-xl transition-all font-bold text-sm"
           >
-            <User className="w-5 h-5" style={{ color: primaryColor }} />
-            <span 
-              className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-[#050505]"
-              style={{ backgroundColor: primaryColor, boxShadow: `0 0 10px ${primaryColor}` }}
-            />
+            <LogOut className="w-5 h-5" /> Salir
           </button>
         </div>
-      </header>
+      </aside>
 
-      <main className="relative z-10 px-6 mx-auto max-w-7xl pt-10">
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={activeTab}
-            custom={direction}
-            variants={{
-              enter: (dir: number) => ({ x: dir > 0 ? 20 : -20, opacity: 0 }),
-              center: { x: 0, opacity: 1 },
-              exit: (dir: number) => ({ x: dir > 0 ? -20 : 20, opacity: 0 }),
-            }}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            {activeTab === 'home' && <HomeView products={products} loading={loading} color={primaryColor} onExportPdf={() => showToast('GENERANDO PDF...')} />}
-            {activeTab === 'products' && <ProductsView products={products} loading={loading} color={primaryColor} onCreate={() => setIsCreateProductOpen(true)} />}
-            {activeTab === 'catalogs' && (
-              <CatalogsView
-                catalogs={catalogs}
-                products={products}
-                loading={catalogLoading}
-                selected={selectedCatalog}
-                color={primaryColor}
-                onSelect={setSelectedCatalog}
-                onClose={() => setSelectedCatalog(null)}
-                onOrder={(slug: string) => window.open(`/order/${slug}`, '_blank')}
-                onShare={(slug: string) => copyToClipboard(`${window.location.origin}/order/${slug}`)}
-                onCreate={() => setIsCreateModalOpen(true)}
-                onAddProduct={handleAddProductToCatalog}
-                onRemoveProduct={handleRemoveProductFromCatalog}
+      {/* MAIN CONTENT */}
+      <div className="flex-1 min-w-0">
+        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 sticky top-0 z-40">
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input 
+                placeholder="Busca productos, clientes..." 
+                className="w-full h-11 pl-11 pr-4 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#FACD01]/50 outline-none transition-all"
               />
-            )}
-            {activeTab === 'orders' && <OrdersView orders={orders} loading={ordersLoading} color={primaryColor} onUpdateStatus={handleUpdateOrderStatus} />}
-            {activeTab === 'settings' && (
-              <SettingsView 
-                profile={profile} 
-                onUpdate={handleUpdateBranding} 
-                onLogout={() => { localStorage.removeItem('catagce_token'); setToken(null); }} 
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+            </div>
+          </div>
 
-      <AnimatePresence>
-        {isCreateModalOpen && (
-          <CreateCatalogModal
-            onClose={() => setIsCreateModalOpen(false)}
-            onSubmit={handleCreateCatalog}
-            color={primaryColor}
-          />
-        )}
-        {isCreateProductOpen && (
-          <CreateProductModal
-            onClose={() => setIsCreateProductOpen(false)}
-            onSubmit={handleCreateProduct}
-            color={primaryColor}
-          />
-        )}
-      </AnimatePresence>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-sm font-bold text-gray-900 leading-none">{profile?.name || 'Usuario'}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mt-1 tracking-wider">Admin</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
+                 {profile?.branding?.logoUrl ? (
+                   <img src={profile.branding.logoUrl} className="w-full h-full object-cover" />
+                 ) : (
+                   <User className="text-gray-400 w-5 h-5" />
+                 )}
+              </div>
+            </div>
+            <button className="w-40 h-11 bg-[#FACD01] text-black rounded-xl font-bold text-sm shadow-lg shadow-yellow-100 flex items-center justify-center gap-2 hover:scale-105 transition-all">
+              <Plus className="w-4 h-4" /> Nuevo Pedido
+            </button>
+          </div>
+        </header>
 
-      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-lg z-50">
-        <div className="glass backdrop-blur-2xl border-white/5 rounded-[32px] px-6 py-4 flex justify-around items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-          <NavItem icon={<Home className="w-5 h-5" />} label="Home" active={activeTab === 'home'} onClick={() => switchTab('home')} color={primaryColor} />
-          <NavItem icon={<LayoutGrid className="w-5 h-5" />} label="Stock" active={activeTab === 'products'} onClick={() => switchTab('products')} color={primaryColor} />
-          <NavItem icon={<Package className="w-5 h-5" />} label="CTGO" active={activeTab === 'catalogs'} onClick={() => switchTab('catalogs')} color={primaryColor} />
-          <NavItem icon={<ShoppingCart className="w-5 h-5" />} label="Pedidos" active={activeTab === 'orders'} onClick={() => switchTab('orders')} color={primaryColor} />
-          <NavItem icon={<Settings className="w-5 h-5" />} label="Config" active={activeTab === 'settings'} onClick={() => switchTab('settings')} color={primaryColor} />
+        <main className="p-10 max-w-[1600px] mx-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'home' && <HomeView products={products} orders={orders} loading={loading} color={primaryColor} onExportPdf={() => showToast('GENERANDO PDF...')} />}
+              {activeTab === 'products' && <ProductsView products={products} loading={loading} color={primaryColor} onCreate={() => setIsCreateProductOpen(true)} />}
+              {activeTab === 'catalogs' && (
+                <CatalogsView
+                  catalogs={catalogs}
+                  products={products}
+                  loading={catalogLoading}
+                  selected={selectedCatalog}
+                  color={primaryColor}
+                  onSelect={setSelectedCatalog}
+                  onClose={() => setSelectedCatalog(null)}
+                  onOrder={(slug: string) => window.open(`/order/${slug}`, '_blank')}
+                  onShare={(slug: string) => copyToClipboard(`${window.location.origin}/order/${slug}`)}
+                  onCreate={() => setIsCreateModalOpen(true)}
+                  onAddProduct={handleAddProductToCatalog}
+                  onRemoveProduct={handleRemoveProductFromCatalog}
+                />
+              )}
+              {activeTab === 'orders' && <OrdersView orders={orders} loading={ordersLoading} color={primaryColor} onUpdateStatus={handleUpdateOrderStatus} />}
+              {activeTab === 'settings' && (
+                <SettingsView 
+                  profile={profile} 
+                  onUpdate={handleUpdateBranding} 
+                  onLogout={() => { localStorage.removeItem('catagce_token'); setToken(null); }} 
+                />
+              )}
+              {activeTab === 'tenants' && <TenantsView color={primaryColor} />}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function TenantsView({ color }: any) {
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchWithAuth('/sellers')
+      .then(setTenants)
+      .catch(() => setTenants([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-10">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Administración de Tenants</h2>
+          <p className="text-sm font-medium text-gray-400">Gestiona las cuentas de los vendedores</p>
         </div>
-      </nav>
+        <button className="px-6 py-3 bg-[#FACD01] text-black rounded-xl font-bold text-sm shadow-lg shadow-yellow-100 flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Nuevo Seller
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <th className="px-8 py-6">Vendedor</th>
+              <th className="px-8 py-6">Estado</th>
+              <th className="px-8 py-6">Plan</th>
+              <th className="px-8 py-6">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td colSpan={4} className="px-8 py-6 h-20 bg-gray-50/50" />
+                </tr>
+              ))
+            ) : tenants.map((t: any) => (
+              <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-8 py-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-400">
+                      {t.name[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{t.name}</p>
+                      <p className="text-xs text-gray-400 font-medium">{t.email || t.slug}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-8 py-6">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    t.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                  }`}>
+                    {t.status || 'active'}
+                  </span>
+                </td>
+                <td className="px-8 py-6 font-bold text-sm">
+                  {t.role === 'admin' ? 'SuperAdmin' : 'Pro Plan'}
+                </td>
+                <td className="px-8 py-6">
+                  <button className="text-xs font-bold text-gray-400 hover:text-black transition-colors">Configurar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 /* ── View Components ────────────────────────────────────────── */
 
-function HomeView({ products, loading, color, onExportPdf }: any) {
+function HomeView({ products, orders, loading, color }: any) {
+  const totalSales = orders.reduce((sum: number, o: any) => sum + (Number(o.totalAmount) || 0), 0);
+  const pendingOrders = orders.filter((o: any) => o.status === 'submitted').length;
+  const totalStock = products.reduce((sum: number, p: any) => sum + (p.stockLevels?.[0]?.onHandBase || 0), 0);
+
   return (
-    <div className="space-y-12">
-      <div className="flex flex-col md:flex-row justify-between items-end gap-6">
-        <div>
-          <h2 className="text-6xl font-bebas tracking-wide mb-2 uppercase">INVENTARIO <span style={{ color }}>GLOBAL</span></h2>
-          <p className="font-rajdhani text-[10px] font-black text-gray-600 uppercase tracking-[0.4em]">MONITOREO DE ACTIVOS EN TIEMPO REAL</p>
-        </div>
-        <button
-          onClick={onExportPdf}
-          className="px-8 py-4 bg-white/5 border border-white/10 rounded-2xl font-bebas text-lg tracking-widest hover:bg-white hover:text-black transition-all flex items-center gap-3"
-        >
-          <FileText className="w-5 h-5" /> EXPORTAR PDF
-        </button>
+    <div className="space-y-10">
+      {/* STATS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard title="Total Ventas Mensuales" value={`$${totalSales.toLocaleString()}`} change="12.5%" trend="up" icon={<DollarSign className="w-5 h-5" />} />
+        <StatCard title="Pedidos Hoy" value={orders.length} change={`Pendientes: ${pendingOrders}`} trend="up" icon={<ShoppingCart className="w-5 h-5" />} />
+        <StatCard title="Stock Disponible" value={`${totalStock} items`} change="critical: 12" trend="down" icon={<Box className="w-5 h-5" />} />
+        <StatCard title="Ingresos" value={`$${(totalSales * 0.65).toLocaleString()}`} icon={<ArrowRight className="w-5 h-5" />} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {loading
-          ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
-          : products.map((p: any) => <ProductCard key={p.id} product={p} color={color} />)
-        }
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Catálogo de Productos</h2>
+              <p className="text-sm font-medium text-gray-400">{products.length} Productos</p>
+            </div>
+            <div className="flex gap-3">
+              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-xl text-xs font-bold shadow-sm">
+                <Filter className="w-3.5 h-3.5" /> Filtros
+              </button>
+              <button className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-xs font-bold shadow-sm">
+                Crear Producto
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {loading
+              ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+              : products.map((p: any) => <ProductCard key={p.id} product={p} color={color} />)
+            }
+          </div>
+        </div>
+
+        <div>
+           <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-bold tracking-tight">Estado de Pedidos WhatsApp</h2>
+              <button className="text-xs font-bold text-gray-400 hover:text-black transition-colors">Ver Todos</button>
+           </div>
+           
+           <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+             <div className="p-6 border-b border-gray-50 flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+               <span>Cliente</span>
+               <span>Estado</span>
+             </div>
+             <div className="divide-y divide-gray-50">
+               {orders.slice(0, 5).map((order: any) => (
+                 <div key={order.id} className="p-6 flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xs font-bold text-gray-500">
+                        {order.buyerName?.[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold">{order.buyerName}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">#{order.id.slice(0, 4)}</p>
+                      </div>
+                   </div>
+                   <div className="text-right">
+                      <p className="text-[10px] font-bold text-green-500 flex items-center gap-1 justify-end">
+                        <MessageSquare className="w-3 h-3" /> {order.status}
+                      </p>
+                      <button className="mt-2 text-[10px] font-bold bg-gray-50 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-all">
+                        Confirmar
+                      </button>
+                   </div>
+                 </div>
+               ))}
+               {orders.length === 0 && (
+                 <div className="p-10 text-center text-gray-300 font-bold text-xs">SIN PEDIDOS RECIENTES</div>
+               )}
+             </div>
+           </div>
+        </div>
       </div>
     </div>
   );
@@ -1021,31 +1139,31 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
 function ProductCard({ product, color }: { product: any; color: string }) {
   const stock = product.stockLevels?.[0]?.onHandBase ?? 0;
   return (
-    <motion.div whileHover={{ y: -8 }} className="group relative glass glass-hover rounded-[32px] overflow-hidden">
-      <div className="aspect-square relative overflow-hidden">
-        <img src={product.imageUrl || FALLBACK_IMG} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-60" />
+    <motion.div whileHover={{ y: -4 }} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden group">
+      <div className="aspect-[4/3] relative overflow-hidden bg-gray-50">
+        <img 
+          src={product.imageUrl || FALLBACK_IMG} 
+          alt={product.name} 
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+        />
       </div>
-      <div className="p-6 space-y-4">
-        <div>
-          <h3 className="font-bebas text-2xl tracking-wide uppercase truncate group-hover:text-white transition-colors" style={{ color: `${color}cc` }}>{product.name}</h3>
-          <p className="font-rajdhani text-sm font-bold" style={{ color }}>${product.basePrice} USD</p>
+      <div className="p-5">
+        <h3 className="text-sm font-bold text-gray-900 mb-1 truncate">{product.name}</h3>
+        <p className="text-lg font-black text-gray-900 mb-4">${product.basePrice}</p>
+        
+        <div className="flex items-center justify-between">
+           <p className="text-[10px] font-bold text-gray-400">
+             <span className="text-green-500">{stock} disponibles</span>
+           </p>
+           <div className="flex gap-2">
+             <button className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-green-500 transition-colors">
+                <MessageSquare className="w-4 h-4" />
+             </button>
+             <button className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-black transition-colors">
+                <Edit2 className="w-4 h-4" />
+             </button>
+           </div>
         </div>
-        <div className="flex items-center justify-between font-rajdhani text-[10px] font-bold text-gray-600 uppercase tracking-widest border-t border-white/5 pt-4">
-          <span>STOCK: {stock} {product.baseUom?.symbol || 'un'}</span>
-          <div 
-            className={`w-2 h-2 rounded-full animate-pulse`} 
-            style={{ backgroundColor: stock > 0 ? '#22c55e' : '#ef4444' }}
-          />
-        </div>
-        <button 
-          className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-bebas text-sm tracking-widest uppercase hover:text-black transition-all"
-          style={{ '--hover-bg': color } as any}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = color)}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
-        >
-          VER DETALLES
-        </button>
       </div>
     </motion.div>
   );
@@ -1063,16 +1181,38 @@ function CreateProductModal({ onClose, onSubmit, color }: any) {
   const [imageUrl, setImageUrl] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
   const submit = async () => {
     if (!name.trim() || !basePrice) return;
     setSubmitting(true);
+
+    let finalImageUrl = imageUrl;
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const token = getToken();
+        const res = await fetch(`${API_BASE}/api/products/upload`, {
+          method: 'POST',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: formData,
+        });
+        const data = await res.json();
+        finalImageUrl = data.url;
+      } catch (err) {
+        console.error('Upload failed', err);
+      }
+    }
+
     await onSubmit({
       name: name.trim(),
       sku: sku.trim() || null,
       basePrice,
       b2bPrice: b2bPrice || null,
-      imageUrl: imageUrl.trim() || null,
+      imageUrl: finalImageUrl.trim() || null,
       description: description.trim() || null,
     });
     setSubmitting(false);
@@ -1080,41 +1220,61 @@ function CreateProductModal({ onClose, onSubmit, color }: any) {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center px-6">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
-      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative glass p-10 rounded-[40px] w-full max-w-xl space-y-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-4xl font-bebas tracking-widest uppercase">NUEVO <span style={{ color }}>PRODUCTO</span></h3>
-        <div className="space-y-4">
-          <div>
-            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">NOMBRE *</label>
-            <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={name} onChange={(e) => setName(e.target.value)} placeholder="EJ: CAMISETA NEGRA" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+      <div className="absolute inset-0 bg-white/60 backdrop-blur-xl" onClick={onClose} />
+      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative bg-white p-10 rounded-[40px] w-full max-w-2xl space-y-8 max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
+        <div>
+          <h3 className="text-3xl font-black tracking-tight">Nuevo Producto</h3>
+          <p className="text-sm font-medium text-gray-400 mt-1">Completa los datos para tu inventario</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-6">
             <div>
-              <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">SKU</label>
-              <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU-001" />
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Imagen del Producto</label>
+              <div className="aspect-square bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer">
+                {file ? (
+                  <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <Camera className="w-8 h-8 text-gray-300 mb-2" />
+                    <p className="text-[10px] font-bold text-gray-400">SUBIR FOTO</p>
+                  </>
+                )}
+                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => e.target.files && setFile(e.target.files[0])} />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Nombre *</label>
+              <input className="w-full h-12 bg-gray-50 border-none rounded-xl px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#FACD01]/50 transition-all" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Camiseta" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">SKU</label>
+                <input className="w-full h-12 bg-gray-50 border-none rounded-xl px-4 text-sm font-bold outline-none" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="001" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Precio *</label>
+                <input type="number" className="w-full h-12 bg-gray-50 border-none rounded-xl px-4 text-sm font-bold outline-none" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} placeholder="0.00" />
+              </div>
             </div>
             <div>
-              <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">PRECIO BASE *</label>
-              <input type="number" step="0.01" className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} placeholder="0.00" />
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Descripción</label>
+              <textarea className="w-full h-24 bg-gray-50 border-none rounded-xl p-4 text-sm font-bold outline-none resize-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="..." />
             </div>
-          </div>
-          <div>
-            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">PRECIO B2B (OPCIONAL)</label>
-            <input type="number" step="0.01" className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={b2bPrice} onChange={(e) => setB2bPrice(e.target.value)} placeholder="0.00" />
-          </div>
-          <div>
-            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">URL IMAGEN</label>
-            <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
-          </div>
-          <div>
-            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">DESCRIPCIÓN</label>
-            <textarea className="w-full h-24 bg-white/5 border border-white/10 rounded-2xl p-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none resize-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalles del producto..." />
           </div>
         </div>
-        <div className="flex gap-4 pt-2">
-          <button onClick={onClose} disabled={submitting} className="flex-1 py-5 glass border-white/10 rounded-2xl font-bebas text-xl tracking-widest uppercase">CANCELAR</button>
-          <button onClick={submit} disabled={submitting || !name.trim() || !basePrice} className="flex-1 py-5 text-black rounded-2xl font-bebas text-xl tracking-widest uppercase disabled:opacity-40" style={{ backgroundColor: color }}>
-            {submitting ? 'CREANDO...' : 'CREAR'}
+
+        <div className="flex gap-4 pt-4">
+          <button onClick={onClose} disabled={submitting} className="flex-1 py-4 text-gray-400 font-bold text-sm">Cancelar</button>
+          <button 
+            onClick={submit} 
+            disabled={submitting || !name.trim() || !basePrice} 
+            className="flex-1 py-4 bg-[#FACD01] text-black rounded-xl font-bold text-sm shadow-lg shadow-yellow-100 disabled:opacity-50"
+          >
+            {submitting ? 'Guardando...' : 'Crear Producto'}
           </button>
         </div>
       </motion.div>
