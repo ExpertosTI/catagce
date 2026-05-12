@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const jwtSecret = process.env.JWT_SECRET;
@@ -9,22 +10,48 @@ async function bootstrap() {
     throw new Error('JWT_SECRET must be set and at least 32 characters long');
   }
 
-  const app = await NestFactory.create(AppModule);
-
-  app.use(helmet());
-  app.setGlobalPrefix('api');
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:3001'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    credentials: true,
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log'],
   });
+
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.setGlobalPrefix('api');
+
+  const origins = process.env.CORS_ORIGIN?.split(',').map((s) => s.trim()).filter(Boolean) ?? [
+    'https://catagce.renace.tech',
+    'http://localhost:3001',
+  ];
+
+  app.enableCors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (origins.includes('*') || origins.includes(origin)) return cb(null, true);
+      return cb(new Error(`Origin not allowed: ${origin}`), false);
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false,
       transform: true,
     }),
   );
-  await app.listen(process.env.PORT ?? 42100);
+
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.enableShutdownHooks();
+
+  const port = parseInt(process.env.PORT || '42100', 10);
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`API ready on :${port}`, 'Bootstrap');
 }
-bootstrap();
+
+bootstrap().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error('Fatal bootstrap error:', err);
+  process.exit(1);
+});

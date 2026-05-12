@@ -72,15 +72,23 @@ git add -f apps/buyer-web/.next/.
 git add -f workers/*/dist/.
 git add -f packages/*/dist/.
 git add -f deps.tar.xz
-git add .
+git add -A
 
 # Explicitly UNSTAGE node_modules folder (too many files)
 git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
 
+# Explicitly UNSTAGE AI related directories and files
+git rm -rf --cached .claude .aider* .windsurf .trae .cursor .cline .superpowers 2>/dev/null || true
+
 
 
 if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-    git commit -m "🚀 Deploy: Static Zero-CPU Artifacts & Dependencies Update"
+    echo "📝 Enter commit message (leave empty for default):"
+    read -r COMMIT_MESSAGE
+    if [ -z "$COMMIT_MESSAGE" ]; then
+        COMMIT_MESSAGE="🚀 Deploy: Static Zero-CPU Artifacts & Dependencies Update"
+    fi
+    git commit -m "$COMMIT_MESSAGE"
 fi
 
 # 5. Push to deploy branch
