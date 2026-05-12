@@ -7,7 +7,7 @@ import {
   ChevronRight, ExternalLink, X, Bell, LogOut, BarChart3,
   Box, ArrowRight, Zap, Globe, ArrowLeft, Lock, Mail, ClipboardCheck, Share2,
   Instagram, MapPin, Phone, MessageSquare, Layout, Palette,
-  TrendingUp, Users, DollarSign, Filter, Edit2
+  TrendingUp, Users, DollarSign, Filter, Edit2, Menu
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
@@ -115,9 +115,10 @@ export default function DashboardPage() {
   const [isCreateProductOpen, setIsCreateProductOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const prevTabIndex = useRef(0);
 
-  const primaryColor = profile?.branding?.primaryColor || "#00D1FF";
+  const primaryColor = profile?.branding?.primaryColor || "#FACD01";
 
   const TAB_ORDER: Tab[] = ['home', 'products', 'catalogs', 'orders', 'settings'];
   const tabIndex = TAB_ORDER.indexOf(activeTab);
@@ -378,9 +379,10 @@ export default function DashboardPage() {
 
             <button
               type="submit"
-              className="w-full py-5 bg-[#00D1FF] text-black rounded-2xl font-bebas text-xl tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(0,209,255,0.3)]"
+              className="w-full h-16 bg-[#FACD01] text-black rounded-[20px] font-bold text-sm tracking-tight shadow-xl shadow-yellow-100 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
             >
-              <LogIn className="w-6 h-6" /> INICIAR SESIÓN
+              Entrar al Panel
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
@@ -394,31 +396,53 @@ export default function DashboardPage() {
 
   /* ── Dashboard shell ─────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans flex">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans flex overflow-x-hidden">
+      {/* MOBILE OVERLAY */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* SIDEBAR */}
-      <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 transform
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0
+      `}>
         <div className="p-8">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-[#FACD01] rounded-xl flex items-center justify-center shadow-lg shadow-yellow-100">
-              <Plus className="text-black w-6 h-6" />
+          <div className="flex items-center justify-between lg:justify-start gap-3 mb-12">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#FACD01] rounded-xl flex items-center justify-center shadow-lg shadow-yellow-100">
+                <Plus className="text-black w-6 h-6" />
+              </div>
+              <span className="text-xl font-bold tracking-tight">Catagce<span className="text-[#FACD01]">.</span></span>
             </div>
-            <span className="text-xl font-bold tracking-tight">Catagce<span className="text-[#FACD01]">.</span></span>
+            <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-gray-400">
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           <nav className="space-y-2">
-            <SidebarItem icon={<Home className="w-5 h-5" />} label="Dashboard" active={activeTab === 'home'} onClick={() => switchTab('home')} />
-            <SidebarItem icon={<LayoutGrid className="w-5 h-5" />} label="Catálogo" active={activeTab === 'products'} onClick={() => switchTab('products')} />
-            <SidebarItem icon={<ShoppingCart className="w-5 h-5" />} label="Ventas" active={activeTab === 'orders'} onClick={() => switchTab('orders')} />
+            <SidebarItem icon={<Home className="w-5 h-5" />} label="Dashboard" active={activeTab === 'home'} onClick={() => { switchTab('home'); setIsMobileMenuOpen(false); }} />
+            <SidebarItem icon={<LayoutGrid className="w-5 h-5" />} label="Catálogo" active={activeTab === 'products'} onClick={() => { switchTab('products'); setIsMobileMenuOpen(false); }} />
+            <SidebarItem icon={<ShoppingCart className="w-5 h-5" />} label="Ventas" active={activeTab === 'orders'} onClick={() => { switchTab('orders'); setIsMobileMenuOpen(false); }} />
             {profile?.role === 'admin' && (
-              <SidebarItem icon={<Users className="w-5 h-5" />} label="Clientes" active={activeTab === 'tenants'} onClick={() => switchTab('tenants')} />
+              <SidebarItem icon={<Users className="w-5 h-5" />} label="Clientes" active={activeTab === 'tenants'} onClick={() => { switchTab('tenants'); setIsMobileMenuOpen(false); }} />
             )}
-            <SidebarItem icon={<Package className="w-5 h-5" />} label="Pedidos" active={activeTab === 'orders'} onClick={() => switchTab('orders')} />
-            <SidebarItem icon={<BarChart3 className="w-5 h-5" />} label="Reportes" active={activeTab === 'home'} onClick={() => switchTab('home')} />
+            <SidebarItem icon={<Package className="w-5 h-5" />} label="Pedidos" active={activeTab === 'orders'} onClick={() => { switchTab('orders'); setIsMobileMenuOpen(false); }} />
+            <SidebarItem icon={<BarChart3 className="w-5 h-5" />} label="Reportes" active={activeTab === 'home'} onClick={() => { switchTab('home'); setIsMobileMenuOpen(false); }} />
           </nav>
         </div>
 
         <div className="mt-auto p-8 border-t border-gray-50">
-          <SidebarItem icon={<Settings className="w-5 h-5" />} label="Config" active={activeTab === 'settings'} onClick={() => switchTab('settings')} />
+          <SidebarItem icon={<Settings className="w-5 h-5" />} label="Config" active={activeTab === 'settings'} onClick={() => { switchTab('settings'); setIsMobileMenuOpen(false); }} />
           <button 
             onClick={() => { localStorage.removeItem('catagce_token'); setToken(null); }}
             className="w-full flex items-center gap-3 px-4 py-3.5 mt-2 text-red-400 hover:bg-red-50 rounded-xl transition-all font-bold text-sm"
@@ -430,14 +454,22 @@ export default function DashboardPage() {
 
       {/* MAIN CONTENT */}
       <div className="flex-1 min-w-0">
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 sticky top-0 z-40">
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input 
-                placeholder="Busca productos, clientes..." 
-                className="w-full h-11 pl-11 pr-4 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#FACD01]/50 outline-none transition-all"
-              />
+        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 sticky top-0 z-40">
+          <div className="flex items-center gap-4 flex-1">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-50 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <div className="flex-1 max-w-md hidden sm:block">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input 
+                  placeholder="Busca productos, clientes..." 
+                  className="w-full h-11 pl-11 pr-4 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#FACD01]/50 outline-none transition-all"
+                />
+              </div>
             </div>
           </div>
 
@@ -922,7 +954,7 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
     name: '',
     logoUrl: '',
     bannerUrl: '',
-    primaryColor: '#00D1FF',
+    primaryColor: '#FACD01',
     phone: '',
     whatsapp: '',
     address: '',
@@ -941,7 +973,7 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
         name: profile.name || '',
         logoUrl: profile.branding?.logoUrl || '',
         bannerUrl: profile.branding?.bannerUrl || '',
-        primaryColor: profile.branding?.primaryColor || '#00D1FF',
+        primaryColor: profile.branding?.primaryColor || '#FACD01',
         phone: profile.branding?.phone || '',
         whatsapp: profile.branding?.whatsapp || '',
         address: profile.branding?.address || '',
@@ -973,7 +1005,7 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
   const updatePayment = (i: number, key: string, val: string) => setPaymentList((p) => p.map((it, idx) => idx === i ? { ...it, [key]: val } : it));
   const removePayment = (i: number) => setPaymentList((p) => p.filter((_, idx) => idx !== i));
 
-  const primaryColor = profile?.branding?.primaryColor || "#00D1FF";
+  const primaryColor = profile?.branding?.primaryColor || "#FACD01";
 
   return (
     <div className="space-y-12">
@@ -1033,27 +1065,27 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">NOMBRE COMERCIAL</label>
-                  <input name="name" value={formData.name} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="EJ: JHOSUA COMERCIAL" />
+                  <input name="name" value={formData.name} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none" placeholder="EJ: JHOSUA COMERCIAL" />
                 </div>
                 <div className="space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">WHATSAPP / TELÉFONO</label>
-                  <input name="phone" value={formData.phone} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="+1 809 ..." />
+                  <input name="phone" value={formData.phone} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none" placeholder="+1 809 ..." />
                 </div>
                 <div className="md:col-span-2 space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">DIRECCIÓN FÍSICA</label>
-                  <input name="address" value={formData.address} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="CALLE, CIUDAD, PAÍS" />
+                  <input name="address" value={formData.address} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none" placeholder="CALLE, CIUDAD, PAÍS" />
                 </div>
                 <div className="space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">INSTAGRAM</label>
-                  <input name="instagram" value={formData.instagram} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="@usuario" />
+                  <input name="instagram" value={formData.instagram} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none" placeholder="@usuario" />
                 </div>
                 <div className="space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">SITIO WEB</label>
-                  <input name="website" value={formData.website} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="https://..." />
+                  <input name="website" value={formData.website} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none" placeholder="https://..." />
                 </div>
                 <div className="md:col-span-2 space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">DESCRIPCIÓN DE MARCA</label>
-                  <textarea name="description" value={formData.description} onChange={handleChange} className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none resize-none" placeholder="Cuentale a tus clientes sobre tu negocio..." />
+                  <textarea name="description" value={formData.description} onChange={handleChange} className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none resize-none" placeholder="Cuentale a tus clientes sobre tu negocio..." />
                 </div>
               </div>
             )}
@@ -1069,11 +1101,11 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
                 </div>
                 <div className="space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">URL LOGOTIPO</label>
-                  <input name="logoUrl" value={formData.logoUrl} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="https://..." />
+                  <input name="logoUrl" value={formData.logoUrl} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none" placeholder="https://..." />
                 </div>
                 <div className="space-y-2">
                   <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">URL BANNER / PORTADA</label>
-                  <input name="bannerUrl" value={formData.bannerUrl} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none" placeholder="https://..." />
+                  <input name="bannerUrl" value={formData.bannerUrl} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm tracking-widest text-white focus:border-[#FACD01] outline-none" placeholder="https://..." />
                 </div>
               </div>
             )}
@@ -1097,16 +1129,16 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
                 {paymentList.map((p, i) => (
                   <div key={i} className="p-5 bg-white/5 border border-white/10 rounded-2xl space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <select value={p.type} onChange={(e) => updatePayment(i, 'type', e.target.value)} className="h-12 bg-white/5 border border-white/10 rounded-xl px-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none">
+                      <select value={p.type} onChange={(e) => updatePayment(i, 'type', e.target.value)} className="h-12 bg-white/5 border border-white/10 rounded-xl px-4 font-rajdhani text-sm text-white focus:border-[#FACD01] outline-none">
                         <option value="bank">TRANSFERENCIA BANCARIA</option>
                         <option value="cash">EFECTIVO / CONTRA ENTREGA</option>
                         <option value="paypal">PAYPAL</option>
                         <option value="zelle">ZELLE</option>
                         <option value="other">OTRO</option>
                       </select>
-                      <input value={p.label} onChange={(e) => updatePayment(i, 'label', e.target.value)} placeholder="ETIQUETA (EJ: BANRESERVAS)" className="h-12 bg-white/5 border border-white/10 rounded-xl px-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" />
+                      <input value={p.label} onChange={(e) => updatePayment(i, 'label', e.target.value)} placeholder="ETIQUETA (EJ: BANRESERVAS)" className="h-12 bg-white/5 border border-white/10 rounded-xl px-4 font-rajdhani text-sm text-white focus:border-[#FACD01] outline-none" />
                     </div>
-                    <textarea value={p.details} onChange={(e) => updatePayment(i, 'details', e.target.value)} placeholder="DETALLES (NÚMERO DE CUENTA, INSTRUCCIONES, ETC)" className="w-full h-20 bg-white/5 border border-white/10 rounded-xl p-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none resize-none" />
+                    <textarea value={p.details} onChange={(e) => updatePayment(i, 'details', e.target.value)} placeholder="DETALLES (NÚMERO DE CUENTA, INSTRUCCIONES, ETC)" className="w-full h-20 bg-white/5 border border-white/10 rounded-xl p-4 font-rajdhani text-sm text-white focus:border-[#FACD01] outline-none resize-none" />
                     <button type="button" onClick={() => removePayment(i)} className="text-red-400 font-rajdhani text-[10px] font-bold uppercase tracking-widest hover:text-red-300">ELIMINAR</button>
                   </div>
                 ))}
