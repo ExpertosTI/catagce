@@ -10,7 +10,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
-      - CORS_ORIGIN=https://catalogo.jhosuacomercial.com
+      - CORS_ORIGIN=https://catalogo.jhosuacomercial.com,https://catagce.renace.tech
       - PORT=42100
     networks:
       - RenaceNet
@@ -35,11 +35,11 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catagce.renace.tech`) || Host(`api.catalogo.jhosuacomercial.com`)"
         - "traefik.http.routers.catagce-api-http.entrypoints=web"
         - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
         - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.catagce-api.rule=Host(`api.catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`) || Host(`api.catalogo.jhosuacomercial.com`)"
         - "traefik.http.routers.catagce-api.entrypoints=websecure"
         - "traefik.http.routers.catagce-api.tls=true"
         - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
@@ -51,7 +51,7 @@ services:
       context: .
       dockerfile: apps/buyer-web/Dockerfile.prod
     environment:
-      - NEXT_PUBLIC_API_URL=https://api.catalogo.jhosuacomercial.com
+      - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech
       - NODE_ENV=production
     networks:
       - RenaceNet
@@ -76,11 +76,11 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        - "traefik.http.routers.catagce-web-http.rule=Host(`catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-web-http.rule=Host(`catalogo.jhosuacomercial.com`) || Host(`catagce.renace.tech`)"
         - "traefik.http.routers.catagce-web-http.entrypoints=web"
         - "traefik.http.routers.catagce-web-http.middlewares=catagce-web-redirect"
         - "traefik.http.middlewares.catagce-web-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.catagce-web.rule=Host(`catalogo.jhosuacomercial.com`)"
+        - "traefik.http.routers.catagce-web.rule=Host(`catalogo.jhosuacomercial.com`) || Host(`catagce.renace.tech`)"
         - "traefik.http.routers.catagce-web.entrypoints=websecure"
         - "traefik.http.routers.catagce-web.tls=true"
         - "traefik.http.routers.catagce-web.tls.certresolver=letsencryptresolver"

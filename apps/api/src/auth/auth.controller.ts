@@ -18,4 +18,9 @@ export class AuthController {
     }
     throw new BadRequestException('Credentials are required');
   }
+
+  @Post('register')
+  async register(@Body() registerDto: any) {
+    return this.authService.register(registerDto);
+  }
 }

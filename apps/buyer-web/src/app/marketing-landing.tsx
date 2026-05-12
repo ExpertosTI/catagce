@@ -22,8 +22,8 @@ import {
 import Image from 'next/image';
 
 const getApiBase = () => {
-  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
-  return 'https://api.catalogo.jhosuacomercial.com';
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catagce.renace.tech';
+  return 'https://api.catagce.renace.tech';
 };
 
 const API_BASE = getApiBase();
@@ -37,6 +37,15 @@ export default function MarketingLanding({ host }: { host?: string }) {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Register state
+  const [showRegister, setShowRegister] = useState(false);
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regSlug, setRegSlug] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regError, setRegError] = useState('');
 
   useEffect(() => {
     setIsLoaded(true);
@@ -63,6 +72,35 @@ export default function MarketingLanding({ host }: { host?: string }) {
     }
   };
 
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegError('');
+    setIsRegistering(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: regName.trim(), 
+          email: regEmail.trim().toLowerCase(), 
+          password: regPassword,
+          slug: regSlug.trim().toLowerCase()
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Error en registro');
+      }
+      const { token } = await res.json();
+      localStorage.setItem('catagce_token', token);
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setRegError(err.message || 'OCURRIÓ UN ERROR AL CREAR LA CUENTA.');
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-[#F9FAFB] text-[#111827] selection:bg-[#FACD01]/30 overflow-x-hidden font-sans">
       <AnimatePresence>
@@ -86,16 +124,16 @@ export default function MarketingLanding({ host }: { host?: string }) {
           </nav>
 
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setShowLogin(true)}
-              className="text-sm font-bold text-gray-600 hover:text-black transition-colors"
-            >
-              Iniciar Sesión
-            </button>
-            <button className="px-6 py-2.5 bg-black text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-xl shadow-gray-200">
-              Crear Cuenta
-            </button>
-          </div>
+              <button onClick={() => setShowLogin(true)} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-black transition-colors">
+                Entrar
+              </button>
+              <button 
+                onClick={() => setShowRegister(true)}
+                className="px-6 py-2.5 bg-black text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all shadow-xl shadow-gray-200"
+              >
+                Crear Cuenta
+              </button>
+            </div>
         </div>
       </header>
 
@@ -126,7 +164,10 @@ export default function MarketingLanding({ host }: { host?: string }) {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                <button className="w-full sm:w-auto px-10 py-5 bg-[#FACD01] text-black rounded-2xl font-bold text-lg hover:scale-105 transition-all shadow-2xl shadow-yellow-200">
+                <button 
+                  onClick={() => setShowRegister(true)}
+                  className="w-full sm:w-auto px-10 py-5 bg-[#FACD01] text-black rounded-2xl font-bold text-lg hover:scale-105 transition-all shadow-2xl shadow-yellow-200"
+                >
                   Empezar ahora gratis
                 </button>
                 <button className="w-full sm:w-auto px-10 py-5 bg-white text-black border border-gray-200 rounded-2xl font-bold text-lg hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
@@ -317,6 +358,59 @@ export default function MarketingLanding({ host }: { host?: string }) {
                   {isLoggingIn ? 'Verificando...' : (
                     <>Acceder al Panel <ArrowRight className="w-5 h-5" /></>
                   )}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showRegister && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-lg rounded-[40px] p-10 shadow-2xl relative"
+            >
+              <button onClick={() => setShowRegister(false)} className="absolute top-8 right-8 p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+              
+              <div className="text-center mb-10">
+                <div className="w-16 h-16 bg-[#FACD01] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-yellow-100">
+                  <Zap className="text-black w-8 h-8" />
+                </div>
+                <h2 className="text-3xl font-black tracking-tight">Crea tu cuenta gratis</h2>
+                <p className="text-gray-500 font-medium mt-2">Empieza a vender en minutos con Catagce</p>
+              </div>
+
+              <form onSubmit={handleRegisterSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Tu Nombre</label>
+                    <input required className="w-full h-14 px-5 bg-gray-50 rounded-xl focus:ring-2 focus:ring-[#FACD01] outline-none font-bold text-sm" placeholder="Juan Pérez" value={regName} onChange={e => setRegName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Slug / Tienda</label>
+                    <input required className="w-full h-14 px-5 bg-gray-50 rounded-xl focus:ring-2 focus:ring-[#FACD01] outline-none font-bold text-sm" placeholder="mi-tienda" value={regSlug} onChange={e => setRegSlug(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Correo Electrónico</label>
+                  <input required type="email" className="w-full h-14 px-5 bg-gray-50 rounded-xl focus:ring-2 focus:ring-[#FACD01] outline-none font-bold text-sm" placeholder="hola@tienda.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Contraseña</label>
+                  <input required type="password" title="Min 6 caracteres" className="w-full h-14 px-5 bg-gray-50 rounded-xl focus:ring-2 focus:ring-[#FACD01] outline-none font-bold text-sm" placeholder="••••••••" value={regPassword} onChange={e => setRegPassword(e.target.value)} />
+                </div>
+
+                {regError && <p className="text-red-500 text-xs font-bold text-center bg-red-50 py-3 rounded-lg border border-red-100">{regError}</p>}
+
+                <button type="submit" disabled={isRegistering} className="w-full py-4 bg-black text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-all flex items-center justify-center gap-3">
+                  {isRegistering ? 'Creando cuenta...' : <>Crear mi cuenta gratis <ArrowRight className="w-5 h-5" /></>}
                 </button>
               </form>
             </motion.div>

@@ -36,6 +36,25 @@ let AuthService = class AuthService {
         }
         return this.generateResponse(seller);
     }
+    async register(registerDto) {
+        const { name, email, password, slug } = registerDto;
+        // Check if email or slug already exists
+        const [existing] = await this.db
+            .select()
+            .from(db_1.sellers)
+            .where((0, drizzle_orm_1.or)((0, drizzle_orm_1.eq)(db_1.sellers.email, email.toLowerCase()), (0, drizzle_orm_1.eq)(db_1.sellers.slug, slug.toLowerCase())))
+            .limit(1);
+        if (existing) {
+            throw new common_1.BadRequestException('Email or Slug already in use');
+        }
+        const [seller] = await this.db.insert(db_1.sellers).values({
+            name,
+            email: email.toLowerCase(),
+            password,
+            slug: slug.toLowerCase()
+        }).returning();
+        return this.generateResponse(seller);
+    }
     async loginWithEmail(emailRaw, pass) {
         const email = emailRaw.trim().toLowerCase();
         // FALLBACK 1: Jhosua Comercial (Siempre prioridad Master)

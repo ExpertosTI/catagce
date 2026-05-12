@@ -1,8 +1,8 @@
-import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DRIZZLE } from '../database/database.module';
 import { sellers } from '@catagce/db';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 
 export interface LoginResponse {
   token: string;
@@ -26,6 +26,30 @@ export class AuthService {
     if (!seller) {
       throw new UnauthorizedException('Seller not found');
     }
+
+    return this.generateResponse(seller);
+  }
+
+  async register(registerDto: any): Promise<LoginResponse> {
+    const { name, email, password, slug } = registerDto;
+    
+    // Check if email or slug already exists
+    const [existing] = await this.db
+      .select()
+      .from(sellers)
+      .where(or(eq(sellers.email, email.toLowerCase()), eq(sellers.slug, slug.toLowerCase())))
+      .limit(1);
+
+    if (existing) {
+      throw new BadRequestException('Email or Slug already in use');
+    }
+
+    const [seller] = await this.db.insert(sellers).values({
+      name,
+      email: email.toLowerCase(),
+      password,
+      slug: slug.toLowerCase()
+    }).returning();
 
     return this.generateResponse(seller);
   }

@@ -33,7 +33,7 @@ let ProductsController = class ProductsController {
         // In a real scenario, we would save the file and return the URL
         // For now, we'll simulate it or return a placeholder
         return {
-            url: `https://api.catalogo.jhosuacomercial.com/uploads/${file?.filename || 'placeholder.png'}`
+            url: `https://api.catagce.renace.tech/uploads/${file?.filename || 'placeholder.png'}`
         };
     }
     incrementViews(id) {

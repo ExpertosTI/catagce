@@ -12,8 +12,8 @@ import {
 import { useEffect, useState, useCallback, useRef } from 'react';
 
 const getApiBase = () => {
-  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
-  return 'https://api.catalogo.jhosuacomercial.com';
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catagce.renace.tech';
+  return 'https://api.catagce.renace.tech';
 };
 
 const API_BASE = getApiBase();
