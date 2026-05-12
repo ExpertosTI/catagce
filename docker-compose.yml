@@ -11,6 +11,9 @@ services:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - CORS_ORIGIN=https://catalogo.jhosuacomercial.com,https://catagce.renace.tech
+      - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
+      - MIGRATIONS_STRICT=${MIGRATIONS_STRICT:-1}
       - PORT=42100
     networks:
       - RenaceNet
