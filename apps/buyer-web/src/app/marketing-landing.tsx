@@ -16,7 +16,8 @@ import {
   CheckCircle2, 
   Users,
   TrendingUp,
-  Store
+  Store,
+  Play
 } from 'lucide-react';
 import Image from 'next/image';
 
