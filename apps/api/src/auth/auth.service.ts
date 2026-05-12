@@ -50,20 +50,39 @@ export class AuthService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.bootstrapAdmin();
+    await this.bootstrapEntity({
+      email: process.env.BOOTSTRAP_ADMIN_EMAIL,
+      password: process.env.BOOTSTRAP_ADMIN_PASSWORD,
+      name: process.env.BOOTSTRAP_ADMIN_NAME || 'Catagce Super Admin',
+      slug: process.env.BOOTSTRAP_ADMIN_SLUG,
+      role: 'admin',
+    });
+
+    await this.bootstrapEntity({
+      email: process.env.BOOTSTRAP_TENANT_EMAIL,
+      password: process.env.BOOTSTRAP_TENANT_PASSWORD,
+      name: process.env.BOOTSTRAP_TENANT_NAME || 'Jhosua Comercial',
+      slug: process.env.BOOTSTRAP_TENANT_SLUG || 'jhosuacom',
+      role: 'seller',
+    });
   }
 
   /**
-   * One-time admin bootstrap from env. Idempotent: if an admin with the same
-   * email exists, nothing is created. Use BOOTSTRAP_ADMIN_EMAIL/PASSWORD on
-   * fresh deploys; once the admin exists you can remove the env vars.
+   * One-time entity bootstrap from env. Idempotent: if an entity with the same
+   * email exists, nothing is created.
    */
-  private async bootstrapAdmin(): Promise<void> {
-    const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
-    const password = process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim();
+  private async bootstrapEntity(config: {
+    email?: string;
+    password?: string;
+    name: string;
+    slug?: string;
+    role: string;
+  }): Promise<void> {
+    const email = config.email?.trim().toLowerCase();
+    const password = config.password?.trim();
     if (!email || !password) return;
     if (!isValidEmail(email) || password.length < 8) {
-      this.logger.warn('BOOTSTRAP_ADMIN_* are set but invalid; skipping.');
+      this.logger.warn(`BOOTSTRAP_${config.role.toUpperCase()}_* are set but invalid; skipping.`);
       return;
     }
     try {
@@ -75,15 +94,15 @@ export class AuthService implements OnModuleInit {
       if (existing) return;
 
       const hashed = await bcrypt.hash(password, BCRYPT_COST);
-      const slug = toSlug(process.env.BOOTSTRAP_ADMIN_SLUG || email.split('@')[0]);
+      const slug = toSlug(config.slug || email.split('@')[0]);
       const [seller] = await this.db
         .insert(sellers)
         .values({
-          name: process.env.BOOTSTRAP_ADMIN_NAME || 'Catagce Admin',
-          slug: isValidSlug(slug) ? slug : `admin-${Date.now()}`,
+          name: config.name,
+          slug: isValidSlug(slug) ? slug : `${config.role}-${Date.now()}`,
           email,
           password: hashed,
-          role: 'admin',
+          role: config.role,
         })
         .returning();
 
@@ -92,9 +111,9 @@ export class AuthService implements OnModuleInit {
         primaryColor: '#FACD01',
         accentColor: '#000000',
       });
-      this.logger.log(`Bootstrap admin created: ${email}`);
+      this.logger.log(`Bootstrap ${config.role} created: ${email}`);
     } catch (err: any) {
-      this.logger.warn(`Bootstrap admin failed: ${err.message}`);
+      this.logger.warn(`Bootstrap ${config.role} failed: ${err.message}`);
     }
   }
 

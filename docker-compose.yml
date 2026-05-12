@@ -13,6 +13,10 @@ services:
       - CORS_ORIGIN=https://catalogo.jhosuacomercial.com,https://catagce.renace.tech
       - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL}
       - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
+      - BOOTSTRAP_TENANT_EMAIL=${BOOTSTRAP_TENANT_EMAIL}
+      - BOOTSTRAP_TENANT_PASSWORD=${BOOTSTRAP_TENANT_PASSWORD}
+      - BOOTSTRAP_TENANT_NAME=${BOOTSTRAP_TENANT_NAME}
+      - BOOTSTRAP_TENANT_SLUG=${BOOTSTRAP_TENANT_SLUG}
       - MIGRATIONS_STRICT=${MIGRATIONS_STRICT:-1}
       - PORT=42100
     networks:
@@ -36,17 +40,17 @@ services:
           cpus: '0.15'
           memory: 256M
       labels:
-        - "traefik.enable=true"
-        - "traefik.docker.network=RenaceNet"
-        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catagce.renace.tech`) || Host(`api.catalogo.jhosuacomercial.com`)"
-        - "traefik.http.routers.catagce-api-http.entrypoints=web"
-        - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
-        - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`) || Host(`api.catalogo.jhosuacomercial.com`)"
-        - "traefik.http.routers.catagce-api.entrypoints=websecure"
-        - "traefik.http.routers.catagce-api.tls=true"
-        - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.catagce-api.loadbalancer.server.port=42100"
+      - "traefik.enable=true"
+      - "traefik.docker.network=RenaceNet"
+      - "traefik.http.routers.catagce-api-http.rule=Host(`api.catagce.renace.tech`)"
+      - "traefik.http.routers.catagce-api-http.entrypoints=web"
+      - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
+      - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`)"
+      - "traefik.http.routers.catagce-api.entrypoints=websecure"
+      - "traefik.http.routers.catagce-api.tls=true"
+      - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
+      - "traefik.http.services.catagce-api.loadbalancer.server.port=42100"
 
   web:
     image: catagce-web:latest
