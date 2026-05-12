@@ -28,6 +28,12 @@ npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install 
 
 # 3.1. Purga AGRESIVA de node_modules (Solo lo vital para ejecución)
 echo "🧹 Purga extrema de node_modules..."
+
+# ELIMINAR BINARIOS NO-LINUX (Crítico para que arranque en el VPS)
+find node_modules -name "*darwin*" -exec rm -rf {} +
+find node_modules -name "*win32*" -exec rm -rf {} +
+find node_modules -name "*.node" ! -name "*linux*" -exec rm -rf {} +
+
 find node_modules -type d -name "doc" -exec rm -rf {} +
 find node_modules -type d -name "docs" -exec rm -rf {} +
 find node_modules -type d -name "test" -exec rm -rf {} +
