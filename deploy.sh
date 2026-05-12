@@ -1,89 +1,43 @@
-#!/usr/bin/env bash
-# ==============================================================================
-# CATAGCE — DEPLOYMENT SCRIPT
-# Target : Docker Swarm + Traefik on VPS
-# Branch : deploy/stable-production
-# ==============================================================================
-set -euo pipefail
+#!/bin/bash
+set -e
 
+# Configuración del Proyecto
 PROJECT_DIR="/opt/QuickCtgo"
-BRANCH="deploy/stable-production"
 STACK_NAME="catagce"
+MAIN_SERVICE="${STACK_NAME}_api"
 
-# ── Pre-flight ────────────────────────────────────────────────────────────────
-echo "🔍 Pre-flight checks..."
-command -v docker >/dev/null 2>&1 || { echo "❌  docker not found";           exit 1; }
-[[ -d "$PROJECT_DIR" ]]            || { echo "❌  $PROJECT_DIR not found";     exit 1; }
-[[ -f "$PROJECT_DIR/.env" ]]       || { echo "❌  $PROJECT_DIR/.env missing";  exit 1; }
+echo "🛰️  Sincronizando código desde GitHub..."
+if [ -d "$PROJECT_DIR" ]; then
+    cd "$PROJECT_DIR"
+    git fetch origin deploy/stable-production
+    git reset --hard origin/deploy/stable-production
+else
+    echo "❌ Error: El directorio $PROJECT_DIR no existe."
+    exit 1
+fi
 
-cd "$PROJECT_DIR"
+# Cargar variables de entorno
+if [ -f ".env" ]; then
+    set -a; source .env; set +a
+else
+    echo "❌ Error: Archivo .env no encontrado."
+    exit 1
+fi
 
-# ── Sync ──────────────────────────────────────────────────────────────────────
-echo "📡 Syncing branch '$BRANCH'..."
-git fetch origin "$BRANCH"
-git reset --hard "origin/$BRANCH"
+echo "🐳 Construyendo imágenes Docker (Zero-CPU Mode)..."
+docker compose build --pull api web catalog-renderer notifications media-processor
 
-# ── Environment ───────────────────────────────────────────────────────────────
-echo "🔐 Loading environment..."
-set -a
-# shellcheck source=.env
-source .env
-set +a
-
-# Validate critical secrets
-[[ "${JWT_SECRET:-}" =~ .{32,} ]]  || { echo "❌  JWT_SECRET must be ≥ 32 chars"; exit 1; }
-[[ -n "${DATABASE_URL:-}" ]]        || { echo "❌  DATABASE_URL is required";       exit 1; }
-[[ -n "${DB_PASSWORD:-}" ]]         || { echo "❌  DB_PASSWORD is required";        exit 1; }
-[[ -n "${REDIS_HOST:-}" ]]          || { echo "❌  REDIS_HOST is required";         exit 1; }
-[[ -n "${REDIS_PORT:-}" ]]          || { echo "❌  REDIS_PORT is required";         exit 1; }
-
-# ── Maintenance (Renace Protocol) ───────────────────────────────────────────
-echo "🧹 Cleaning up old build cache to free space..."
-docker builder prune -f --filter "until=24h"
-
-# ── Docker images (Sequential Build to protect CPU) ──────────────────────────
-echo "🐳 Building Docker images one by one (protecting VPS CPU)..."
-# Construimos secuencialmente para no saturar el CPU de Hostinger
-docker compose build --pull api
-docker compose build web
-docker compose build media-processor
-docker compose build catalog-renderer
-docker compose build notifications
-
-
-# ── Database Sync (Drizzle Push) ──────────────────────────────────────────────
-echo "🗄️  Syncing database schema via Docker..."
-# Usamos la imagen de la API recién construida para correr la migración
-docker run --rm \
-  --network RenaceNet \
-  -e DATABASE_URL="${DATABASE_URL}" \
-  catagce-api:latest \
-  npx drizzle-kit push:pg --config=packages/db/drizzle.config.ts || echo "⚠️  DB Sync had warnings, continuing..."
-
-# ── Deploy ────────────────────────────────────────────────────────────────────
-echo "🚢 Deploying stack '$STACK_NAME'..."
+echo "🚢 Desplegando Stack '$STACK_NAME' en Docker Swarm..."
 COMPOSE_TMP=$(mktemp /tmp/catagce-stack-XXXXXX.yml)
-# Filtramos la propiedad 'name:' directamente del archivo para preservar comillas en los límites
 sed '/^name:/d' docker-compose.yml > "$COMPOSE_TMP"
-docker stack deploy -c "$COMPOSE_TMP" "$STACK_NAME" --with-registry-auth
+docker stack deploy -c "$COMPOSE_TMP" "$STACK_NAME"
+rm "$COMPOSE_TMP"
 
-rm -f "$COMPOSE_TMP"
+echo "🔄 Forzando actualización de servicios críticos..."
+docker service update --force "${STACK_NAME}_api"
+docker service update --force "${STACK_NAME}_web"
 
-echo ""
-echo "✅ Deployment complete"
-echo "   Web → https://catalogo.jhosuacomercial.com"
-echo "   API → https://api.catalogo.jhosuacomercial.com"
-echo ""
-
-# ── Force service image pickup (Renace Protocol) ─────────────────────────────
-echo "🔄 Forcing service image refresh..."
-docker service update --force ${STACK_NAME}_api 2>/dev/null || true
-docker service update --force ${STACK_NAME}_web 2>/dev/null || true
-
-# ── Cleanup ───────────────────────────────────────────────────────────────────
-echo "🧹 Final system cleanup..."
+echo "🧹 Limpieza de imágenes antiguas..."
 docker image prune -f
-docker system prune -f --filter "until=24h"
 
-echo ""
-docker stack services "$STACK_NAME"
+echo "✅ Despliegue completado con éxito."
