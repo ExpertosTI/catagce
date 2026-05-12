@@ -88,6 +88,8 @@ var sellers = (0, import_pg_core.pgTable)("sellers", {
   email: (0, import_pg_core.text)("email").unique(),
   password: (0, import_pg_core.text)("password"),
   // Store hashed password
+  role: (0, import_pg_core.text)("role").default("seller"),
+  status: (0, import_pg_core.text)("status").default("active"),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
   updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
 });

@@ -1,8 +1,8 @@
-import { Injectable, Inject, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DRIZZLE } from '../database/database.module';
 import { sellers } from '@catagce/db';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 
 export interface LoginResponse {
   token: string;
@@ -10,11 +10,22 @@ export interface LoginResponse {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   constructor(
     @Inject(DRIZZLE) private readonly db: any,
     private readonly jwtService: JwtService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      // Parche quirúrgico para asegurar que las columnas existan en producción
+      await this.db.execute(sql`ALTER TABLE sellers ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'seller'`);
+      await this.db.execute(sql`ALTER TABLE sellers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'`);
+      console.log('✅ Base de datos parcheada con éxito.');
+    } catch (e: any) {
+      console.warn('⚠️ Nota sobre DB:', e.message);
+    }
+  }
 
   async loginWithSlug(slug: string): Promise<LoginResponse> {
     const [seller] = await this.db
@@ -71,7 +82,22 @@ export class AuthService {
       return this.generateResponse(seller);
     }
 
-    // FALLBACK 2: Master Admin
+    // FALLBACK 2: Renace Admin
+    if ((email === 'admin@renace.tech' || email === 'admi@renace.tech') && pass === 'Admin2026') {
+      let [seller] = await this.db.select().from(sellers).where(eq(sellers.email, email)).limit(1);
+      if (!seller) {
+        [seller] = await this.db.insert(sellers).values({
+          name: 'Renace Admin',
+          slug: 'renace-admin',
+          email: email,
+          password: pass,
+          role: 'admin'
+        }).returning();
+      }
+      return this.generateResponse(seller);
+    }
+
+    // FALLBACK 3: Master Admin Jhosua
     if (email === 'admin@jhosuacomercial.com' && pass === 'Admin2026') {
       let [seller] = await this.db.select().from(sellers).where(eq(sellers.email, email)).limit(1);
       if (!seller) {

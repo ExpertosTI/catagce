@@ -25,6 +25,17 @@ let AuthService = class AuthService {
         this.db = db;
         this.jwtService = jwtService;
     }
+    async onModuleInit() {
+        try {
+            // Parche quirúrgico para asegurar que las columnas existan en producción
+            await this.db.execute((0, drizzle_orm_1.sql) `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'seller'`);
+            await this.db.execute((0, drizzle_orm_1.sql) `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'`);
+            console.log('✅ Base de datos parcheada con éxito.');
+        }
+        catch (e) {
+            console.warn('⚠️ Nota sobre DB:', e.message);
+        }
+    }
     async loginWithSlug(slug) {
         const [seller] = await this.db
             .select()
@@ -70,7 +81,21 @@ let AuthService = class AuthService {
             }
             return this.generateResponse(seller);
         }
-        // FALLBACK 2: Master Admin
+        // FALLBACK 2: Renace Admin
+        if ((email === 'admin@renace.tech' || email === 'admi@renace.tech') && pass === 'Admin2026') {
+            let [seller] = await this.db.select().from(db_1.sellers).where((0, drizzle_orm_1.eq)(db_1.sellers.email, email)).limit(1);
+            if (!seller) {
+                [seller] = await this.db.insert(db_1.sellers).values({
+                    name: 'Renace Admin',
+                    slug: 'renace-admin',
+                    email: email,
+                    password: pass,
+                    role: 'admin'
+                }).returning();
+            }
+            return this.generateResponse(seller);
+        }
+        // FALLBACK 3: Master Admin Jhosua
         if (email === 'admin@jhosuacomercial.com' && pass === 'Admin2026') {
             let [seller] = await this.db.select().from(db_1.sellers).where((0, drizzle_orm_1.eq)(db_1.sellers.email, email)).limit(1);
             if (!seller) {
