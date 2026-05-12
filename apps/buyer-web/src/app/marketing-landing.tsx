@@ -1,12 +1,21 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { Box, ArrowRight, ShieldCheck, Smartphone, BarChart3, ChevronRight, Play } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Box, ArrowRight, ShieldCheck, Smartphone, BarChart3, ChevronRight, Play, X, LogIn, Mail, Lock, Zap } from 'lucide-react';
 
-export default function MarketingLanding() {
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+export default function MarketingLanding({ host }: { host?: string }) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  
+  // Auth state for the integrated form
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -17,12 +26,34 @@ export default function MarketingLanding() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      });
+      if (!res.ok) throw new Error('Unauthorized');
+      const { token } = await res.json();
+      localStorage.setItem('catagce_token', token);
+      window.location.reload(); // Refresh to enter dashboard
+    } catch {
+      setLoginError('CREDENCIALES INVÁLIDAS');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-[#050505] text-white selection:bg-[#00D1FF]/30 overflow-hidden font-sans selection:text-black">
       <AnimatePresence>
         {!isLoaded && <LoadingScreen />}
       </AnimatePresence>
 
+      {/* BACKGROUND EFFECTS */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div 
           className="absolute inset-0 opacity-20 transition-opacity duration-1000"
@@ -35,6 +66,7 @@ export default function MarketingLanding() {
 
       <Particles count={30} />
 
+      {/* HEADER */}
       <header className="relative z-50 flex items-center justify-between px-6 py-6 mx-auto max-w-7xl backdrop-blur-md border-b border-white/5">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -54,15 +86,16 @@ export default function MarketingLanding() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <button className="hidden sm:block font-rajdhani text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 hover:text-white transition-colors">
-            Login
-          </button>
-          <button className="px-6 py-3 bg-white text-black rounded-lg font-bebas text-sm uppercase tracking-widest hover:bg-[#00D1FF] transition-all brutalist-shadow">
-            Comenzar Gratis
+          <button 
+            onClick={() => setShowLogin(true)}
+            className="font-rajdhani text-[10px] font-black uppercase tracking-[0.3em] text-white bg-white/5 border border-white/10 px-6 py-3 rounded-xl hover:bg-[#00D1FF] hover:text-black transition-all"
+          >
+            LOGIN ADMIN
           </button>
         </div>
       </header>
 
+      {/* MAIN CONTENT */}
       <main className="relative z-10 px-6 pt-20 pb-32 mx-auto max-w-7xl">
         <div className="relative">
           <div className="max-w-5xl">
@@ -136,6 +169,7 @@ export default function MarketingLanding() {
           </motion.div>
         </div>
 
+        {/* FEATURES */}
         <div id="features" className="mt-60">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <h2 className="text-4xl md:text-6xl font-bebas uppercase tracking-wider">
@@ -167,28 +201,95 @@ export default function MarketingLanding() {
             />
           </div>
         </div>
-
-        <section id="vision" className="mt-60 relative py-32 overflow-hidden rounded-[40px]">
-          <div className="absolute inset-0 glass z-0" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,209,255,0.05),transparent_70%)]" />
-          
-          <div className="relative z-10 text-center px-10">
-            <motion.h2 
-              whileInView={{ opacity: 1, y: 0 }}
-              initial={{ opacity: 0, y: 20 }}
-              className="text-4xl md:text-7xl font-bebas tracking-wide mb-12 max-w-4xl mx-auto leading-none"
-            >
-              "NO ES UN SOFTWARE, ES EL <span className="text-[#00D1FF]">NÚCLEO ESTRATÉGICO</span> DE TU CRECIMIENTO."
-            </motion.h2>
-            
-            <div className="flex flex-wrap justify-center gap-16 md:gap-32 mt-20">
-              <StatItem value="100%" label="Seguridad Renace" />
-              <StatItem value="< 1s" label="Latencia Crítica" />
-              <StatItem value="24/7" label="Sincronización" />
-            </div>
-          </div>
-        </section>
       </main>
+
+      {/* LOGIN OVERLAY */}
+      <AnimatePresence>
+        {showLogin && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-end p-6"
+          >
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setShowLogin(false)} />
+            
+            <motion.div 
+              initial={{ x: 400, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 400, opacity: 0 }}
+              className="relative w-full max-w-lg h-full glass rounded-[40px] p-12 flex flex-col justify-center space-y-12 shadow-[0_0_100px_rgba(0,209,255,0.2)] border-l border-[#00D1FF]/20"
+            >
+              <button 
+                onClick={() => setShowLogin(false)}
+                className="absolute top-10 right-10 w-12 h-12 rounded-full glass flex items-center justify-center hover:bg-red-500/20 transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <div className="space-y-4">
+                <div className="w-16 h-16 bg-[#00D1FF] rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(0,209,255,0.4)]">
+                  <Lock className="text-black w-8 h-8" />
+                </div>
+                <h2 className="text-5xl font-bebas tracking-widest uppercase">ADMIN <span className="text-[#00D1FF]">LOGIN</span></h2>
+                <p className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-[0.4em]">PROTOCOLO DE SEGURIDAD NIVEL 4</p>
+              </div>
+
+              <form onSubmit={handleLoginSubmit} className="space-y-8">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">ID DE ACCESO / EMAIL</label>
+                    <div className="relative">
+                      <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                      <input 
+                        className="w-full h-16 pl-16 pr-6 bg-white/5 border border-white/10 rounded-2xl font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none transition-all"
+                        placeholder="admin@renace.tech"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">LLAVE DE PROTOCOLO</label>
+                    <div className="relative">
+                      <Zap className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                      <input 
+                        type="password"
+                        className="w-full h-16 pl-16 pr-6 bg-white/5 border border-white/10 rounded-2xl font-rajdhani text-sm tracking-widest text-white focus:border-[#00D1FF] outline-none transition-all"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {loginError && (
+                  <p className="text-red-500 font-rajdhani text-[10px] font-black uppercase tracking-widest text-center animate-pulse">
+                    {loginError}
+                  </p>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={isLoggingIn}
+                  className="w-full py-6 bg-[#00D1FF] text-black rounded-2xl font-bebas text-2xl tracking-widest uppercase flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_20px_50px_rgba(0,209,255,0.3)]"
+                >
+                  {isLoggingIn ? 'VALIDANDO...' : (
+                    <>EJECUTAR ACCESO <LogIn className="w-6 h-6" /></>
+                  )}
+                </button>
+              </form>
+
+              <div className="pt-10 text-center">
+                <p className="font-rajdhani text-[8px] text-gray-600 uppercase tracking-[0.4em]">ACCESO RESTRINGIDO A TERMINALES AUTORIZADAS</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="relative z-10 border-t border-white/5 py-32 px-6 bg-[#030303]">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20">
@@ -253,15 +354,6 @@ function FeatureCard({ icon, title, desc, delay }: { icon: React.ReactNode, titl
         </p>
       </div>
     </motion.div>
-  );
-}
-
-function StatItem({ value, label }: { value: string, label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <span className="text-5xl md:text-7xl font-bebas tracking-tight text-white">{value}</span>
-      <span className="font-rajdhani text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">{label}</span>
-    </div>
   );
 }
 

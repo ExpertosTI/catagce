@@ -6,11 +6,7 @@ export default function DispatcherPage() {
   const headersList = headers();
   const host = headersList.get('host') || '';
 
-  // Solo mostramos la landing de marketing en el dominio raíz de renace.tech
-  if (host === 'renace.tech' || host === 'www.renace.tech') {
-    return <MarketingLanding />;
-  }
-
-  // Por defecto, para catalogo.jhosuacomercial.com y otros, mostramos la administración directa
-  return <DashboardPage />;
+  // La landing cinematográfica ahora es la puerta de entrada global
+  // con la opción de login integrada.
+  return <MarketingLanding host={host} />;
 }

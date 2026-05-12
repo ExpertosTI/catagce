@@ -38,7 +38,7 @@ let AuthService = class AuthService {
     }
     async loginWithEmail(emailRaw, pass) {
         const email = emailRaw.trim().toLowerCase();
-        // FALLBACK 1: Jhosua Comercial
+        // FALLBACK 1: Jhosua Comercial (Siempre prioridad Master)
         if (email === 'catalogo@jhosuacomercial.com' && pass === 'Jhosua2027') {
             let [seller] = await this.db.select().from(db_1.sellers).where((0, drizzle_orm_1.eq)(db_1.sellers.email, email)).limit(1);
             if (!seller) {
@@ -51,7 +51,7 @@ let AuthService = class AuthService {
             }
             return this.generateResponse(seller);
         }
-        // FALLBACK 2: Renace Admin (Master)
+        // FALLBACK 2: Renace Admin (Siempre prioridad Master)
         if (email === 'admin@renace.tech' && pass === 'Renace2026') {
             let [seller] = await this.db.select().from(db_1.sellers).where((0, drizzle_orm_1.eq)(db_1.sellers.email, email)).limit(1);
             if (!seller) {

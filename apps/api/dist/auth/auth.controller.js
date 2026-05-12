@@ -22,12 +22,12 @@ let AuthController = class AuthController {
         this.authService = authService;
     }
     /** 5 intentos por minuto por IP — previene brute-force */
-    login(body) {
-        if (body.email && body.password) {
-            return this.authService.loginWithEmail(body.email, body.password);
+    async login(loginDto) {
+        if (loginDto.email && loginDto.password) {
+            return this.authService.loginWithEmail(loginDto.email, loginDto.password);
         }
-        if (body.slug) {
-            return this.authService.loginWithSlug(body.slug.trim());
+        if (loginDto.slug) {
+            return this.authService.loginWithSlug(loginDto.slug.trim());
         }
         throw new common_1.BadRequestException('Credentials are required');
     }
@@ -39,7 +39,7 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
