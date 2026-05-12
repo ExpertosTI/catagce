@@ -1,12 +1,12 @@
 FROM node:20-alpine
 WORKDIR /app
-RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont libc6-compat
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont xz libc6-compat
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 COPY workers/catalog-renderer/package.json ./workers/catalog-renderer/
 COPY workers/catalog-renderer/dist ./workers/catalog-renderer/dist
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-ADD deps.tar.gz ./
+ADD deps.tar.xz ./
 
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser

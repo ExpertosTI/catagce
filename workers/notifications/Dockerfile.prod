@@ -1,12 +1,12 @@
 FROM node:20-alpine
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat xz
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 COPY workers/notifications/package.json ./workers/notifications/
 COPY workers/notifications/dist ./workers/notifications/dist
 COPY packages ./packages
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-ADD deps.tar.gz ./
+ADD deps.tar.xz ./
 
 
 ENV NODE_ENV=production

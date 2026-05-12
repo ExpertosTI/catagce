@@ -54,12 +54,15 @@ mkdir -p node_modules/@catagce
 cp -r packages/db node_modules/@catagce/ 2>/dev/null || true
 cp -r packages/ui node_modules/@catagce/ 2>/dev/null || true
 
-# 3.3. COMPRESSION
-echo "🗜️  Compressing dependencies..."
-tar -czf deps.tar.gz node_modules
-echo "✅ Final size: $(du -h deps.tar.gz)"
+# 3.3. COMPRESIÓN EXTREMA (XZ)
+echo "🗜️  Comprimiendo dependencias con XZ (Máximo nivel)..."
+tar -cJf deps.tar.xz node_modules
+echo "✅ Peso final: $(du -h deps.tar.xz)"
 
-echo "✅ Build succeeded — staging artifacts and dependencies"
+# Eliminar el archivo viejo si existe para evitar confusión
+rm -f deps.tar.gz
+
+echo "✅ Build exitoso — subiendo artefactos optimizados"
 
 # 4. Stage EVERYTHING + artifacts + compressed deps
 echo "git: Staging artifacts with extreme force..."

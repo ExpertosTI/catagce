@@ -1,6 +1,6 @@
 FROM node:20-alpine
 
-RUN apk add --no-cache wget
+RUN apk add --no-cache wget xz
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY apps/buyer-web/.next ./.next
 COPY apps/buyer-web/next.config.js ./
 
 # Inyectamos las dependencias preparadas en el Mac
-ADD deps.tar.gz ./
+ADD deps.tar.xz ./
 
 EXPOSE 42101
 ENV NODE_ENV=production
