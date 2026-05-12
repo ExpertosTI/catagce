@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, Send, User, Phone, CheckCircle2, AlertCircle, Box, ArrowLeft, Plus, Minus, Package, ArrowRight, Instagram, MapPin } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.catagce.renace.tech';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400&auto=format&fit=crop';
 
 interface CatalogProduct {

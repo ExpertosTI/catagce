@@ -51,15 +51,16 @@ let AuthService = class AuthService {
             }
             return this.generateResponse(seller);
         }
-        // FALLBACK 2: Renace Admin (Siempre prioridad Master)
-        if (email === 'admin@renace.tech' && pass === 'Renace2026') {
+        // FALLBACK 2: Master Admin
+        if (email === 'admin@jhosuacomercial.com' && pass === 'Admin2026') {
             let [seller] = await this.db.select().from(db_1.sellers).where((0, drizzle_orm_1.eq)(db_1.sellers.email, email)).limit(1);
             if (!seller) {
                 [seller] = await this.db.insert(db_1.sellers).values({
-                    name: 'Renace Admin',
-                    slug: 'renace-admin',
-                    email: 'admin@renace.tech',
+                    name: 'Master Admin',
+                    slug: 'master-admin',
+                    email: 'admin@jhosuacomercial.com',
                     password: pass,
+                    role: 'admin'
                 }).returning();
             }
             return this.generateResponse(seller);
