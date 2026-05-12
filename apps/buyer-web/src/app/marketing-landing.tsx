@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Box, ArrowRight, ShieldCheck, Smartphone, BarChart3, ChevronRight, Play, X, LogIn, Mail, Lock, Zap } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
 
 export default function MarketingLanding({ host }: { host?: string }) {
   const [isLoaded, setIsLoaded] = useState(false);
