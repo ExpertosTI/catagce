@@ -21,11 +21,11 @@ export class ProductsController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
-  uploadFile(@UploadedFile() file: Express.Multer.File) {
+  uploadFile(@UploadedFile() file: any) {
     // In a real scenario, we would save the file and return the URL
     // For now, we'll simulate it or return a placeholder
     return {
-      url: `https://catagce.renace.tech/uploads/${file.filename}`
+      url: `https://catagce.renace.tech/uploads/${file?.filename || 'placeholder.png'}`
     };
   }
 

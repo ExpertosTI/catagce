@@ -42,6 +42,17 @@ async function fetchWithAuth(path: string, options: any = {}) {
 
 /* ── UI Components ─────────────────────────────────────────── */
 
+function LogoMark({ color = "#FACD01" }: { color?: string }) {
+  return (
+    <div 
+      className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-100 transition-transform hover:rotate-12"
+      style={{ backgroundColor: color }}
+    >
+      <Box className="text-black w-7 h-7" />
+    </div>
+  );
+}
+
 function SidebarItem({ icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) {
   return (
     <button
@@ -300,40 +311,36 @@ export default function DashboardPage() {
   /* ── Login ───────────────────────────────────────────────── */
   if (!token) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6 font-sans overflow-hidden">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-6 font-sans overflow-hidden">
         <div className="fixed inset-0 pointer-events-none z-0">
-          <div 
-            className="absolute inset-0 opacity-20 transition-opacity duration-1000"
-            style={{
-              background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(0, 209, 255, 0.15), transparent 80%)`
-            }}
-          />
-          <div className="absolute inset-0 grid-pattern opacity-10" />
+          <div className="absolute inset-0 grid-pattern opacity-5" />
         </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative z-10 w-full max-w-sm glass rounded-[40px] p-10 space-y-8 shadow-2xl"
+          className="relative z-10 w-full max-w-md bg-white rounded-[48px] p-12 space-y-10 shadow-2xl shadow-gray-200/50 border border-gray-100"
         >
-          <div className="flex flex-col items-center text-center space-y-4">
+          <div className="flex flex-col items-center text-center space-y-6">
             <LogoMark />
-            <h1 className="text-4xl font-bebas tracking-widest text-white mt-2 uppercase">
-              ADMIN <span className="text-[#00D1FF]">CATAGCE</span>
-            </h1>
-            <p className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-[0.3em]">
-              SISTEMA DE GESTIÓN OPERATIVA
-            </p>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-[#0F172A]">
+                Catagce<span className="text-[#FACD01]">.</span>Admin
+              </h1>
+              <p className="text-sm font-bold text-gray-400 mt-2 uppercase tracking-widest">
+                Gestión de Catálogos e Inventario
+              </p>
+            </div>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-4">
-              <div className="relative">
-                <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2 mb-1 block">USUARIO / EMAIL</label>
+          <form onSubmit={handleLogin} className="space-y-8">
+            <div className="space-y-5">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Usuario / Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    className="w-full h-14 pl-14 pr-6 bg-white/5 border border-white/10 rounded-2xl focus:border-[#00D1FF] focus:outline-none text-white font-rajdhani text-sm tracking-widest placeholder:text-white/10 transition-all"
+                    className="w-full h-14 pl-14 pr-6 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#FACD01]/50 outline-none text-sm font-bold placeholder:text-gray-300 transition-all"
                     placeholder="admin@renace.tech"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -342,13 +349,13 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="relative">
-                <label className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-2 mb-1 block">PASSWORD DE PROTOCOLO</label>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Contraseña</label>
                 <div className="relative">
-                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="password"
-                    className="w-full h-14 pl-14 pr-6 bg-white/5 border border-white/10 rounded-2xl focus:border-[#00D1FF] focus:outline-none text-white font-rajdhani text-sm tracking-widest placeholder:text-white/10 transition-all"
+                    className="w-full h-14 pl-14 pr-6 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#FACD01]/50 outline-none text-sm font-bold placeholder:text-gray-300 transition-all"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
