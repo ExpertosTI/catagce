@@ -104,6 +104,7 @@ var sellerBranding = (0, import_pg_core.pgTable)("seller_branding", {
   instagram: (0, import_pg_core.text)("instagram"),
   website: (0, import_pg_core.text)("website"),
   description: (0, import_pg_core.text)("description"),
+  paymentMethods: (0, import_pg_core.text)("payment_methods"),
   updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
 }, (table) => ({
   uniqueSeller: (0, import_pg_core.uniqueIndex)("seller_branding_seller_unique").on(table.sellerId)

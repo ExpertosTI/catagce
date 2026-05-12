@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart, Send, User, Phone, CheckCircle2, AlertCircle, Box, ArrowLeft, Plus, Minus, Package, ArrowRight, Instagram, MapPin } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.catagce.renace.tech';
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400&auto=format&fit=crop';
 
 interface CatalogProduct {
@@ -33,9 +33,18 @@ interface Catalog {
       address?: string;
       instagram?: string;
       description?: string;
+      paymentMethods?: string;
     };
   };
 }
+
+const PAYMENT_LABELS: Record<string, string> = {
+  bank: 'TRANSFERENCIA BANCARIA',
+  cash: 'EFECTIVO / CONTRA ENTREGA',
+  paypal: 'PAYPAL',
+  zelle: 'ZELLE',
+  other: 'OTRO',
+};
 
 export default function OrderPage({ params }: { params: { token: string } }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -249,6 +258,25 @@ export default function OrderPage({ params }: { params: { token: string } }) {
                   <div className="flex justify-between font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest"><span>RESUMEN DEL PEDIDO</span><span>{selectedItems.length} ITEMS</span></div>
                   <div className="flex justify-between items-center"><span className="font-bebas text-3xl">TOTAL A PAGAR</span><span className="font-bebas text-4xl" style={{ color: primaryColor }}>${total.toFixed(2)}</span></div>
                 </div>
+                {(() => {
+                  try {
+                    const pm = JSON.parse(catalog.seller.branding?.paymentMethods || '[]');
+                    if (!Array.isArray(pm) || pm.length === 0) return null;
+                    return (
+                      <div className="glass p-6 rounded-2xl border-white/5 space-y-3">
+                        <p className="font-rajdhani text-[10px] font-bold uppercase tracking-widest" style={{ color: primaryColor }}>MÉTODOS DE PAGO DISPONIBLES</p>
+                        {pm.map((m: any, i: number) => (
+                          <div key={i} className="p-3 bg-white/5 rounded-xl border border-white/5">
+                            <p className="font-bebas text-sm tracking-wide uppercase">{PAYMENT_LABELS[m.type] || m.type}{m.label ? ` · ${m.label}` : ''}</p>
+                            {m.details && <p className="font-rajdhani text-xs text-gray-400 mt-1 whitespace-pre-wrap">{m.details}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } catch {
+                    return null;
+                  }
+                })()}
                 {submitError && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-500 font-rajdhani text-xs font-bold uppercase tracking-widest"><AlertCircle className="w-4 h-4" /> {submitError}</div>}
                 <button type="submit" disabled={submitting} className="w-full py-6 text-black rounded-2xl font-bebas text-2xl uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-[0_15px_40px_rgba(0,0,0,0.3)]" style={{ backgroundColor: primaryColor }}>{submitting ? 'PROCESANDO...' : 'CONFIRMAR PEDIDO'}</button>
               </form>

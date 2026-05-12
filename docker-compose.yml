@@ -35,11 +35,11 @@ services:
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catalogo.jhosuacomercial.com`) || Host(`api.catagce.renace.tech`)"
+        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catagce.renace.tech`)"
         - "traefik.http.routers.catagce-api-http.entrypoints=web"
         - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
         - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.catagce-api.rule=Host(`api.catalogo.jhosuacomercial.com`) || Host(`api.catagce.renace.tech`)"
+        - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`)"
         - "traefik.http.routers.catagce-api.entrypoints=websecure"
         - "traefik.http.routers.catagce-api.tls=true"
         - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
@@ -51,7 +51,7 @@ services:
       context: .
       dockerfile: apps/buyer-web/Dockerfile.prod
     environment:
-      - NEXT_PUBLIC_API_URL=https://api.catalogo.jhosuacomercial.com
+      - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech
       - NODE_ENV=production
     networks:
       - RenaceNet

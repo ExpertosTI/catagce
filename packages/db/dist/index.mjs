@@ -29,7 +29,7 @@ import {
   uomsRelations,
   warehouses,
   warehousesRelations
-} from "./chunk-FJF7DAOC.mjs";
+} from "./chunk-22MBQYEE.mjs";
 
 // src/index.ts
 import { drizzle } from "drizzle-orm/postgres-js";

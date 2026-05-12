@@ -22,10 +22,8 @@ import {
 import Image from 'next/image';
 
 const getApiBase = () => {
-  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
-  const host = window.location.hostname;
-  if (host.includes('renace.tech')) return 'https://api.catagce.renace.tech';
-  return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catagce.renace.tech';
+  return 'https://api.catagce.renace.tech';
 };
 
 const API_BASE = getApiBase();
@@ -189,6 +187,49 @@ export default function MarketingLanding({ host }: { host?: string }) {
           </div>
         </section>
 
+        {/* PRICING SECTION */}
+        <section id="pricing" className="py-32 px-6 bg-white">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 text-xs font-bold text-black bg-[#FACD01]/20 rounded-full border border-[#FACD01]/30">
+                PRECIOS SIMPLES
+              </div>
+              <h2 className="text-3xl md:text-5xl font-bold mb-6">Elige tu plan</h2>
+              <p className="text-gray-500 font-medium max-w-xl mx-auto">
+                Empieza gratis. Crece sin sorpresas. Cancela cuando quieras.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <PricingCard
+                name="Starter"
+                price="Gratis"
+                period=""
+                desc="Para validar tu catálogo digital."
+                features={['1 catálogo', 'Hasta 50 productos', 'Pedidos por WhatsApp', 'Branding básico']}
+                cta="Empezar gratis"
+              />
+              <PricingCard
+                name="Pro"
+                price="$29"
+                period="/mes"
+                desc="Para negocios que venden a diario."
+                features={['Catálogos ilimitados', 'Productos ilimitados', 'Precios B2B', 'Métodos de pago personalizados', 'Reportes y analítica']}
+                cta="Empezar Pro"
+                highlighted
+              />
+              <PricingCard
+                name="Business"
+                price="$79"
+                period="/mes"
+                desc="Para equipos y mayoristas."
+                features={['Todo de Pro', 'Múltiples usuarios', 'Multi-almacén', 'Dominio personalizado', 'Soporte prioritario']}
+                cta="Hablar con ventas"
+              />
+            </div>
+          </div>
+        </section>
+
         {/* TRUST SECTION */}
         <section className="py-20 bg-gray-50 border-y border-gray-100">
           <div className="max-w-7xl mx-auto px-6 flex flex-wrap justify-center gap-12 md:gap-24 items-center grayscale opacity-60">
@@ -302,6 +343,35 @@ export default function MarketingLanding({ host }: { host?: string }) {
           <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">© 2026 RENACE TECH INC.</p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function PricingCard({ name, price, period, desc, features, cta, highlighted = false }: { name: string; price: string; period: string; desc: string; features: string[]; cta: string; highlighted?: boolean }) {
+  return (
+    <div className={`relative p-10 rounded-[32px] border transition-all ${highlighted ? 'bg-black text-white border-black shadow-2xl scale-[1.03]' : 'bg-gray-50 text-black border-gray-100 hover:shadow-xl'}`}>
+      {highlighted && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#FACD01] text-black rounded-full text-xs font-bold">
+          MÁS POPULAR
+        </div>
+      )}
+      <h3 className="text-2xl font-bold mb-2">{name}</h3>
+      <p className={`text-sm mb-6 font-medium ${highlighted ? 'text-gray-300' : 'text-gray-500'}`}>{desc}</p>
+      <div className="mb-8">
+        <span className="text-5xl font-extrabold">{price}</span>
+        <span className={`text-sm font-medium ${highlighted ? 'text-gray-300' : 'text-gray-500'}`}>{period}</span>
+      </div>
+      <ul className="space-y-3 mb-10">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-3 text-sm font-medium">
+            <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${highlighted ? 'text-[#FACD01]' : 'text-black'}`} />
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+      <button className={`w-full py-4 rounded-2xl font-bold text-sm transition-all ${highlighted ? 'bg-[#FACD01] text-black hover:scale-105' : 'bg-black text-white hover:bg-gray-800'}`}>
+        {cta}
+      </button>
     </div>
   );
 }

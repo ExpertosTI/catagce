@@ -28,6 +28,12 @@ let CatalogsController = class CatalogsController {
     create(user, createCatalogDto) {
         return this.catalogsService.create(user.sellerId, createCatalogDto);
     }
+    addProduct(user, id, productId) {
+        return this.catalogsService.addProduct(user.sellerId, id, productId);
+    }
+    removeProduct(user, id, productId) {
+        return this.catalogsService.removeProduct(user.sellerId, id, productId);
+    }
     // Public endpoint — no auth required; resolved via slug only
     findBySlug(slug) {
         return this.catalogsService.findBySlug(slug);
@@ -51,6 +57,26 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], CatalogsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)(':id/products'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)('productId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], CatalogsController.prototype, "addProduct", null);
+__decorate([
+    (0, common_1.Delete)(':id/products/:productId'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Param)('productId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], CatalogsController.prototype, "removeProduct", null);
 __decorate([
     (0, common_1.Get)(':slug'),
     __param(0, (0, common_1.Param)('slug')),

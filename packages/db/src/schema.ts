@@ -76,6 +76,7 @@ export const sellerBranding = pgTable('seller_branding', {
   instagram: text('instagram'),
   website: text('website'),
   description: text('description'),
+  paymentMethods: text('payment_methods'),
   updatedAt: timestamp('updated_at').defaultNow(),
 }, (table) => ({
   uniqueSeller: uniqueIndex('seller_branding_seller_unique').on(table.sellerId),

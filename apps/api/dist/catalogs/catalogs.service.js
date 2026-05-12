@@ -60,6 +60,26 @@ let CatalogsService = class CatalogsService {
             .returning();
         return catalog;
     }
+    async addProduct(sellerId, catalogId, productId) {
+        const [cat] = await this.db.select().from(db_1.catalogs).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.id, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogs.sellerId, sellerId))).limit(1);
+        if (!cat)
+            throw new common_1.NotFoundException('Catalog not found');
+        const [prod] = await this.db.select().from(db_1.products).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.products.id, productId), (0, drizzle_orm_1.eq)(db_1.products.sellerId, sellerId))).limit(1);
+        if (!prod)
+            throw new common_1.NotFoundException('Product not found');
+        const existing = await this.db.select().from(db_1.catalogProducts).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogProducts.catalogId, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogProducts.productId, productId))).limit(1);
+        if (existing.length)
+            return existing[0];
+        const [created] = await this.db.insert(db_1.catalogProducts).values({ catalogId, productId }).returning();
+        return created;
+    }
+    async removeProduct(sellerId, catalogId, productId) {
+        const [cat] = await this.db.select().from(db_1.catalogs).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.id, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogs.sellerId, sellerId))).limit(1);
+        if (!cat)
+            throw new common_1.NotFoundException('Catalog not found');
+        await this.db.delete(db_1.catalogProducts).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogProducts.catalogId, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogProducts.productId, productId)));
+        return { ok: true };
+    }
     async enqueuePdfRender(catalogId, sellerId) {
         return this.renderQueue.add('render-pdf', { catalogId, sellerId });
     }

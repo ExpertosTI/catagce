@@ -35,12 +35,28 @@ let ProductsService = class ProductsService {
             },
         });
     }
+    async resolveDefaultUom(sellerId) {
+        const existing = await this.db
+            .select()
+            .from(db_1.uoms)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.uoms.sellerId, sellerId), (0, drizzle_orm_1.eq)(db_1.uoms.symbol, 'un')))
+            .limit(1);
+        if (existing.length)
+            return existing[0].id;
+        const [created] = await this.db
+            .insert(db_1.uoms)
+            .values({ sellerId, name: 'Unidad', symbol: 'un', conversionFactor: '1.0000' })
+            .returning();
+        return created.id;
+    }
     async create(sellerId, data) {
+        const baseUomId = data.baseUomId ?? await this.resolveDefaultUom(sellerId);
         const [product] = await this.db
             .insert(db_1.products)
             .values({
             ...data,
             sellerId,
+            baseUomId,
             minOrderQuantity: data.minOrderQuantity || '1.0000',
             b2bPrice: data.b2bPrice || null,
         })

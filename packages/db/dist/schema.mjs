@@ -28,7 +28,7 @@ import {
   uomsRelations,
   warehouses,
   warehousesRelations
-} from "./chunk-FJF7DAOC.mjs";
+} from "./chunk-22MBQYEE.mjs";
 export {
   catalogProducts,
   catalogProductsRelations,

@@ -11,10 +11,8 @@ import {
 import { useEffect, useState, useCallback, useRef } from 'react';
 
 const getApiBase = () => {
-  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
-  const host = window.location.hostname;
-  if (host.includes('renace.tech')) return 'https://api.catagce.renace.tech';
-  return process.env.NEXT_PUBLIC_API_URL || 'https://api.catalogo.jhosuacomercial.com';
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_API_URL || 'https://api.catagce.renace.tech';
+  return 'https://api.catagce.renace.tech';
 };
 
 const API_BASE = getApiBase();
@@ -102,6 +100,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [selectedCatalog, setSelectedCatalog] = useState<any | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateProductOpen, setIsCreateProductOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const prevTabIndex = useRef(0);
@@ -206,6 +205,62 @@ export default function DashboardPage() {
       showToast('PROTOCOLO DE ACCESO VALIDADO');
     } catch {
       setLoginError('CREDENCIALES INVÁLIDAS. VERIFICA EMAIL Y PASSWORD.');
+    }
+  };
+
+  const handleCreateProduct = async (data: any) => {
+    try {
+      await fetchWithAuth('/products', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      setIsCreateProductOpen(false);
+      loadProducts();
+      showToast('PRODUCTO CREADO');
+    } catch {
+      showToast('ERROR AL CREAR PRODUCTO');
+    }
+  };
+
+  const handleAddProductToCatalog = async (catalogId: string, productId: string) => {
+    try {
+      await fetchWithAuth(`/catalogs/${catalogId}/products`, {
+        method: 'POST',
+        body: JSON.stringify({ productId }),
+      });
+      const data = await fetchWithAuth('/catalogs');
+      setCatalogs(data);
+      const refreshed = data.find((c: any) => c.id === catalogId);
+      if (refreshed) setSelectedCatalog(refreshed);
+      showToast('PRODUCTO AÑADIDO');
+    } catch {
+      showToast('ERROR AL AÑADIR PRODUCTO');
+    }
+  };
+
+  const handleRemoveProductFromCatalog = async (catalogId: string, productId: string) => {
+    try {
+      await fetchWithAuth(`/catalogs/${catalogId}/products/${productId}`, { method: 'DELETE' });
+      const data = await fetchWithAuth('/catalogs');
+      setCatalogs(data);
+      const refreshed = data.find((c: any) => c.id === catalogId);
+      if (refreshed) setSelectedCatalog(refreshed);
+      showToast('PRODUCTO ELIMINADO');
+    } catch {
+      showToast('ERROR AL ELIMINAR');
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      await fetchWithAuth(`/orders/${orderId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      loadOrders();
+      showToast(`PEDIDO ${status.toUpperCase()}`);
+    } catch {
+      showToast('ERROR AL ACTUALIZAR PEDIDO');
     }
   };
 
@@ -399,10 +454,11 @@ export default function DashboardPage() {
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
             {activeTab === 'home' && <HomeView products={products} loading={loading} color={primaryColor} onExportPdf={() => showToast('GENERANDO PDF...')} />}
-            {activeTab === 'products' && <ProductsView products={products} loading={loading} color={primaryColor} />}
+            {activeTab === 'products' && <ProductsView products={products} loading={loading} color={primaryColor} onCreate={() => setIsCreateProductOpen(true)} />}
             {activeTab === 'catalogs' && (
               <CatalogsView
                 catalogs={catalogs}
+                products={products}
                 loading={catalogLoading}
                 selected={selectedCatalog}
                 color={primaryColor}
@@ -411,9 +467,11 @@ export default function DashboardPage() {
                 onOrder={(slug: string) => window.open(`/order/${slug}`, '_blank')}
                 onShare={(slug: string) => copyToClipboard(`${window.location.origin}/order/${slug}`)}
                 onCreate={() => setIsCreateModalOpen(true)}
+                onAddProduct={handleAddProductToCatalog}
+                onRemoveProduct={handleRemoveProductFromCatalog}
               />
             )}
-            {activeTab === 'orders' && <OrdersView orders={orders} loading={ordersLoading} color={primaryColor} />}
+            {activeTab === 'orders' && <OrdersView orders={orders} loading={ordersLoading} color={primaryColor} onUpdateStatus={handleUpdateOrderStatus} />}
             {activeTab === 'settings' && (
               <SettingsView 
                 profile={profile} 
@@ -427,9 +485,16 @@ export default function DashboardPage() {
 
       <AnimatePresence>
         {isCreateModalOpen && (
-          <CreateCatalogModal 
-            onClose={() => setIsCreateModalOpen(false)} 
+          <CreateCatalogModal
+            onClose={() => setIsCreateModalOpen(false)}
             onSubmit={handleCreateCatalog}
+            color={primaryColor}
+          />
+        )}
+        {isCreateProductOpen && (
+          <CreateProductModal
+            onClose={() => setIsCreateProductOpen(false)}
+            onSubmit={handleCreateProduct}
             color={primaryColor}
           />
         )}
@@ -476,12 +541,21 @@ function HomeView({ products, loading, color, onExportPdf }: any) {
   );
 }
 
-function ProductsView({ products, loading, color }: any) {
+function ProductsView({ products, loading, color, onCreate }: any) {
   return (
     <div className="space-y-12">
       <div className="flex justify-between items-end">
         <h2 className="text-6xl font-bebas tracking-wide uppercase">GESTIÓN DE <span style={{ color }}>SKU</span></h2>
-        <span className="font-bebas text-2xl text-gray-700">{products.length} ITEMS</span>
+        <div className="flex items-center gap-6">
+          <span className="font-bebas text-2xl text-gray-700">{products.length} ITEMS</span>
+          <button
+            onClick={onCreate}
+            className="w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-110 transition-all shadow-[0_0_20px_rgba(0,209,255,0.4)]"
+            style={{ backgroundColor: color }}
+          >
+            <Plus className="w-8 h-8 text-black" />
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {loading
@@ -493,7 +567,10 @@ function ProductsView({ products, loading, color }: any) {
   );
 }
 
-function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder, onShare, onCreate, color }: any) {
+function CatalogsView({ catalogs, products, loading, selected, onSelect, onClose, onOrder, onShare, onCreate, onAddProduct, onRemoveProduct, color }: any) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const inCatalogIds = new Set((selected?.catalogProducts ?? []).map((cp: any) => cp.product?.id));
+  const available = (products ?? []).filter((p: any) => !inCatalogIds.has(p.id));
   return (
     <div className="space-y-12">
       <div className="flex justify-between items-end">
@@ -560,11 +637,24 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
                 </button>
               </header>
 
+              <div className="flex justify-between items-center mb-6">
+                <p className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest">{(selected.catalogProducts ?? []).length} PRODUCTOS EN ESTE CATÁLOGO</p>
+                <button onClick={() => setPickerOpen(true)} className="px-5 py-3 rounded-xl font-bebas text-sm tracking-widest uppercase flex items-center gap-2" style={{ backgroundColor: color, color: '#000' }}>
+                  <Plus className="w-4 h-4" /> AÑADIR PRODUCTO
+                </button>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {(selected.catalogProducts ?? []).map((cp: any) => (
-                  <div key={cp.id} className="glass rounded-[24px] overflow-hidden group">
+                  <div key={cp.id} className="glass rounded-[24px] overflow-hidden group relative">
                     <div className="aspect-square relative">
                       <img src={cp.product?.imageUrl ?? FALLBACK_IMG} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <button
+                        onClick={() => onRemoveProduct(selected.id, cp.product.id)}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Quitar del catálogo"
+                      >
+                        <X className="w-4 h-4 text-white" />
+                      </button>
                     </div>
                     <div className="p-4">
                       <p className="font-bebas text-lg tracking-wide uppercase truncate">{cp.product?.name}</p>
@@ -573,6 +663,35 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
                   </div>
                 ))}
               </div>
+
+              <AnimatePresence>
+                {pickerOpen && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center px-6">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setPickerOpen(false)} />
+                    <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="relative glass p-8 rounded-[32px] w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-3xl font-bebas tracking-widest uppercase">AÑADIR <span style={{ color }}>PRODUCTOS</span></h3>
+                        <button onClick={() => setPickerOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center"><X className="w-5 h-5" /></button>
+                      </div>
+                      {available.length === 0 ? (
+                        <p className="text-center font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest py-12">SIN PRODUCTOS DISPONIBLES PARA AÑADIR</p>
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {available.map((p: any) => (
+                            <button key={p.id} onClick={() => onAddProduct(selected.id, p.id)} className="glass p-4 rounded-2xl text-left hover:bg-white/10 transition-all">
+                              <div className="aspect-square mb-3 rounded-xl overflow-hidden bg-white/5">
+                                <img src={p.imageUrl || FALLBACK_IMG} className="w-full h-full object-cover" />
+                              </div>
+                              <p className="font-bebas text-sm tracking-wide uppercase truncate">{p.name}</p>
+                              <p className="font-rajdhani text-[10px] font-bold mt-1" style={{ color }}>${p.basePrice}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <div className="mt-20 flex flex-col md:flex-row gap-6">
                 <button
@@ -597,7 +716,7 @@ function CatalogsView({ catalogs, loading, selected, onSelect, onClose, onOrder,
   );
 }
 
-function OrdersView({ orders, loading, color }: any) {
+function OrdersView({ orders, loading, color, onUpdateStatus }: any) {
   return (
     <div className="space-y-12">
       <h2 className="text-6xl font-bebas tracking-wide uppercase">COLA DE <span style={{ color }}>PEDIDOS</span></h2>
@@ -643,9 +762,28 @@ function OrdersView({ orders, loading, color }: any) {
                 </div>
               </div>
 
-              <button className="px-8 py-3 glass border-white/10 rounded-xl font-bebas text-sm tracking-widest uppercase hover:bg-white hover:text-black transition-all">
-                DETALLES
-              </button>
+              <div className="flex gap-2">
+                {order.status === 'submitted' && (
+                  <>
+                    <button onClick={() => onUpdateStatus(order.id, 'confirmed')} className="px-5 py-3 rounded-xl font-bebas text-sm tracking-widest uppercase bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-black transition-all">
+                      CONFIRMAR
+                    </button>
+                    <button onClick={() => onUpdateStatus(order.id, 'rejected')} className="px-5 py-3 rounded-xl font-bebas text-sm tracking-widest uppercase bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-all">
+                      RECHAZAR
+                    </button>
+                  </>
+                )}
+                {order.status === 'confirmed' && (
+                  <button onClick={() => onUpdateStatus(order.id, 'shipped')} className="px-5 py-3 rounded-xl font-bebas text-sm tracking-widest uppercase bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white transition-all">
+                    MARCAR ENVIADO
+                  </button>
+                )}
+                {order.status === 'shipped' && (
+                  <button onClick={() => onUpdateStatus(order.id, 'delivered')} className="px-5 py-3 rounded-xl font-bebas text-sm tracking-widest uppercase bg-white/5 border border-white/10 hover:bg-white hover:text-black transition-all">
+                    ENTREGADO
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -666,9 +804,11 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
     instagram: '',
     website: '',
     description: '',
+    paymentMethods: '',
   });
 
-  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'branding' | 'security'>('profile');
+  const [paymentList, setPaymentList] = useState<Array<{ type: string; label: string; details: string }>>([]);
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'branding' | 'payments' | 'security'>('profile');
 
   useEffect(() => {
     if (profile) {
@@ -683,7 +823,14 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
         instagram: profile.branding?.instagram || '',
         website: profile.branding?.website || '',
         description: profile.branding?.description || '',
+        paymentMethods: profile.branding?.paymentMethods || '',
       });
+      try {
+        const parsed = profile.branding?.paymentMethods ? JSON.parse(profile.branding.paymentMethods) : [];
+        setPaymentList(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setPaymentList([]);
+      }
     }
   }, [profile]);
 
@@ -694,8 +841,12 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
 
   const handleSubmit = (e: any) => {
     e.preventDefault();
-    onUpdate(formData);
+    onUpdate({ ...formData, paymentMethods: JSON.stringify(paymentList) });
   };
+
+  const addPayment = () => setPaymentList((p) => [...p, { type: 'bank', label: '', details: '' }]);
+  const updatePayment = (i: number, key: string, val: string) => setPaymentList((p) => p.map((it, idx) => idx === i ? { ...it, [key]: val } : it));
+  const removePayment = (i: number) => setPaymentList((p) => p.filter((_, idx) => idx !== i));
 
   const primaryColor = profile?.branding?.primaryColor || "#00D1FF";
 
@@ -704,7 +855,7 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
       <div className="flex justify-between items-end">
         <h2 className="text-6xl font-bebas tracking-wide uppercase">CONFIG <span style={{ color: primaryColor }}>CORE</span></h2>
         <div className="flex gap-4 glass p-2 rounded-2xl">
-          {(['profile', 'branding', 'security'] as const).map((t) => (
+          {(['profile', 'branding', 'payments', 'security'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setActiveSubTab(t)}
@@ -712,7 +863,7 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
                 activeSubTab === t ? 'bg-white text-black shadow-xl' : 'text-gray-500 hover:text-white'
               }`}
             >
-              {t === 'profile' ? 'PERFIL' : t === 'branding' ? 'DISEÑO' : 'SEGURIDAD'}
+              {t === 'profile' ? 'PERFIL' : t === 'branding' ? 'DISEÑO' : t === 'payments' ? 'PAGOS' : 'SEGURIDAD'}
             </button>
           ))}
         </div>
@@ -802,6 +953,41 @@ function SettingsView({ profile, onUpdate, onLogout }: any) {
               </div>
             )}
 
+            {activeSubTab === 'payments' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bebas text-2xl tracking-wide uppercase">MÉTODOS DE PAGO ACEPTADOS</p>
+                    <p className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest">SE MUESTRAN AL COMPRADOR EN LA VISTA PÚBLICA</p>
+                  </div>
+                  <button type="button" onClick={addPayment} className="px-5 py-3 rounded-xl font-bebas text-sm tracking-widest uppercase flex items-center gap-2" style={{ backgroundColor: primaryColor, color: '#000' }}>
+                    <Plus className="w-4 h-4" /> AÑADIR
+                  </button>
+                </div>
+                {paymentList.length === 0 && (
+                  <div className="p-6 bg-white/5 border border-white/10 rounded-2xl text-center">
+                    <p className="font-rajdhani text-[10px] font-bold text-gray-500 uppercase tracking-widest">SIN MÉTODOS DE PAGO. AÑADE AL MENOS UNO.</p>
+                  </div>
+                )}
+                {paymentList.map((p, i) => (
+                  <div key={i} className="p-5 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <select value={p.type} onChange={(e) => updatePayment(i, 'type', e.target.value)} className="h-12 bg-white/5 border border-white/10 rounded-xl px-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none">
+                        <option value="bank">TRANSFERENCIA BANCARIA</option>
+                        <option value="cash">EFECTIVO / CONTRA ENTREGA</option>
+                        <option value="paypal">PAYPAL</option>
+                        <option value="zelle">ZELLE</option>
+                        <option value="other">OTRO</option>
+                      </select>
+                      <input value={p.label} onChange={(e) => updatePayment(i, 'label', e.target.value)} placeholder="ETIQUETA (EJ: BANRESERVAS)" className="h-12 bg-white/5 border border-white/10 rounded-xl px-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" />
+                    </div>
+                    <textarea value={p.details} onChange={(e) => updatePayment(i, 'details', e.target.value)} placeholder="DETALLES (NÚMERO DE CUENTA, INSTRUCCIONES, ETC)" className="w-full h-20 bg-white/5 border border-white/10 rounded-xl p-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none resize-none" />
+                    <button type="button" onClick={() => removePayment(i)} className="text-red-400 font-rajdhani text-[10px] font-bold uppercase tracking-widest hover:text-red-300">ELIMINAR</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {activeSubTab === 'security' && (
               <div className="space-y-6">
                 <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-2xl">
@@ -867,6 +1053,73 @@ function ProductCard({ product, color }: { product: any; color: string }) {
 
 function SkeletonCard() {
   return <div className="aspect-[3/4] glass rounded-[32px] animate-pulse" />;
+}
+
+function CreateProductModal({ onClose, onSubmit, color }: any) {
+  const [name, setName] = useState('');
+  const [sku, setSku] = useState('');
+  const [basePrice, setBasePrice] = useState('');
+  const [b2bPrice, setB2bPrice] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    if (!name.trim() || !basePrice) return;
+    setSubmitting(true);
+    await onSubmit({
+      name: name.trim(),
+      sku: sku.trim() || null,
+      basePrice,
+      b2bPrice: b2bPrice || null,
+      imageUrl: imageUrl.trim() || null,
+      description: description.trim() || null,
+    });
+    setSubmitting(false);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center px-6">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
+      <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative glass p-10 rounded-[40px] w-full max-w-xl space-y-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-4xl font-bebas tracking-widest uppercase">NUEVO <span style={{ color }}>PRODUCTO</span></h3>
+        <div className="space-y-4">
+          <div>
+            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">NOMBRE *</label>
+            <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={name} onChange={(e) => setName(e.target.value)} placeholder="EJ: CAMISETA NEGRA" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">SKU</label>
+              <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU-001" />
+            </div>
+            <div>
+              <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">PRECIO BASE *</label>
+              <input type="number" step="0.01" className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} placeholder="0.00" />
+            </div>
+          </div>
+          <div>
+            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">PRECIO B2B (OPCIONAL)</label>
+            <input type="number" step="0.01" className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={b2bPrice} onChange={(e) => setB2bPrice(e.target.value)} placeholder="0.00" />
+          </div>
+          <div>
+            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">URL IMAGEN</label>
+            <input className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
+          </div>
+          <div>
+            <label className="font-rajdhani text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">DESCRIPCIÓN</label>
+            <textarea className="w-full h-24 bg-white/5 border border-white/10 rounded-2xl p-4 font-rajdhani text-sm text-white focus:border-[#00D1FF] outline-none resize-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalles del producto..." />
+          </div>
+        </div>
+        <div className="flex gap-4 pt-2">
+          <button onClick={onClose} disabled={submitting} className="flex-1 py-5 glass border-white/10 rounded-2xl font-bebas text-xl tracking-widest uppercase">CANCELAR</button>
+          <button onClick={submit} disabled={submitting || !name.trim() || !basePrice} className="flex-1 py-5 text-black rounded-2xl font-bebas text-xl tracking-widest uppercase disabled:opacity-40" style={{ backgroundColor: color }}>
+            {submitting ? 'CREANDO...' : 'CREAR'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 }
 
 function CreateCatalogModal({ onClose, onSubmit, color }: any) {

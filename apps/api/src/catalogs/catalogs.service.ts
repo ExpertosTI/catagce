@@ -1,6 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DRIZZLE } from '../database/database.module';
-import { catalogs } from '@catagce/db';
+import { catalogs, catalogProducts, products } from '@catagce/db';
 import { and, eq } from 'drizzle-orm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -49,6 +49,24 @@ export class CatalogsService {
       .values({ ...data, sellerId })
       .returning();
     return catalog;
+  }
+
+  async addProduct(sellerId: string, catalogId: string, productId: string) {
+    const [cat] = await this.db.select().from(catalogs).where(and(eq(catalogs.id, catalogId), eq(catalogs.sellerId, sellerId))).limit(1);
+    if (!cat) throw new NotFoundException('Catalog not found');
+    const [prod] = await this.db.select().from(products).where(and(eq(products.id, productId), eq(products.sellerId, sellerId))).limit(1);
+    if (!prod) throw new NotFoundException('Product not found');
+    const existing = await this.db.select().from(catalogProducts).where(and(eq(catalogProducts.catalogId, catalogId), eq(catalogProducts.productId, productId))).limit(1);
+    if (existing.length) return existing[0];
+    const [created] = await this.db.insert(catalogProducts).values({ catalogId, productId }).returning();
+    return created;
+  }
+
+  async removeProduct(sellerId: string, catalogId: string, productId: string) {
+    const [cat] = await this.db.select().from(catalogs).where(and(eq(catalogs.id, catalogId), eq(catalogs.sellerId, sellerId))).limit(1);
+    if (!cat) throw new NotFoundException('Catalog not found');
+    await this.db.delete(catalogProducts).where(and(eq(catalogProducts.catalogId, catalogId), eq(catalogProducts.productId, productId)));
+    return { ok: true };
   }
 
   async enqueuePdfRender(catalogId: string, sellerId: string) {
