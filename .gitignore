@@ -6,4 +6,5 @@ node_modules/
 *.log
 .DS_Store
 node_modules/.pnpm/@next+swc-darwin-arm64*
-node_modules/.pnpm/@next+swc-darwin-arm64*
+.claude/
+.aider*
