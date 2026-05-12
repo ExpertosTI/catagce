@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.30.0",
-    "postgres": "^3.4.0"
+    "postgres": "^3.4.0",
+    "drizzle-kit": "^0.20.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@catagce/typescript-config": "workspace:*",

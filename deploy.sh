@@ -52,11 +52,13 @@ docker compose build notifications
 
 
 # ── Database Sync (Drizzle Push) ──────────────────────────────────────────────
-echo "🗄️  Syncing database schema..."
-# Extraemos el node_modules de las dependencias preparadas para correr drizzle-kit
-tar -xzf deps.tar.gz node_modules/@catagce/db node_modules/drizzle-kit node_modules/typescript node_modules/dotenv 2>/dev/null || true
-export DATABASE_URL="${DATABASE_URL}"
-npx drizzle-kit push:pg --config=packages/db/drizzle.config.ts || echo "⚠️  DB Sync had warnings, continuing..."
+echo "🗄️  Syncing database schema via Docker..."
+# Usamos la imagen de la API recién construida para correr la migración
+docker run --rm \
+  --network RenaceNet \
+  -e DATABASE_URL="${DATABASE_URL}" \
+  catagce-api:latest \
+  npx drizzle-kit push:pg --config=packages/db/drizzle.config.ts || echo "⚠️  DB Sync had warnings, continuing..."
 
 # ── Deploy ────────────────────────────────────────────────────────────────────
 echo "🚢 Deploying stack '$STACK_NAME'..."
