@@ -35,6 +35,7 @@ __export(index_exports, {
   catalogs: () => catalogs,
   catalogsRelations: () => catalogsRelations,
   createClient: () => createClient,
+  createPostgresClient: () => createPostgresClient,
   movementTypeEnum: () => movementTypeEnum,
   orderItems: () => orderItems,
   orderItemsRelations: () => orderItemsRelations,
@@ -350,10 +351,21 @@ var orderItemsRelations = (0, import_drizzle_orm.relations)(orderItems, ({ one }
 }));
 
 // src/index.ts
-var createClient = (connectionString) => {
-  const client = (0, import_postgres.default)(connectionString);
-  return (0, import_postgres_js.drizzle)(client, { schema: schema_exports });
-};
+function createPostgresClient(connectionString, opts = {}) {
+  return (0, import_postgres.default)(connectionString, {
+    max: opts.max ?? 20,
+    connect_timeout: opts.connectTimeout ?? 10,
+    idle_timeout: opts.idleTimeout ?? 30,
+    prepare: opts.disablePreparedStatements ? false : true,
+    ssl: connectionString.includes("sslmode=require") ? "require" : void 0,
+    onnotice: () => {
+    }
+  });
+}
+function createClient(connectionString, opts) {
+  const client = createPostgresClient(connectionString, opts);
+  return (0, import_postgres_js.drizzle)(client, { schema: schema_exports, logger: process.env.DB_LOG === "1" });
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   catalogProducts,
@@ -361,6 +373,7 @@ var createClient = (connectionString) => {
   catalogs,
   catalogsRelations,
   createClient,
+  createPostgresClient,
   movementTypeEnum,
   orderItems,
   orderItemsRelations,

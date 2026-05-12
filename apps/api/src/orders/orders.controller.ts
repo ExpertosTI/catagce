@@ -1,44 +1,49 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { OrdersService } from './orders.service';
 import { SubmitPublicOrderDto } from './dto/submit-public-order.dto';
+import { UpdateOrderStatusDto } from './dto/update-status.dto';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('orders')
+@UseGuards(JwtAuthGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // Seller: view own orders
   @Get()
-  @UseGuards(JwtAuthGuard)
   findAll(@CurrentUser() user: UserPayload) {
     return this.ordersService.findAll(user.sellerId);
   }
 
-  // Seller: confirm / reject / update status
+  @Get(':id')
+  findOne(@CurrentUser() user: UserPayload, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.ordersService.findOne(user.sellerId, id);
+  }
+
   @Patch(':id/status')
-  @UseGuards(JwtAuthGuard)
   updateStatus(
     @CurrentUser() user: UserPayload,
-    @Param('id') id: string,
-    @Body('status') status: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateOrderStatusDto,
   ) {
-    return this.ordersService.updateStatus(id, user.sellerId, status);
+    return this.ordersService.updateStatus(id, user.sellerId, dto.status);
   }
 }
 
-// Public buyer endpoint — separate controller prefix so it cannot be confused
-// with seller-authenticated order management
 @Controller('public/orders')
 export class PublicOrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  /**
-   * Zero-login order submission from buyer.
-   * Rate-limited to 20 req/min per IP to prevent flooding.
-   * unitPrice is resolved server-side from catalog snapshot — never trusted from client.
-   */
   @Throttle({ default: { ttl: 60_000, limit: 20 } })
   @Post()
   submit(@Body() body: SubmitPublicOrderDto) {

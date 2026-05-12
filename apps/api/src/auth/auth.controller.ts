@@ -1,26 +1,21 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { LoginDto, RegisterDto } from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  /** 5 intentos por minuto por IP — previene brute-force */
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
-  async login(@Body() loginDto: any) {
-    if (loginDto.email && loginDto.password) {
-      return this.authService.loginWithEmail(loginDto.email, loginDto.password);
-    }
-    if (loginDto.slug) {
-      return this.authService.loginWithSlug(loginDto.slug.trim());
-    }
-    throw new BadRequestException('Credentials are required');
+  async login(@Body() dto: LoginDto) {
+    return this.authService.loginWithEmail(dto.email, dto.password);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   @Post('register')
-  async register(@Body() registerDto: any) {
-    return this.authService.register(registerDto);
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
   }
 }

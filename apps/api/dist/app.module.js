@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const throttler_1 = require("@nestjs/throttler");
+const bullmq_1 = require("@nestjs/bullmq");
 const health_controller_1 = require("./health.controller");
 const database_module_1 = require("./database/database.module");
 const auth_module_1 = require("./auth/auth.module");
@@ -16,14 +17,13 @@ const products_module_1 = require("./products/products.module");
 const catalogs_module_1 = require("./catalogs/catalogs.module");
 const orders_module_1 = require("./orders/orders.module");
 const sellers_module_1 = require("./sellers/sellers.module");
-const bullmq_1 = require("@nestjs/bullmq");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            throttler_1.ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]),
+            throttler_1.ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
             database_module_1.DatabaseModule,
             auth_module_1.AuthModule,
             products_module_1.ProductsModule,
@@ -32,8 +32,15 @@ exports.AppModule = AppModule = __decorate([
             sellers_module_1.SellersModule,
             bullmq_1.BullModule.forRoot({
                 connection: {
-                    host: process.env.REDIS_HOST ?? 'localhost',
-                    port: parseInt(process.env.REDIS_PORT ?? '6379'),
+                    host: process.env.REDIS_HOST ?? 'redis',
+                    port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+                    password: process.env.REDIS_PASSWORD || undefined,
+                },
+                defaultJobOptions: {
+                    attempts: 3,
+                    backoff: { type: 'exponential', delay: 2000 },
+                    removeOnComplete: 100,
+                    removeOnFail: 500,
                 },
             }),
         ],

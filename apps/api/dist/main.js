@@ -13,12 +13,15 @@ async function bootstrap() {
     if (!jwtSecret || jwtSecret.length < 32) {
         throw new Error('JWT_SECRET must be set and at least 32 characters long');
     }
+    if (!process.env.DATABASE_URL) {
+        throw new Error('DATABASE_URL is not defined');
+    }
     const app = await core_1.NestFactory.create(app_module_1.AppModule, {
         logger: ['error', 'warn', 'log'],
     });
     app.use((0, helmet_1.default)({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
     app.setGlobalPrefix('api');
-    const origins = process.env.CORS_ORIGIN?.split(',').map((s) => s.trim()).filter(Boolean) ?? [
+    const origins = (process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN)?.split(',').map((s) => s.trim()).filter(Boolean) ?? [
         'https://catagce.renace.tech',
         'http://localhost:3001',
     ];
@@ -39,6 +42,7 @@ async function bootstrap() {
         whitelist: true,
         forbidNonWhitelisted: false,
         transform: true,
+        transformOptions: { enableImplicitConversion: true },
     }));
     app.useGlobalFilters(new all_exceptions_filter_1.AllExceptionsFilter());
     app.enableShutdownHooks();

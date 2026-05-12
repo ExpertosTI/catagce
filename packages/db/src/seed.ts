@@ -1,81 +1,119 @@
-import { createClient } from './index';
-import { sellers, products, stockLevels, uoms, warehouses } from './schema';
+/**
+ * Development-only seed. Idempotent: re-running won't duplicate rows.
+ * Refuses to run when NODE_ENV === 'production' unless SEED_FORCE=1.
+ *
+ * Usage:
+ *   pnpm --filter @catagce/db seed
+ */
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgres://catagce:catagce@localhost:5432/catagce';
+import { createClient } from './index';
+import { products, sellers, sellerBranding, stockLevels, uoms, warehouses } from './schema';
+import { eq } from 'drizzle-orm';
+
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL is not set');
+  process.exit(1);
+}
+
+if (process.env.NODE_ENV === 'production' && process.env.SEED_FORCE !== '1') {
+  console.error('Refusing to seed a production database. Set SEED_FORCE=1 to override.');
+  process.exit(1);
+}
+
+const SEED_SLUG = process.env.SEED_SLUG || 'demo';
+const SEED_NAME = process.env.SEED_NAME || 'Demo Comercio';
+const SEED_EMAIL = process.env.SEED_EMAIL || 'demo@catagce.local';
 
 async function seed() {
-  console.log('🌱 Iniciando Seeding de Catagce...');
-  const db = createClient(DATABASE_URL);
+  console.log(`Seeding database with demo seller "${SEED_SLUG}"…`);
+  const db = createClient(DATABASE_URL!);
 
-  // 1. Crear un Vendedor Demo
-  console.log('🏢 Creando vendedor demo...');
-  const [demoSeller] = await db.insert(sellers).values({
-    name: 'Renace Tech Demo',
-    slug: 'renace-demo',
-  }).returning();
+  let [seller] = await db.select().from(sellers).where(eq(sellers.slug, SEED_SLUG)).limit(1);
+  if (!seller) {
+    [seller] = await db
+      .insert(sellers)
+      .values({
+        name: SEED_NAME,
+        slug: SEED_SLUG,
+        email: SEED_EMAIL,
+        role: 'seller',
+        status: 'active',
+      })
+      .returning();
+    await db
+      .insert(sellerBranding)
+      .values({
+        sellerId: seller.id,
+        primaryColor: '#FACD01',
+        accentColor: '#000000',
+      })
+      .onConflictDoNothing();
+    console.log(`Created seller ${seller.id}`);
+  } else {
+    console.log(`Seller already exists: ${seller.id}`);
+  }
 
-  // 2. Crear UOMs básicos
-  console.log('📏 Creando unidades de medida...');
-  const [unitUom] = await db.insert(uoms).values({
-    sellerId: demoSeller.id,
-    name: 'Unidad',
-    symbol: 'un',
-    conversionFactor: '1.0000',
-  }).returning();
+  let [unit] = await db
+    .select()
+    .from(uoms)
+    .where(eq(uoms.sellerId, seller.id))
+    .limit(1);
+  if (!unit) {
+    [unit] = await db
+      .insert(uoms)
+      .values({ sellerId: seller.id, name: 'Unidad', symbol: 'un', conversionFactor: '1.0000' })
+      .returning();
+  }
 
-  // 3. Crear Almacén
-  console.log('📦 Creando almacén principal...');
-  const [mainWarehouse] = await db.insert(warehouses).values({
-    sellerId: demoSeller.id,
-    name: 'Almacén Central',
-    isDefault: true,
-  }).returning();
+  let [warehouse] = await db
+    .select()
+    .from(warehouses)
+    .where(eq(warehouses.sellerId, seller.id))
+    .limit(1);
+  if (!warehouse) {
+    [warehouse] = await db
+      .insert(warehouses)
+      .values({ sellerId: seller.id, name: 'Almacén Principal', isDefault: true })
+      .returning();
+  }
 
-  // 4. Crear Productos
-  console.log('👟 Creando productos...');
-  const [p1] = await db.insert(products).values({
-    sellerId: demoSeller.id,
-    name: 'Tenis Urbanos - Teal',
-    description: 'Calzado premium para estilo urbano',
-    basePrice: '99.99',
-    baseUomId: unitUom.id,
-    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400&auto=format&fit=crop',
-  }).returning();
+  const existingProducts = await db.select().from(products).where(eq(products.sellerId, seller.id));
+  if (existingProducts.length === 0) {
+    const [p1] = await db
+      .insert(products)
+      .values({
+        sellerId: seller.id,
+        name: 'Producto Ejemplo A',
+        description: 'Descripción de ejemplo del producto A.',
+        basePrice: '19.99',
+        baseUomId: unit.id,
+      })
+      .returning();
+    const [p2] = await db
+      .insert(products)
+      .values({
+        sellerId: seller.id,
+        name: 'Producto Ejemplo B',
+        description: 'Descripción de ejemplo del producto B.',
+        basePrice: '49.50',
+        baseUomId: unit.id,
+      })
+      .returning();
+    await db.insert(stockLevels).values([
+      { sellerId: seller.id, warehouseId: warehouse.id, productId: p1.id, onHandBase: '100.0000' },
+      { sellerId: seller.id, warehouseId: warehouse.id, productId: p2.id, onHandBase: '50.0000' },
+    ]);
+    console.log('Created 2 example products with stock.');
+  }
 
-  const [p2] = await db.insert(products).values({
-    sellerId: demoSeller.id,
-    name: 'Sudadera Premium - Gris',
-    description: 'Sudadera de algodón orgánico',
-    basePrice: '149.50',
-    baseUomId: unitUom.id,
-    imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=400&auto=format&fit=crop',
-  }).returning();
-
-  // 5. Agregar Stock
-  console.log('📊 Agregando niveles de stock...');
-  await db.insert(stockLevels).values([
-    {
-      sellerId: demoSeller.id,
-      warehouseId: mainWarehouse.id,
-      productId: p1.id,
-      onHandBase: '1200.0000',
-    },
-    {
-      sellerId: demoSeller.id,
-      warehouseId: mainWarehouse.id,
-      productId: p2.id,
-      onHandBase: '550.0000',
-    }
-  ]);
-
-  console.log('✅ Seeding completado exitosamente.');
-  console.log(`🚀 Seller ID: ${demoSeller.id}`);
+  console.log('Seed finished.');
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error('❌ Error durante el seeding:', err);
+  console.error('Seed failed:', err);
   process.exit(1);
 });

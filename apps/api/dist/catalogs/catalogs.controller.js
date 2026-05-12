@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const catalogs_service_1 = require("./catalogs.service");
 const user_decorator_1 = require("../common/decorators/user.decorator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const catalogs_dto_1 = require("./dto/catalogs.dto");
 let CatalogsController = class CatalogsController {
     catalogsService;
     constructor(catalogsService) {
@@ -25,16 +26,19 @@ let CatalogsController = class CatalogsController {
     findAll(user) {
         return this.catalogsService.findAll(user.sellerId);
     }
-    create(user, createCatalogDto) {
-        return this.catalogsService.create(user.sellerId, createCatalogDto);
+    create(user, dto) {
+        return this.catalogsService.create(user.sellerId, dto);
     }
-    addProduct(user, id, productId) {
-        return this.catalogsService.addProduct(user.sellerId, id, productId);
+    addProduct(user, id, dto) {
+        return this.catalogsService.addProduct(user.sellerId, id, dto.productId);
     }
     removeProduct(user, id, productId) {
         return this.catalogsService.removeProduct(user.sellerId, id, productId);
     }
-    // Public endpoint — no auth required; resolved via slug only
+    enqueueRender(user, id) {
+        return this.catalogsService.enqueuePdfRender(user.sellerId, id);
+    }
+    /** Public buyer endpoint — resolved via slug only, never authenticated. */
     findBySlug(slug) {
         return this.catalogsService.findBySlug(slug);
     }
@@ -54,29 +58,38 @@ __decorate([
     __param(0, (0, user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, catalogs_dto_1.CreateCatalogDto]),
     __metadata("design:returntype", void 0)
 ], CatalogsController.prototype, "create", null);
 __decorate([
     (0, common_1.Post)(':id/products'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, user_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Param)('id')),
-    __param(2, (0, common_1.Body)('productId')),
+    __param(1, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:paramtypes", [Object, String, catalogs_dto_1.AddProductToCatalogDto]),
     __metadata("design:returntype", void 0)
 ], CatalogsController.prototype, "addProduct", null);
 __decorate([
     (0, common_1.Delete)(':id/products/:productId'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, user_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Param)('id')),
-    __param(2, (0, common_1.Param)('productId')),
+    __param(1, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __param(2, (0, common_1.Param)('productId', new common_1.ParseUUIDPipe())),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
 ], CatalogsController.prototype, "removeProduct", null);
+__decorate([
+    (0, common_1.Post)(':id/render'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], CatalogsController.prototype, "enqueueRender", null);
 __decorate([
     (0, common_1.Get)(':slug'),
     __param(0, (0, common_1.Param)('slug')),

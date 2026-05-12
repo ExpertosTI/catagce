@@ -1,7 +1,17 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CatalogsService } from './catalogs.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AddProductToCatalogDto, CreateCatalogDto } from './dto/catalogs.dto';
 
 @Controller('catalogs')
 export class CatalogsController {
@@ -15,31 +25,40 @@ export class CatalogsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@CurrentUser() user: UserPayload, @Body() createCatalogDto: any) {
-    return this.catalogsService.create(user.sellerId, createCatalogDto);
+  create(@CurrentUser() user: UserPayload, @Body() dto: CreateCatalogDto) {
+    return this.catalogsService.create(user.sellerId, dto);
   }
 
   @Post(':id/products')
   @UseGuards(JwtAuthGuard)
   addProduct(
     @CurrentUser() user: UserPayload,
-    @Param('id') id: string,
-    @Body('productId') productId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: AddProductToCatalogDto,
   ) {
-    return this.catalogsService.addProduct(user.sellerId, id, productId);
+    return this.catalogsService.addProduct(user.sellerId, id, dto.productId);
   }
 
   @Delete(':id/products/:productId')
   @UseGuards(JwtAuthGuard)
   removeProduct(
     @CurrentUser() user: UserPayload,
-    @Param('id') id: string,
-    @Param('productId') productId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('productId', new ParseUUIDPipe()) productId: string,
   ) {
     return this.catalogsService.removeProduct(user.sellerId, id, productId);
   }
 
-  // Public endpoint — no auth required; resolved via slug only
+  @Post(':id/render')
+  @UseGuards(JwtAuthGuard)
+  enqueueRender(
+    @CurrentUser() user: UserPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.catalogsService.enqueuePdfRender(user.sellerId, id);
+  }
+
+  /** Public buyer endpoint — resolved via slug only, never authenticated. */
   @Get(':slug')
   findBySlug(@Param('slug') slug: string) {
     return this.catalogsService.findBySlug(slug);

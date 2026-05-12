@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var CatalogsService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CatalogsService = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,9 +20,10 @@ const db_1 = require("@catagce/db");
 const drizzle_orm_1 = require("drizzle-orm");
 const bullmq_1 = require("@nestjs/bullmq");
 const bullmq_2 = require("bullmq");
-let CatalogsService = class CatalogsService {
+let CatalogsService = CatalogsService_1 = class CatalogsService {
     db;
     renderQueue;
+    logger = new common_1.Logger(CatalogsService_1.name);
     constructor(db, renderQueue) {
         this.db = db;
         this.renderQueue = renderQueue;
@@ -34,58 +36,101 @@ let CatalogsService = class CatalogsService {
                     with: { product: true },
                 },
             },
+            orderBy: (c, { desc }) => [desc(c.createdAt)],
         });
     }
     async findBySlug(slug) {
+        if (!slug || slug.length < 2)
+            throw new common_1.BadRequestException('slug requerido');
         const catalog = await this.db.query.catalogs.findFirst({
             where: (0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.slug, slug), (0, drizzle_orm_1.eq)(db_1.catalogs.isActive, true)),
             with: {
                 catalogProducts: {
                     with: { product: true },
                 },
-                seller: {
-                    with: { branding: true }
-                }
+                seller: { with: { branding: true } },
             },
         });
-        if (!catalog) {
+        if (!catalog)
             throw new common_1.NotFoundException('Catalog not found');
-        }
         return catalog;
     }
     async create(sellerId, data) {
-        const [catalog] = await this.db
+        // Catalog slugs are globally unique — pre-check for a friendlier error.
+        const [existing] = await this.db
+            .select({ id: db_1.catalogs.id })
+            .from(db_1.catalogs)
+            .where((0, drizzle_orm_1.eq)(db_1.catalogs.slug, data.slug))
+            .limit(1);
+        if (existing)
+            throw new common_1.BadRequestException('Ya existe un catálogo con ese slug');
+        const [created] = await this.db
             .insert(db_1.catalogs)
-            .values({ ...data, sellerId })
+            .values({
+            sellerId,
+            name: data.name,
+            slug: data.slug,
+            description: data.description ?? null,
+            isActive: data.isActive ?? true,
+        })
             .returning();
-        return catalog;
+        return created;
     }
     async addProduct(sellerId, catalogId, productId) {
-        const [cat] = await this.db.select().from(db_1.catalogs).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.id, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogs.sellerId, sellerId))).limit(1);
+        const [cat] = await this.db
+            .select()
+            .from(db_1.catalogs)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.id, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogs.sellerId, sellerId)))
+            .limit(1);
         if (!cat)
             throw new common_1.NotFoundException('Catalog not found');
-        const [prod] = await this.db.select().from(db_1.products).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.products.id, productId), (0, drizzle_orm_1.eq)(db_1.products.sellerId, sellerId))).limit(1);
+        const [prod] = await this.db
+            .select()
+            .from(db_1.products)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.products.id, productId), (0, drizzle_orm_1.eq)(db_1.products.sellerId, sellerId)))
+            .limit(1);
         if (!prod)
             throw new common_1.NotFoundException('Product not found');
-        const existing = await this.db.select().from(db_1.catalogProducts).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogProducts.catalogId, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogProducts.productId, productId))).limit(1);
+        const existing = await this.db
+            .select()
+            .from(db_1.catalogProducts)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogProducts.catalogId, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogProducts.productId, productId)))
+            .limit(1);
         if (existing.length)
             return existing[0];
-        const [created] = await this.db.insert(db_1.catalogProducts).values({ catalogId, productId }).returning();
+        const [created] = await this.db
+            .insert(db_1.catalogProducts)
+            .values({ catalogId, productId })
+            .returning();
         return created;
     }
     async removeProduct(sellerId, catalogId, productId) {
-        const [cat] = await this.db.select().from(db_1.catalogs).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.id, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogs.sellerId, sellerId))).limit(1);
+        const [cat] = await this.db
+            .select()
+            .from(db_1.catalogs)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.id, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogs.sellerId, sellerId)))
+            .limit(1);
         if (!cat)
             throw new common_1.NotFoundException('Catalog not found');
-        await this.db.delete(db_1.catalogProducts).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogProducts.catalogId, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogProducts.productId, productId)));
+        await this.db
+            .delete(db_1.catalogProducts)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogProducts.catalogId, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogProducts.productId, productId)));
         return { ok: true };
     }
-    async enqueuePdfRender(catalogId, sellerId) {
-        return this.renderQueue.add('render-pdf', { catalogId, sellerId });
+    async enqueuePdfRender(sellerId, catalogId) {
+        const [cat] = await this.db
+            .select()
+            .from(db_1.catalogs)
+            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.catalogs.id, catalogId), (0, drizzle_orm_1.eq)(db_1.catalogs.sellerId, sellerId)))
+            .limit(1);
+        if (!cat)
+            throw new common_1.NotFoundException('Catalog not found');
+        const job = await this.renderQueue.add('render-pdf', { catalogId, sellerId }, { attempts: 3, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: 50, removeOnFail: 200 });
+        return { jobId: job.id, status: 'queued' };
     }
 };
 exports.CatalogsService = CatalogsService;
-exports.CatalogsService = CatalogsService = __decorate([
+exports.CatalogsService = CatalogsService = CatalogsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)(database_module_1.DRIZZLE)),
     __param(1, (0, bullmq_1.InjectQueue)('catalog-render')),

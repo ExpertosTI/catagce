@@ -16,23 +16,17 @@ exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const throttler_1 = require("@nestjs/throttler");
 const auth_service_1 = require("./auth.service");
+const auth_dto_1 = require("./dto/auth.dto");
 let AuthController = class AuthController {
     authService;
     constructor(authService) {
         this.authService = authService;
     }
-    /** 5 intentos por minuto por IP — previene brute-force */
-    async login(loginDto) {
-        if (loginDto.email && loginDto.password) {
-            return this.authService.loginWithEmail(loginDto.email, loginDto.password);
-        }
-        if (loginDto.slug) {
-            return this.authService.loginWithSlug(loginDto.slug.trim());
-        }
-        throw new common_1.BadRequestException('Credentials are required');
+    async login(dto) {
+        return this.authService.loginWithEmail(dto.email, dto.password);
     }
-    async register(registerDto) {
-        return this.authService.register(registerDto);
+    async register(dto) {
+        return this.authService.register(dto);
     }
 };
 exports.AuthController = AuthController;
@@ -41,14 +35,15 @@ __decorate([
     (0, common_1.Post)('login'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [auth_dto_1.LoginDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
+    (0, throttler_1.Throttle)({ default: { ttl: 60_000, limit: 3 } }),
     (0, common_1.Post)('register'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [auth_dto_1.RegisterDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
 exports.AuthController = AuthController = __decorate([

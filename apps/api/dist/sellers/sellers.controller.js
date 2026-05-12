@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const sellers_service_1 = require("./sellers.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const user_decorator_1 = require("../common/decorators/user.decorator");
+const sellers_dto_1 = require("./dto/sellers.dto");
 let SellersController = class SellersController {
     sellersService;
     constructor(sellersService) {
@@ -31,14 +32,13 @@ let SellersController = class SellersController {
     getProfile(user) {
         return this.sellersService.getProfile(user.sellerId);
     }
-    updateBranding(user, body) {
-        return this.sellersService.updateBranding(user.sellerId, body);
+    updateBranding(user, dto) {
+        return this.sellersService.updateBranding(user.sellerId, dto);
     }
 };
 exports.SellersController = SellersController;
 __decorate([
     (0, common_1.Get)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -46,7 +46,6 @@ __decorate([
 ], SellersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('profile'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -54,14 +53,14 @@ __decorate([
 ], SellersController.prototype, "getProfile", null);
 __decorate([
     (0, common_1.Patch)('branding'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, sellers_dto_1.UpdateBrandingDto]),
     __metadata("design:returntype", void 0)
 ], SellersController.prototype, "updateBranding", null);
 exports.SellersController = SellersController = __decorate([
     (0, common_1.Controller)('sellers'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [sellers_service_1.SellersService])
 ], SellersController);

@@ -1,10 +1,22 @@
-import { Injectable, Inject, UnauthorizedException, BadRequestException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  UnauthorizedException,
+  BadRequestException,
+  ConflictException,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DRIZZLE } from '../database/database.module';
 import { sellers, sellerBranding } from '@catagce/db';
-import { eq, or, sql } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
+import * as bcrypt from 'bcryptjs';
 
-function toSlug(input: string) {
+const BCRYPT_COST = 10;
+const BCRYPT_PREFIX = /^\$2[aby]\$/;
+
+function toSlug(input: string): string {
   return input
     .toLowerCase()
     .normalize('NFD')
@@ -15,214 +27,104 @@ function toSlug(input: string) {
     .replace(/-+/g, '-');
 }
 
+function isValidEmail(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+function isValidSlug(s: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s) && s.length >= 2 && s.length <= 60;
+}
+
 export interface LoginResponse {
   token: string;
-  seller: { id: string; name: string; slug: string };
+  seller: { id: string; name: string; slug: string; role: string };
 }
 
 @Injectable()
 export class AuthService implements OnModuleInit {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: any,
     private readonly jwtService: JwtService,
   ) {}
 
   async onModuleInit() {
-    console.log('[Database Patch] Verificando integridad de tablas...');
-    const exec = async (label: string, statement: any) => {
-      try {
-        await this.db.execute(statement);
-      } catch (e: any) {
-        console.warn(`[Database Patch] ${label}: ${e.message}`);
-      }
-    };
-
-    // ── sellers ────────────────────────────────────────────────
-    await exec('sellers create', sql`
-      CREATE TABLE IF NOT EXISTS sellers (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-    await exec('sellers cols', sql`
-      ALTER TABLE sellers ADD COLUMN IF NOT EXISTS email TEXT;
-      ALTER TABLE sellers ADD COLUMN IF NOT EXISTS password TEXT;
-      ALTER TABLE sellers ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'seller';
-      ALTER TABLE sellers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
-      ALTER TABLE sellers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
-    `);
-    await exec('sellers email unique', sql`
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_indexes WHERE indexname = 'sellers_email_unique'
-        ) THEN
-          CREATE UNIQUE INDEX sellers_email_unique ON sellers (email) WHERE email IS NOT NULL;
-        END IF;
-      END $$;
-    `);
-
-    // ── seller_branding ────────────────────────────────────────
-    await exec('seller_branding create', sql`
-      CREATE TABLE IF NOT EXISTS seller_branding (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        seller_id UUID NOT NULL REFERENCES sellers(id),
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-    await exec('seller_branding cols', sql`
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS logo_url TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS banner_url TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS primary_color TEXT DEFAULT '#FACD01';
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS accent_color TEXT DEFAULT '#000000';
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS phone TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS whatsapp TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS address TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS instagram TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS website TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS description TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS payment_methods TEXT;
-      ALTER TABLE seller_branding ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
-    `);
-    await exec('seller_branding unique', sql`
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_indexes WHERE indexname = 'seller_branding_seller_unique'
-        ) THEN
-          CREATE UNIQUE INDEX seller_branding_seller_unique ON seller_branding (seller_id);
-        END IF;
-      END $$;
-    `);
-
-    // ── uoms ───────────────────────────────────────────────────
-    await exec('uoms', sql`
-      CREATE TABLE IF NOT EXISTS uoms (
-        id SERIAL PRIMARY KEY,
-        seller_id UUID NOT NULL REFERENCES sellers(id),
-        name TEXT NOT NULL,
-        symbol TEXT,
-        base_uom_id INTEGER,
-        conversion_factor DECIMAL(12, 4) DEFAULT '1.0000'
-      );
-    `);
-
-    // ── products ───────────────────────────────────────────────
-    await exec('products create', sql`
-      CREATE TABLE IF NOT EXISTS products (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        seller_id UUID NOT NULL REFERENCES sellers(id),
-        name TEXT NOT NULL,
-        base_uom_id INTEGER NOT NULL REFERENCES uoms(id),
-        base_price DECIMAL(12, 2) NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-    await exec('products cols', sql`
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT;
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS b2b_price DECIMAL(12, 2);
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS min_order_quantity DECIMAL(12, 4) DEFAULT '1.0000';
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;
-    `);
-    // Coerce legacy views column type if it exists as decimal/numeric
-    await exec('products views type', sql`
-      DO $$
-      DECLARE col_type TEXT;
-      BEGIN
-        SELECT data_type INTO col_type FROM information_schema.columns
-          WHERE table_name = 'products' AND column_name = 'views';
-        IF col_type IS NOT NULL AND col_type <> 'integer' THEN
-          ALTER TABLE products ALTER COLUMN views TYPE INTEGER USING (views::integer);
-          ALTER TABLE products ALTER COLUMN views SET DEFAULT 0;
-        END IF;
-      END $$;
-    `);
-    await exec('products seller idx', sql`
-      CREATE INDEX IF NOT EXISTS products_seller_id_idx ON products (seller_id);
-    `);
-
-    // ── warehouses ─────────────────────────────────────────────
-    await exec('warehouses', sql`
-      CREATE TABLE IF NOT EXISTS warehouses (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        seller_id UUID NOT NULL REFERENCES sellers(id),
-        name TEXT NOT NULL,
-        is_default BOOLEAN DEFAULT FALSE
-      );
-    `);
-
-    // ── stock_levels ───────────────────────────────────────────
-    await exec('stock_levels create', sql`
-      CREATE TABLE IF NOT EXISTS stock_levels (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        seller_id UUID NOT NULL REFERENCES sellers(id),
-        warehouse_id UUID NOT NULL REFERENCES warehouses(id),
-        product_id UUID NOT NULL REFERENCES products(id),
-        on_hand_base DECIMAL(12, 4) DEFAULT '0.0000',
-        reserved_base DECIMAL(12, 4) DEFAULT '0.0000',
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-    await exec('stock_levels unique', sql`
-      DO $$ BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM pg_indexes WHERE indexname = 'stock_levels_unique'
-        ) THEN
-          CREATE UNIQUE INDEX stock_levels_unique ON stock_levels (seller_id, warehouse_id, product_id);
-        END IF;
-      END $$;
-    `);
-
-    console.log('[Database Patch] Estructura de base de datos estabilizada.');
+    await this.bootstrapAdmin();
   }
 
-  async loginWithSlug(slug: string): Promise<LoginResponse> {
-    const [seller] = await this.db
-      .select()
-      .from(sellers)
-      .where(eq(sellers.slug, slug))
-      .limit(1);
-
-    if (!seller) {
-      throw new UnauthorizedException('Seller not found');
+  /**
+   * One-time admin bootstrap from env. Idempotent: if an admin with the same
+   * email exists, nothing is created. Use BOOTSTRAP_ADMIN_EMAIL/PASSWORD on
+   * fresh deploys; once the admin exists you can remove the env vars.
+   */
+  private async bootstrapAdmin(): Promise<void> {
+    const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+    const password = process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim();
+    if (!email || !password) return;
+    if (!isValidEmail(email) || password.length < 8) {
+      this.logger.warn('BOOTSTRAP_ADMIN_* are set but invalid; skipping.');
+      return;
     }
+    try {
+      const [existing] = await this.db
+        .select()
+        .from(sellers)
+        .where(eq(sellers.email, email))
+        .limit(1);
+      if (existing) return;
 
-    return this.generateResponse(seller);
+      const hashed = await bcrypt.hash(password, BCRYPT_COST);
+      const slug = toSlug(process.env.BOOTSTRAP_ADMIN_SLUG || email.split('@')[0]);
+      const [seller] = await this.db
+        .insert(sellers)
+        .values({
+          name: process.env.BOOTSTRAP_ADMIN_NAME || 'Catagce Admin',
+          slug: isValidSlug(slug) ? slug : `admin-${Date.now()}`,
+          email,
+          password: hashed,
+          role: 'admin',
+        })
+        .returning();
+
+      await this.db.insert(sellerBranding).values({
+        sellerId: seller.id,
+        primaryColor: '#FACD01',
+        accentColor: '#000000',
+      });
+      this.logger.log(`Bootstrap admin created: ${email}`);
+    } catch (err: any) {
+      this.logger.warn(`Bootstrap admin failed: ${err.message}`);
+    }
   }
 
-  async register(registerDto: any): Promise<LoginResponse> {
-    const name = (registerDto?.name || '').toString().trim();
-    const email = (registerDto?.email || '').toString().trim().toLowerCase();
-    const password = (registerDto?.password || '').toString();
-    const rawSlug = (registerDto?.slug || name).toString();
-    const slug = toSlug(rawSlug);
+  async register(dto: { name: string; email: string; password: string; slug?: string }): Promise<LoginResponse> {
+    const name = (dto?.name || '').toString().trim();
+    const email = (dto?.email || '').toString().trim().toLowerCase();
+    const password = (dto?.password || '').toString();
+    const slug = toSlug((dto?.slug || name).toString());
 
-    if (name.length < 2) throw new BadRequestException('Nombre del comercio requerido (mín. 2)');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Email inválido');
-    if (password.length < 6) throw new BadRequestException('Contraseña mínima 6 caracteres');
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new BadRequestException('Slug inválido');
+    if (name.length < 2) throw new BadRequestException('Nombre requerido (mín. 2)');
+    if (!isValidEmail(email)) throw new BadRequestException('Email inválido');
+    if (password.length < 8) throw new BadRequestException('Contraseña mínima 8 caracteres');
+    if (!isValidSlug(slug)) throw new BadRequestException('Identificador inválido');
 
-    const [existing] = await this.db
+    const [conflict] = await this.db
       .select()
       .from(sellers)
       .where(or(eq(sellers.email, email), eq(sellers.slug, slug)))
       .limit(1);
-
-    if (existing) {
-      throw new BadRequestException('El email o el identificador ya están en uso');
+    if (conflict) {
+      throw new ConflictException('El email o el identificador ya están en uso');
     }
+
+    const hashed = await bcrypt.hash(password, BCRYPT_COST);
 
     const [seller] = await this.db
       .insert(sellers)
-      .values({ name, email, password, slug })
+      .values({ name, email, password: hashed, slug })
       .returning();
 
-    // Sembrar branding por defecto (no crítico, no debe romper el registro si falla)
     try {
       await this.db
         .insert(sellerBranding)
@@ -232,57 +134,16 @@ export class AuthService implements OnModuleInit {
           accentColor: '#000000',
         });
     } catch (e: any) {
-      console.warn(`[Register] No se pudo crear branding inicial: ${e.message}`);
+      this.logger.warn(`Default branding not seeded for ${seller.id}: ${e.message}`);
     }
 
-    return this.generateResponse(seller);
+    return this.issueToken(seller);
   }
 
-  async loginWithEmail(emailRaw: string, pass: string): Promise<LoginResponse> {
-    const email = emailRaw.trim().toLowerCase();
-
-    // FALLBACK 1: Jhosua Comercial (Siempre prioridad Master)
-    if (email === 'catalogo@jhosuacomercial.com' && pass === 'Jhosua2027') {
-      let [seller] = await this.db.select().from(sellers).where(eq(sellers.email, email)).limit(1);
-      if (!seller) {
-        [seller] = await this.db.insert(sellers).values({
-          name: 'Jhosua Comercial',
-          slug: 'jhosuacomercial',
-          email: 'catalogo@jhosuacomercial.com',
-          password: pass,
-        }).returning();
-      }
-      return this.generateResponse(seller);
-    }
-
-    // FALLBACK 2: Renace Admin
-    if ((email === 'admin@renace.tech' || email === 'admi@renace.tech') && pass === 'Admin2026') {
-      let [seller] = await this.db.select().from(sellers).where(eq(sellers.email, email)).limit(1);
-      if (!seller) {
-        [seller] = await this.db.insert(sellers).values({
-          name: 'Renace Admin',
-          slug: 'renace-admin',
-          email: email,
-          password: pass,
-          role: 'admin'
-        }).returning();
-      }
-      return this.generateResponse(seller);
-    }
-
-    // FALLBACK 3: Master Admin Jhosua
-    if (email === 'admin@jhosuacomercial.com' && pass === 'Admin2026') {
-      let [seller] = await this.db.select().from(sellers).where(eq(sellers.email, email)).limit(1);
-      if (!seller) {
-        [seller] = await this.db.insert(sellers).values({
-          name: 'Master Admin',
-          slug: 'master-admin',
-          email: 'admin@jhosuacomercial.com',
-          password: pass,
-          role: 'admin'
-        }).returning();
-      }
-      return this.generateResponse(seller);
+  async loginWithEmail(emailRaw: string, password: string): Promise<LoginResponse> {
+    const email = (emailRaw || '').trim().toLowerCase();
+    if (!email || !password) {
+      throw new UnauthorizedException('Credenciales inválidas');
     }
 
     const [seller] = await this.db
@@ -291,24 +152,48 @@ export class AuthService implements OnModuleInit {
       .where(eq(sellers.email, email))
       .limit(1);
 
-    if (!seller || seller.password !== pass) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (!seller || !seller.password) {
+      throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    return this.generateResponse(seller);
+    if (seller.status && seller.status !== 'active') {
+      throw new UnauthorizedException('Cuenta inactiva');
+    }
+
+    let valid = false;
+    if (BCRYPT_PREFIX.test(seller.password)) {
+      valid = await bcrypt.compare(password, seller.password);
+    } else {
+      // Legacy plaintext password — accept once, then upgrade to bcrypt.
+      if (seller.password === password) {
+        valid = true;
+        try {
+          const upgraded = await bcrypt.hash(password, BCRYPT_COST);
+          await this.db
+            .update(sellers)
+            .set({ password: upgraded, updatedAt: new Date() })
+            .where(eq(sellers.id, seller.id));
+        } catch {
+          /* non-blocking */
+        }
+      }
+    }
+
+    if (!valid) throw new UnauthorizedException('Credenciales inválidas');
+    return this.issueToken(seller);
   }
 
-  private generateResponse(seller: any): LoginResponse {
-    const payload = { 
-      sub: seller.id, 
-      sellerId: seller.id, 
-      email: seller.email || `${seller.slug}@catagce.app`,
-      role: seller.role || 'seller',
-      status: seller.status || 'active'
+  private issueToken(seller: any): LoginResponse {
+    const role = seller.role || 'seller';
+    const payload = {
+      sub: seller.id,
+      sellerId: seller.id,
+      email: seller.email,
+      role,
     };
     return {
       token: this.jwtService.sign(payload),
-      seller: { id: seller.id, name: seller.name, slug: seller.slug },
+      seller: { id: seller.id, name: seller.name, slug: seller.slug, role },
     };
   }
 }

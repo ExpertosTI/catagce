@@ -14,10 +14,10 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsController = void 0;
 const common_1 = require("@nestjs/common");
-const platform_express_1 = require("@nestjs/platform-express");
 const user_decorator_1 = require("../common/decorators/user.decorator");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const products_service_1 = require("./products.service");
+const products_dto_1 = require("./dto/products.dto");
 let ProductsController = class ProductsController {
     productsService;
     constructor(productsService) {
@@ -26,16 +26,10 @@ let ProductsController = class ProductsController {
     findAll(user) {
         return this.productsService.findAll(user.sellerId);
     }
-    create(user, createProductDto) {
-        return this.productsService.create(user.sellerId, createProductDto);
+    create(user, dto) {
+        return this.productsService.create(user.sellerId, dto);
     }
-    uploadFile(file) {
-        // In a real scenario, we would save the file and return the URL
-        // For now, we'll simulate it or return a placeholder
-        return {
-            url: `https://api.catagce.renace.tech/uploads/${file?.filename || 'placeholder.png'}`
-        };
-    }
+    /** Public — buyers viewing a catalog can increment the product view counter. */
     incrementViews(id) {
         return this.productsService.incrementViews(id);
     }
@@ -43,6 +37,7 @@ let ProductsController = class ProductsController {
 exports.ProductsController = ProductsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -50,29 +45,21 @@ __decorate([
 ], ProductsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, products_dto_1.CreateProductDto]),
     __metadata("design:returntype", void 0)
 ], ProductsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Post)('upload'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
-    __param(0, (0, common_1.UploadedFile)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
-], ProductsController.prototype, "uploadFile", null);
-__decorate([
     (0, common_1.Post)(':id/view'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe())),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], ProductsController.prototype, "incrementViews", null);
 exports.ProductsController = ProductsController = __decorate([
     (0, common_1.Controller)('products'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [products_service_1.ProductsService])
 ], ProductsController);

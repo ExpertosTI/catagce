@@ -15,25 +15,26 @@ const throttler_1 = require("@nestjs/throttler");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const jwt_strategy_1 = require("./jwt.strategy");
+const jwt_auth_guard_1 = require("./jwt-auth.guard");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            passport_1.PassportModule,
+            passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
             jwt_1.JwtModule.register({
                 secret: process.env.JWT_SECRET,
-                signOptions: { expiresIn: '7d' },
+                signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
             }),
         ],
         controllers: [auth_controller_1.AuthController],
         providers: [
             auth_service_1.AuthService,
             jwt_strategy_1.JwtStrategy,
-            /** Aplica ThrottlerGuard globalmente a toda la API */
+            jwt_auth_guard_1.JwtAuthGuard,
             { provide: core_1.APP_GUARD, useClass: throttler_1.ThrottlerGuard },
         ],
-        exports: [jwt_1.JwtModule],
+        exports: [jwt_1.JwtModule, jwt_auth_guard_1.JwtAuthGuard, passport_1.PassportModule],
     })
 ], AuthModule);

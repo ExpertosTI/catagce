@@ -8,19 +8,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CatalogsModule = void 0;
 const common_1 = require("@nestjs/common");
+const bullmq_1 = require("@nestjs/bullmq");
 const catalogs_controller_1 = require("./catalogs.controller");
 const catalogs_service_1 = require("./catalogs.service");
-const database_module_1 = require("../database/database.module");
-const bullmq_1 = require("@nestjs/bullmq");
 let CatalogsModule = class CatalogsModule {
 };
 exports.CatalogsModule = CatalogsModule;
 exports.CatalogsModule = CatalogsModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            database_module_1.DatabaseModule,
-            bullmq_1.BullModule.registerQueue({ name: 'catalog-render' }),
-        ],
+        imports: [bullmq_1.BullModule.registerQueue({ name: 'catalog-render' })],
         controllers: [catalogs_controller_1.CatalogsController],
         providers: [catalogs_service_1.CatalogsService],
         exports: [catalogs_service_1.CatalogsService],

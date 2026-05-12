@@ -1,36 +1,36 @@
-import { Controller, Get, Post, Body, Param, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProductsService } from './products.service';
+import { CreateProductDto } from './dto/products.dto';
 
 @Controller('products')
-@UseGuards(JwtAuthGuard)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(@CurrentUser() user: UserPayload) {
     return this.productsService.findAll(user.sellerId);
   }
 
   @Post()
-  create(@CurrentUser() user: UserPayload, @Body() createProductDto: any) {
-    return this.productsService.create(user.sellerId, createProductDto);
+  @UseGuards(JwtAuthGuard)
+  create(@CurrentUser() user: UserPayload, @Body() dto: CreateProductDto) {
+    return this.productsService.create(user.sellerId, dto);
   }
 
-  @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
-  uploadFile(@UploadedFile() file: any) {
-    // In a real scenario, we would save the file and return the URL
-    // For now, we'll simulate it or return a placeholder
-    return {
-      url: `https://api.catagce.renace.tech/uploads/${file?.filename || 'placeholder.png'}`
-    };
-  }
-
+  /** Public — buyers viewing a catalog can increment the product view counter. */
   @Post(':id/view')
-  incrementViews(@Param('id') id: string) {
+  incrementViews(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.productsService.incrementViews(id);
   }
 }
