@@ -138,8 +138,8 @@ export default function MarketingLanding({ host }: { host?: string }) {
                 <div className="absolute inset-0 bg-[#FACD01]/5 blur-3xl -z-10 rounded-full" />
                 <div className="bg-white p-2 rounded-[32px] shadow-2xl border border-gray-100 overflow-hidden">
                   <img 
-                    src="/treinta_style_mockup_1778554800766.png" 
-                    alt="App Mockup" 
+                    src="/mockup.png" 
+                    alt="Catagce SaaS Mockup" 
                     className="w-full h-auto rounded-[24px]"
                   />
                 </div>
