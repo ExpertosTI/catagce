@@ -71,7 +71,7 @@ git add -f apps/api/dist/.
 git add -f apps/buyer-web/.next/.
 git add -f workers/*/dist/.
 git add -f packages/*/dist/.
-git add -f deps.tar.gz
+git add -f deps.tar.xz
 git add .
 
 # Explicitly UNSTAGE node_modules folder (too many files)

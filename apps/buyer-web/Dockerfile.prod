@@ -1,21 +1,17 @@
 FROM node:20-alpine
-
 RUN apk add --no-cache wget xz
-
 WORKDIR /app
 
-# Copiamos solo lo necesario de la web a la raíz de trabajo del contenedor
-COPY apps/buyer-web/package.json ./
+# En modo standalone, Next.js ya empaqueta todo en esta carpeta
+# Nota: La carpeta standalone contiene un servidor de node puro
+COPY apps/buyer-web/.next/standalone ./
+COPY apps/buyer-web/.next/static ./.next/static
 COPY apps/buyer-web/public ./public
-COPY apps/buyer-web/.next ./.next
-COPY apps/buyer-web/next.config.js ./
-
-# Inyectamos las dependencias preparadas en el Mac
-ADD deps.tar.xz ./
 
 EXPOSE 42101
 ENV NODE_ENV=production
+ENV PORT=42101
+ENV HOSTNAME="0.0.0.0"
 
-# Ejecutamos Next.js directamente desde la raíz del contenedor
-# Esto asegura que /app/.next sea la ruta por defecto
-CMD ["node_modules/.bin/next", "start", "-p", "42101", "-H", "0.0.0.0"]
+# Ejecutamos el servidor standalone de Next.js (Sin dependencia del binario 'next')
+CMD ["node", "server.js"]
