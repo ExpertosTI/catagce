@@ -8,3 +8,8 @@ dist/
 node_modules/.pnpm/@next+swc-darwin-arm64*
 .claude/
 .aider*
+node_modules_old_*
+deps.tar.xz
+deps.tar.gz
+.next/standalone
+.next/static

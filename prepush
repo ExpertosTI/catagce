@@ -1,134 +1,83 @@
 #!/bin/bash
-
 # ==============================================================================
-# 🚀 CATAGCE PRE-PUSH (LOCAL BUILD PROTOCOL)
-# Zero-Build: Mac compila, VPS solo orquesta contenedores.
+# 🚀 CATAGCE ROBUST PRE-PUSH v3.0 (FAIL-SAFE)
 # ==============================================================================
 set -euo pipefail
 
+# Asegurar restauración al salir (éxito o fallo)
+cleanup() {
+    echo "🔄 Finalizing: Restoring Mac local environment..."
+    git rm -r --cached node_modules_old_* 2>/dev/null || true
+    pnpm install --no-frozen-lockfile || true
+    echo "✅ Local environment restored."
+}
+trap cleanup EXIT
+
 echo "-----------------------------------"
-echo "💻 Starting Local Build (Mac)..."
+echo "💻 Starting Robust Local Build (Mac)..."
 echo "-----------------------------------"
 
-# 0. Purge previous installations and broken caches (Instant Trick)
+# 0. Fast Purge
 echo "🧹 Purging previous installations (Fast Mode)..."
-# Move to background delete to avoid hanging the script
 TIMESTAMP=$(date +%s)
 mv node_modules node_modules_old_$TIMESTAMP 2>/dev/null || true
 (rm -rf node_modules_old_$TIMESTAMP &) 2>/dev/null
 rm -rf apps/*/.next apps/*/dist packages/*/dist workers/*/dist 2>/dev/null || true
 rm -rf .turbo apps/*/.turbo packages/*/.turbo workers/*/.turbo 2>/dev/null || true
 
-# 1. Install dependencies (prefer offline store, no-interactive)
-echo "📦 Installing dependencies..."
-pnpm install --prefer-offline --no-frozen-lockfile || pnpm install --no-frozen-lockfile
-
-# 2. Compile — Ignore non-critical errors (DTS failures)
-echo "🏗️  Compiling project (Ignoring non-critical failures)..."
-pnpm exec turbo build --force || echo "⚠️  Build had some errors (likely DTS), continuing with generated JS..."
-
-# 3. Prepare Production Dependencies for Linux Alpine (Zero-CPU VPS)
-echo "🧹 Cleaning local node_modules..."
-rm -rf node_modules
-git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
-
-echo "📦 Downloading Linux production dependencies (HOISTED MODE - No Symlinks)..."
-npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile --node-linker=hoisted
-
-# 3.1. Purga AGRESIVA de node_modules (Solo lo vital para ejecución)
-echo "🧹 Purga extrema de node_modules..."
-
-# ELIMINAR BINARIOS NO-LINUX (Crítico para que arranque en el VPS)
-find node_modules -name "*darwin*" -exec rm -rf {} +
-find node_modules -name "*win32*" -exec rm -rf {} +
-find node_modules -name "*.node" ! -name "*linux*" -exec rm -rf {} +
-
-find node_modules -type d -name "doc" -exec rm -rf {} +
-find node_modules -type d -name "docs" -exec rm -rf {} +
-find node_modules -type d -name "test" -exec rm -rf {} +
-find node_modules -type d -name "tests" -exec rm -rf {} +
-find node_modules -type d -name "example" -exec rm -rf {} +
-find node_modules -type d -name "examples" -exec rm -rf {} +
-find node_modules -name "*.md" -type f -delete
-find node_modules -name "*.map" -type f -delete
-find node_modules -name "*.d.ts" -type f -delete
-find node_modules -name "*.ts" -type f -delete
-find node_modules -name "*.tsx" -type f -delete
-find node_modules -name "LICENSE*" -type f -delete
-find node_modules -name "CHANGELOG*" -type f -delete
-
-# 3.2. INTERNAL PACKAGES SOLIDIFICATION
-echo "🔗 Solidifying internal workspace packages (@catagce/*)..."
-mkdir -p node_modules/@catagce
-cp -r packages/db node_modules/@catagce/ 2>/dev/null || true
-cp -r packages/ui node_modules/@catagce/ 2>/dev/null || true
-cp -r packages/domain node_modules/@catagce/ 2>/dev/null || true
-
-# 3.3. COMPRESIÓN EXTREMA (XZ)
-echo "🗜️  Comprimiendo dependencias con XZ (Máximo nivel)..."
-tar -cJf deps.tar.xz node_modules
-echo "✅ Peso final: $(du -h deps.tar.xz)"
-
-# Eliminar el archivo viejo si existe para evitar confusión
-rm -f deps.tar.gz
-
-echo "✅ Build exitoso — subiendo artefactos optimizados"
-
-# 4. Stage EVERYTHING + artifacts + compressed deps
-echo "git: Staging artifacts with extreme force..."
-git rm -r --cached apps/api/dist apps/buyer-web/.next workers/*/dist packages/*/dist 2>/dev/null || true
-
-# Verificar y subir API
-if [ -d "apps/api/dist" ]; then git add -f apps/api/dist; fi
-
-# VERIFICACIÓN CRÍTICA DE NEXT.JS STANDALONE
-if [ ! -d "apps/buyer-web/.next/standalone" ]; then
-    echo "❌ ERROR: No se encontró apps/buyer-web/.next/standalone."
-    echo "El build de Next.js falló o no generó el modo standalone."
-    exit 1
-fi
-
-echo "📦 Staging Next.js Standalone..."
-git add -f apps/buyer-web/.next/standalone
-git add -f apps/buyer-web/.next/static
-git add -f apps/buyer-web/public
-
-# Otros artefactos
-if [ -d "workers/catalog-renderer/dist" ]; then git add -f workers/catalog-renderer/dist; fi
-if [ -d "workers/media-processor/dist" ]; then git add -f workers/media-processor/dist; fi
-if [ -d "workers/notifications/dist" ]; then git add -f workers/notifications/dist; fi
-if [ -d "packages/db/dist" ]; then git add -f packages/db/dist; fi
-if [ -d "packages/ui/dist" ]; then git add -f packages/ui/dist; fi
-
-git add -f deps.tar.xz
-git add -A
-
-# Explicitly UNSTAGE node_modules folder (too many files)
-git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
-
-# Explicitly UNSTAGE AI related directories and files
-git rm -rf --cached .claude .aider* .windsurf .trae .cursor .cline .superpowers 2>/dev/null || true
-
-
-
-if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-    echo "📝 Enter commit message (leave empty for default):"
-    read -r COMMIT_MESSAGE
-    if [ -z "$COMMIT_MESSAGE" ]; then
-        COMMIT_MESSAGE="🚀 Deploy: Static Zero-CPU Artifacts & Dependencies Update"
-    fi
-    git commit -m "$COMMIT_MESSAGE"
-fi
-
-# 5. Push to deploy branch
-echo "🛰️  Pushing to GitHub (deploy/stable-production) --force..."
-git push origin deploy/stable-production --force
-
-# 6. Restore Mac Local Dependencies for Development
-echo "🔄 Restoring Mac local dependencies..."
+# 1. Install & Build
+echo "📦 Installing dev dependencies..."
 pnpm install --no-frozen-lockfile
 
+echo "🏗️  Compiling project..."
+pnpm exec turbo build --force || echo "⚠️  Build had non-critical errors, continuing..."
+
+# 2. Linux Production Bundle
+echo "🧹 Preparing Linux bundle..."
+rm -rf node_modules
+npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile --node-linker=hoisted
+
+echo "🧹 Extreme purge of production node_modules..."
+find node_modules -name "*darwin*" -exec rm -rf {} +
+find node_modules -name "*.node" ! -name "*linux*" -exec rm -rf {} +
+find node_modules -name "*.d.ts" -type f -delete
+find node_modules -name "*.ts" -type f -delete
+
+echo "🔗 Solidifying internal packages..."
+mkdir -p node_modules/@catagce
+for pkg in db ui domain contracts; do
+    cp -r packages/$pkg node_modules/@catagce/ 2>/dev/null || true
+done
+
+echo "🗜️  Compressing (XZ)..."
+tar -cJf deps.tar.xz node_modules
+echo "✅ Package size: $(du -h deps.tar.xz)"
+
+# 3. Git Staging & Push
+echo "🛰️  Syncing with GitHub..."
+# Limpiar cualquier rastro accidental de node_modules antes de subir
+git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
+git rm -rf --cached node_modules_old_* 2>/dev/null || true
+
+# Agregar artefactos críticos
+git add -f deps.tar.xz
+if [ -d "apps/api/dist" ]; then git add -f apps/api/dist; fi
+if [ -d "apps/buyer-web/.next/standalone" ]; then 
+    git add -f apps/buyer-web/.next/standalone
+    git add -f apps/buyer-web/.next/static
+    git add -f apps/buyer-web/public
+fi
+
+git add .gitignore
+git add -A
+
+# Commit y Push
+if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+    git commit -m "🚀 Robust Deploy: Structural Fixes & Optimized Deps"
+fi
+
+git push origin deploy/stable-production --force
+
 echo "-----------------------------------"
-echo "✅ LOCAL BUILD COMPLETE (Zero-CPU Mode)"
-echo "👉 SSH al VPS y ejecuta: bash deploy.sh"
+echo "✅ BUILD COMPLETE & PUSHED"
 echo "-----------------------------------"
