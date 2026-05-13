@@ -1,5 +1,5 @@
 import { Injectable, Inject, BadRequestException, Logger } from '@nestjs/common';
-import { DRIZZLE } from '../database/database.module';
+import { Database, DRIZZLE } from '../database/database.module';
 import { sellers, sellerBranding } from '@catagce/db';
 import { eq } from 'drizzle-orm';
 
@@ -37,7 +37,7 @@ function pickBranding(input: any): Partial<Record<BrandingField, string | null>>
 export class SellersService {
   private readonly logger = new Logger(SellersService.name);
 
-  constructor(@Inject(DRIZZLE) private readonly db: any) {}
+  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async getBranding(sellerId: string) {
     let branding: any = null;

@@ -59,6 +59,7 @@ echo "🔗 Solidifying internal workspace packages (@catagce/*)..."
 mkdir -p node_modules/@catagce
 cp -r packages/db node_modules/@catagce/ 2>/dev/null || true
 cp -r packages/ui node_modules/@catagce/ 2>/dev/null || true
+cp -r packages/domain node_modules/@catagce/ 2>/dev/null || true
 
 # 3.3. COMPRESIÓN EXTREMA (XZ)
 echo "🗜️  Comprimiendo dependencias con XZ (Máximo nivel)..."

@@ -1,7 +1,7 @@
 node_modules/
-# dist/
-# .next/
-# .turbo/
+dist/
+.next/
+.turbo/
 .env
 *.log
 .DS_Store

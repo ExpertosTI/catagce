@@ -164,7 +164,7 @@ export class OrdersService {
     return order;
   }
 
-  async updateStatus(id: string, sellerId: string, status: string) {
+  async updateStatus(id: string, sellerId: string, status: any) {
     const [existing] = await this.db
       .select()
       .from(orders)

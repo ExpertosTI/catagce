@@ -20,7 +20,6 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
     CatalogsModule,
     OrdersModule,
     SellersModule,
-    WorkersModule,
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST ?? 'redis',
