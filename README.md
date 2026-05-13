@@ -49,24 +49,4 @@ This project is ready to be deployed to `catagce.renace.tech`.
 - **Database**: Drizzle ORM.
 - **Infrastructure**: Docker Swarm, Traefik, RenaceNet.
 
-## 🛠️ Conectando a InsForge (Superpowers Backend)
 
-Catagce utiliza **InsForge** como plataforma agent-native para sus servicios de backend, almacenamiento y procesamiento de IA.
-
-### 1. Conexión vía MCP (Recomendado para Agentes)
-Si estás utilizando un asistente como Cursor, Windsurf o Claude Code:
-```bash
-npx insforge mcp install --project catagce
-```
-Esto permitirá que el agente descubra automáticamente la base de datos y los servicios de almacenamiento sin configurar API keys manualmente.
-
-### 2. Conexión vía SDK (Aplicación)
-Para integrar los "Superpoderes" en el código:
-```bash
-pnpm add @insforge/sdk
-```
-Luego inicializa el cliente en `apps/api`:
-```typescript
-import { createClient } from '@insforge/sdk';
-const insforge = createClient({ apiKey: process.env.INSFORGE_API_KEY });
-```

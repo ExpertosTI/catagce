@@ -234,6 +234,19 @@ exports.MIGRATIONS = [
             `CREATE INDEX IF NOT EXISTS stock_reservations_status_idx ON stock_reservations (status);`,
         ],
     },
+    {
+        id: '20260513_0001_repair_products_schema',
+        description: 'Ensure products table has all required columns (base_price, base_uom_id)',
+        statements: [
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS base_uom_id INTEGER;`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS base_price DECIMAL(12, 2);`,
+            // Si ya existen productos, les asignamos un valor base para evitar fallos de NOT NULL
+            `UPDATE products SET base_price = 0 WHERE base_price IS NULL;`,
+            // Nota: base_uom_id se queda como NULL si no hay UOMs, pero el sistema lo requiere.
+            // Permitimos NULL en base_uom_id temporalmente para no bloquear la migración.
+            `ALTER TABLE products ALTER COLUMN base_price SET NOT NULL;`,
+        ],
+    },
 ];
 async function runEmbeddedMigrations(db, logger) {
     // Bootstrap the tracking table
