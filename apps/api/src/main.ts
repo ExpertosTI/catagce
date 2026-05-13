@@ -17,25 +17,26 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log'],
   });
 
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  // Logger sencillo para depuración de rutas
+  app.use((req, res, next) => {
+    if (req.method !== 'OPTIONS') {
+      Logger.log(`🚀 ${req.method} ${req.url}`, 'Network');
+    }
+    next();
+  });
+
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: false, // Desactivar CSP temporalmente para asegurar carga de assets
+  }));
+  
   app.setGlobalPrefix('api');
 
-  const origins =
-    (process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN)?.split(',').map((s) => s.trim()).filter(Boolean) ?? [
-      'https://catagce.renace.tech',
-      'http://localhost:3001',
-    ];
-
   app.enableCors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      if (origins.includes('*') || origins.includes(origin)) return cb(null, true);
-      return cb(new Error(`Origin not allowed: ${origin}`), false);
-    },
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    origin: true, // Permitir cualquier origen que coincida con la lógica de cookies
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    maxAge: 86400,
+    allowedHeaders: 'Content-Type, Accept, Authorization',
   });
 
   app.useGlobalPipes(
