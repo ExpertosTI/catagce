@@ -235,15 +235,31 @@ exports.MIGRATIONS = [
         ],
     },
     {
-        id: '20260513_0001_repair_products_schema',
-        description: 'Ensure products table has all required columns (base_price, base_uom_id)',
+        id: '20260513_0001_repair_global_schema',
+        description: 'Global schema repair: Ensure all tables have missing production columns',
         statements: [
+            // Reparación de Products
             `ALTER TABLE products ADD COLUMN IF NOT EXISTS base_uom_id INTEGER;`,
             `ALTER TABLE products ADD COLUMN IF NOT EXISTS base_price DECIMAL(12, 2);`,
-            // Si ya existen productos, les asignamos un valor base para evitar fallos de NOT NULL
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT;`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS b2b_price DECIMAL(12, 2);`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS min_order_quantity DECIMAL(12, 4) DEFAULT '1.0000';`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();`,
+            `ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();`,
+            // Reparación de Sellers
+            `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS email TEXT;`,
+            `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS password TEXT;`,
+            `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'seller';`,
+            `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';`,
+            `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();`,
+            // Data fixing para evitar errores de NOT NULL
             `UPDATE products SET base_price = 0 WHERE base_price IS NULL;`,
-            // Nota: base_uom_id se queda como NULL si no hay UOMs, pero el sistema lo requiere.
-            // Permitimos NULL en base_uom_id temporalmente para no bloquear la migración.
+            `UPDATE products SET base_uom_id = 1 WHERE base_uom_id IS NULL;`, // Asumimos ID 1 como fallback
+            // Aplicación de constraints finales
             `ALTER TABLE products ALTER COLUMN base_price SET NOT NULL;`,
         ],
     },
