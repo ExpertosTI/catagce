@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DRIZZLE } from '../database/database.module';
+import { Database, DRIZZLE } from '../database/database.module';
 import {
   catalogs,
   orderItems,
@@ -34,17 +34,22 @@ export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
   constructor(
-    @Inject(DRIZZLE) private readonly db: any,
+    @Inject(DRIZZLE) private readonly db: Database,
     @InjectQueue('notifications') private readonly notificationsQueue: Queue,
   ) {}
 
   async findAll(sellerId: string) {
-    return this.db.query.orders.findMany({
-      where: eq(orders.sellerId, sellerId),
-      with: { orderItems: { with: { product: true } } },
-      orderBy: (o: any, { desc }: any) => [desc(o.createdAt)],
-      limit: 500,
-    });
+    try {
+      return await this.db.query.orders.findMany({
+        where: eq(orders.sellerId, sellerId),
+        with: { orderItems: { with: { product: true } } },
+        orderBy: (o: any, { desc }: any) => [desc(o.createdAt)],
+        limit: 500,
+      });
+    } catch (e: any) {
+      this.logger.error(`Orders findAll failed: ${e.message}`);
+      return [];
+    }
   }
 
   async findOne(sellerId: string, id: string) {

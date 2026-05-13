@@ -86,15 +86,23 @@ export class SellersService {
   async updateBranding(sellerId: string, raw: any) {
     const data = pickBranding(raw);
 
-    if (data.primaryColor && !HEX.test(String(data.primaryColor))) {
-      throw new BadRequestException('primaryColor inválido (usa #RRGGBB)');
-    }
-    if (data.accentColor && !HEX.test(String(data.accentColor))) {
-      throw new BadRequestException('accentColor inválido (usa #RRGGBB)');
+    // Flexibilidad para el color: Autocompletar # si falta
+    if (data.primaryColor && typeof data.primaryColor === 'string') {
+      if (!data.primaryColor.startsWith('#')) data.primaryColor = `#${data.primaryColor}`;
+      if (!HEX.test(data.primaryColor)) throw new BadRequestException('Color primario inválido');
     }
 
-    // El frontend a veces envía `name` (nombre del comercio):
-    // se guarda en `sellers`, no en `seller_branding`.
+    // Limpieza de Instagram: Quitar @ si existe
+    if (data.instagram && typeof data.instagram === 'string') {
+      data.instagram = data.instagram.replace('@', '').trim();
+    }
+
+    // Limpieza de WhatsApp: Solo números
+    if (data.whatsapp && typeof data.whatsapp === 'string') {
+      data.whatsapp = data.whatsapp.replace(/[^0-9]/g, '');
+    }
+
+    // El frontend a veces envía `name` (nombre del comercio)
     if (typeof raw?.name === 'string' && raw.name.trim().length >= 2) {
       try {
         await this.db
@@ -158,5 +166,39 @@ export class SellersService {
 
   async findAll() {
     return this.db.select().from(sellers);
+  }
+
+  async create(data: any) {
+    const { name, email, password, slug } = data;
+    if (!name || !email || !password || !slug) {
+      throw new BadRequestException('Faltan datos obligatorios (name, email, password, slug)');
+    }
+
+    const [existing] = await this.db
+      .select({ id: sellers.id })
+      .from(sellers)
+      .where(eq(sellers.slug, slug.toLowerCase()))
+      .limit(1);
+    if (existing) throw new BadRequestException('Ya existe un comercio con ese slug');
+
+    const b = require('bcryptjs');
+    const hashedPassword = b.hashSync(password, 10);
+
+    const [created] = await this.db
+      .insert(sellers)
+      .values({
+        name,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        slug: slug.toLowerCase(),
+        role: 'seller',
+        status: 'active',
+      })
+      .returning();
+    
+    // Inicializar infraestructura base para el nuevo seller
+    await this.db.insert(sellerBranding).values({ sellerId: created.id }).onConflictDoNothing();
+    
+    return created;
   }
 }

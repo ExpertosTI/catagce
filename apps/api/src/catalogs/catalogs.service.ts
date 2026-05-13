@@ -127,4 +127,16 @@ export class CatalogsService {
     );
     return { jobId: job.id, status: 'queued' };
   }
+
+  async remove(sellerId: string, id: string) {
+    try {
+      await this.db
+        .delete(catalogs)
+        .where(and(eq(catalogs.id, id), eq(catalogs.sellerId, sellerId)));
+      return { ok: true };
+    } catch (e: any) {
+      this.logger.error(`Catalog remove failed: ${e.message}`);
+      throw new BadRequestException(`No se pudo eliminar el catálogo: ${e.message}`);
+    }
+  }
 }

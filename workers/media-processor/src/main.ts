@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import { createClient, products } from '@catagce/db';
 import { eq } from 'drizzle-orm';
 import { BackgroundRemovalProcessor } from './processors/background-removal.processor';
+import { OcrProcessor } from './processors/ocr.processor';
 
 async function main() {
   const dbUrl = process.env.DATABASE_URL;
@@ -9,6 +10,7 @@ async function main() {
 
   const db = createClient(dbUrl);
   const bgProcessor = new BackgroundRemovalProcessor();
+  const ocrProcessor = new OcrProcessor();
 
   console.log('🚀 Media Processor Worker starting...');
 
@@ -23,14 +25,15 @@ async function main() {
           // 1. Remove Background (Superpower)
           const cleanImageUrl = await bgProcessor.process(imageUrl);
 
-          // 2. OCR (In a real app, we'd extract text here)
-          console.log(`🔍 OCR completed for ${productId}`);
+          // 2. OCR (Extracting description/SKU)
+          const ocrResult = await ocrProcessor.process(imageUrl);
+          console.log(`🔍 OCR completed for ${productId}:`, ocrResult);
 
           // 3. Update Product
           await db.update(products)
             .set({ 
               imageUrl: cleanImageUrl,
-              // Optionally update tags/name from OCR
+              description: ocrResult.text || null,
             })
             .where(eq(products.id, productId));
 

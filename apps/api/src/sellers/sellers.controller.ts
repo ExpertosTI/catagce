@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Get,
   Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { SellersService } from './sellers.service';
@@ -22,6 +23,15 @@ export class SellersController {
       throw new ForbiddenException('Only admins can list all sellers');
     }
     return this.sellersService.findAll();
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  create(@CurrentUser() user: UserPayload, @Body() data: any) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can create sellers');
+    }
+    return this.sellersService.create(data);
   }
 
   @Get('profile')

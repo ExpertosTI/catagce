@@ -3,6 +3,7 @@ import { createClient, CatagceDb } from '@catagce/db';
 import { runEmbeddedMigrations } from './migrations';
 
 export const DRIZZLE = 'DRIZZLE';
+export type Database = CatagceDb;
 
 @Global()
 @Module({

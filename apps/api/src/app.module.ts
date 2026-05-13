@@ -8,6 +8,8 @@ import { ProductsModule } from './products/products.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { OrdersModule } from './orders/orders.module';
 import { SellersModule } from './sellers/sellers.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 
 @Module({
   imports: [
@@ -18,6 +20,7 @@ import { SellersModule } from './sellers/sellers.module';
     CatalogsModule,
     OrdersModule,
     SellersModule,
+    WorkersModule,
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST ?? 'redis',
@@ -33,6 +36,11 @@ import { SellersModule } from './sellers/sellers.module';
     }),
   ],
   controllers: [HealthController],
-  providers: [],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantInterceptor,
+    },
+  ],
 })
 export class AppModule {}

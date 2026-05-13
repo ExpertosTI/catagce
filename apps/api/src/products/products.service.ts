@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
-import { DRIZZLE } from '../database/database.module';
+import { Database, DRIZZLE } from '../database/database.module';
 import { products, uoms } from '@catagce/db';
 import { eq, sql, and } from 'drizzle-orm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -10,7 +10,7 @@ export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
 
   constructor(
-    @Inject(DRIZZLE) private readonly db: any,
+    @Inject(DRIZZLE) private readonly db: Database,
     @InjectQueue('media') private readonly mediaQueue: Queue,
   ) {}
 
@@ -101,13 +101,25 @@ export class ProductsService {
     try {
       const [product] = await this.db
         .update(products)
-        .set({ views: sql`COALESCE(${products.views}, 0) + 1` })
+        .set({ views: sql`${products.views} + 1` })
         .where(eq(products.id, id))
         .returning();
       return product ?? null;
     } catch (e: any) {
       this.logger.warn(`incrementViews failed: ${e.message}`);
       return null;
+    }
+  }
+
+  async remove(sellerId: string, id: string) {
+    try {
+      await this.db
+        .delete(products)
+        .where(and(eq(products.id, id), eq(products.sellerId, sellerId)));
+      return { ok: true };
+    } catch (e: any) {
+      this.logger.error(`Product remove failed: ${e.message}`);
+      throw new BadRequestException(`No se pudo eliminar el producto: ${e.message}`);
     }
   }
 }

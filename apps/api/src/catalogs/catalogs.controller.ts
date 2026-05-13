@@ -58,6 +58,12 @@ export class CatalogsController {
     return this.catalogsService.enqueuePdfRender(user.sellerId, id);
   }
 
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  remove(@CurrentUser() user: UserPayload, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.catalogsService.remove(user.sellerId, id);
+  }
+
   /** Public buyer endpoint — resolved via slug only, never authenticated. */
   @Get(':slug')
   findBySlug(@Param('slug') slug: string) {

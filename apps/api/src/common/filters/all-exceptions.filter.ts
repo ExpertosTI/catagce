@@ -34,7 +34,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (status >= 500) {
       this.logger.error(
-        `${req.method} ${req.originalUrl || req.url} → ${status} ${code ?? ''} ${
+        `${req.method} ${req.originalUrl || req.url} → ${status} [${code ?? 'ERROR'}]`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    } else {
+      this.logger.warn(
+        `${req.method} ${req.originalUrl || req.url} → ${status} [${code ?? 'BAD_REQUEST'}] ${
           typeof message === 'string' ? message : JSON.stringify(message)
         }`,
       );
