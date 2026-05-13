@@ -17,6 +17,7 @@ else
 fi
 
 # Cargar y Auto-configurar variables de entorno
+echo "🔍 Verificando configuración de entorno en $PROJECT_DIR/.env..."
 if [ -f ".env" ]; then
     # Asegurar que JWT_SECRET tenga al menos 32 caracteres
     CURRENT_JWT=$(grep "^JWT_SECRET=" .env | cut -d'=' -f2 | tr -d '"' | tr -d "'")
@@ -26,51 +27,35 @@ if [ -f ".env" ]; then
         echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
     fi
 
-    # Asegurar que BOOTSTRAP_ADMIN_EMAIL esté configurado
-    if ! grep -q "^BOOTSTRAP_ADMIN_EMAIL=." .env; then
-        echo "👤 Configurando BOOTSTRAP_ADMIN_EMAIL (Super Admin)..."
+    # Asegurar que BOOTSTRAP_ADMIN_EMAIL esté configurado (Super Admin)
+    if ! grep -q "^BOOTSTRAP_ADMIN_EMAIL=admin@renace.tech" .env; then
+        echo "👤 Configurando BOOTSTRAP_ADMIN_EMAIL (Super Admin: admin@renace.tech)..."
         sed -i '/^BOOTSTRAP_ADMIN_EMAIL=/d' .env
         echo "BOOTSTRAP_ADMIN_EMAIL=admin@renace.tech" >> .env
     fi
-    if ! grep -q "^BOOTSTRAP_ADMIN_PASSWORD=." .env; then
-        echo "🔑 Configurando BOOTSTRAP_ADMIN_PASSWORD..."
-        sed -i '/^BOOTSTRAP_ADMIN_PASSWORD=/d' .env
-        echo "BOOTSTRAP_ADMIN_PASSWORD=CatagceAdmin2026!" >> .env
-    fi
 
-    # Asegurar que BOOTSTRAP_TENANT esté configurado
-    if ! grep -q "^BOOTSTRAP_TENANT_EMAIL=." .env; then
-        echo "🏬 Configurando BOOTSTRAP_TENANT_EMAIL (Jhosua Comercial)..."
+    # Asegurar que BOOTSTRAP_TENANT_EMAIL esté configurado (Tenant)
+    if ! grep -q "^BOOTSTRAP_TENANT_EMAIL=catalogo@jhosuacomercial.com" .env; then
+        echo "🏬 Configurando BOOTSTRAP_TENANT_EMAIL (Tenant: catalogo@jhosuacomercial.com)..."
         sed -i '/^BOOTSTRAP_TENANT_EMAIL=/d' .env
         echo "BOOTSTRAP_TENANT_EMAIL=catalogo@jhosuacomercial.com" >> .env
-    fi
-    if ! grep -q "^BOOTSTRAP_TENANT_PASSWORD=." .env; then
-        echo "🔑 Configurando BOOTSTRAP_TENANT_PASSWORD..."
-        sed -i '/^BOOTSTRAP_TENANT_PASSWORD=/d' .env
-        echo "BOOTSTRAP_TENANT_PASSWORD=CatagceTenant2026!" >> .env
-    fi
-    if ! grep -q "^BOOTSTRAP_TENANT_NAME=." .env; then
-        sed -i '/^BOOTSTRAP_TENANT_NAME=/d' .env
-        echo "BOOTSTRAP_TENANT_NAME='Jhosua Comercial'" >> .env
-    fi
-    if ! grep -q "^BOOTSTRAP_TENANT_SLUG=." .env; then
-        sed -i '/^BOOTSTRAP_TENANT_SLUG=/d' .env
-        echo "BOOTSTRAP_TENANT_SLUG=jhosuacom" >> .env
-    fi
-
-    # Asegurar que MIGRATIONS_STRICT esté en 1 para producción
-    if ! grep -q "^MIGRATIONS_STRICT=." .env; then
-        echo "📊 Configurando MIGRATIONS_STRICT=1..."
-        sed -i '/^MIGRATIONS_STRICT=/d' .env
-        echo "MIGRATIONS_STRICT=1" >> .env
     fi
 
     # Cargar variables actualizadas
     set -a; source .env; set +a
 else
-    echo "❌ Error: Archivo .env no encontrado en $PROJECT_DIR"
-    exit 1
+    echo "⚠️  Archivo .env no encontrado. Creando desde .env.example..."
+    cp .env.example .env
+    echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+    echo "BOOTSTRAP_ADMIN_EMAIL=admin@renace.tech" >> .env
+    echo "BOOTSTRAP_ADMIN_PASSWORD=CatagceAdmin2026!" >> .env
+    echo "BOOTSTRAP_TENANT_EMAIL=catalogo@jhosuacomercial.com" >> .env
+    echo "BOOTSTRAP_TENANT_PASSWORD=CatagceTenant2026!" >> .env
+    set -a; source .env; set +a
 fi
+
+echo "🧹 Limpiando caché de construcción de Docker para evitar errores de snapshot..."
+docker builder prune -f
 
 echo "🐳 Construyendo imágenes Docker (Zero-CPU Mode)..."
 docker compose build --pull api web catalog-renderer notifications media-processor
