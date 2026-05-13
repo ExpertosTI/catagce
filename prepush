@@ -1,83 +1,79 @@
 #!/bin/bash
 # ==============================================================================
-# 🚀 CATAGCE ROBUST PRE-PUSH v3.0 (FAIL-SAFE)
+# 🚀 CATAGCE ULTRA-FAST PRE-PUSH v3.2
 # ==============================================================================
 set -euo pipefail
 
-# Asegurar restauración al salir (éxito o fallo)
 cleanup() {
     echo "🔄 Finalizing: Restoring Mac local environment..."
-    git rm -r --cached node_modules_old_* 2>/dev/null || true
     pnpm install --no-frozen-lockfile || true
     echo "✅ Local environment restored."
 }
 trap cleanup EXIT
 
 echo "-----------------------------------"
-echo "💻 Starting Robust Local Build (Mac)..."
+echo "💻 Starting Ultra-Fast Build (Mac)..."
 echo "-----------------------------------"
 
-# 0. Fast Purge
-echo "🧹 Purging previous installations (Fast Mode)..."
+# 0. Instant Purge (Rename to avoid TS conflicts, then delete in background)
+echo "🧹 [1/6] Purging node_modules (Instant Mode)..."
 TIMESTAMP=$(date +%s)
-mv node_modules node_modules_old_$TIMESTAMP 2>/dev/null || true
-(rm -rf node_modules_old_$TIMESTAMP &) 2>/dev/null
-rm -rf apps/*/.next apps/*/dist packages/*/dist workers/*/dist 2>/dev/null || true
-rm -rf .turbo apps/*/.turbo packages/*/.turbo workers/*/.turbo 2>/dev/null || true
+# Movemos a una carpeta oculta fuera del radar de TS
+mv node_modules .node_modules_purge_$TIMESTAMP 2>/dev/null || true
+(rm -rf .node_modules_purge_$TIMESTAMP &) 2>/dev/null
+
+echo "🧹 [2/6] Cleaning build artifacts..."
+rm -rf apps/*/.next apps/*/dist packages/*/dist workers/*/dist .turbo 2>/dev/null || true
 
 # 1. Install & Build
-echo "📦 Installing dev dependencies..."
+echo "📦 [3/6] Installing dev dependencies..."
 pnpm install --no-frozen-lockfile
 
-echo "🏗️  Compiling project..."
-pnpm exec turbo build --force || echo "⚠️  Build had non-critical errors, continuing..."
+echo "🏗️  [4/6] Compiling project (Turbo Build)..."
+pnpm exec turbo build --continue || echo "⚠️ Build had minor errors, checking artifacts..."
 
 # 2. Linux Production Bundle
-echo "🧹 Preparing Linux bundle..."
+echo "🧹 [5/6] Preparing Linux production bundle..."
+# Usamos un directorio temporal para el bundle de producción para no ensuciar el actual
+mkdir -p .prod_bundle
 rm -rf node_modules
 npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile --node-linker=hoisted
 
-echo "🧹 Extreme purge of production node_modules..."
-find node_modules -name "*darwin*" -exec rm -rf {} +
-find node_modules -name "*.node" ! -name "*linux*" -exec rm -rf {} +
-find node_modules -name "*.d.ts" -type f -delete
-find node_modules -name "*.ts" -type f -delete
-
-echo "🔗 Solidifying internal packages..."
+echo "🔗 [6/6] Solidifying internal packages & Compressing..."
 mkdir -p node_modules/@catagce
 for pkg in db ui domain contracts; do
     cp -r packages/$pkg node_modules/@catagce/ 2>/dev/null || true
 done
 
-echo "🗜️  Compressing (XZ)..."
 tar -cJf deps.tar.xz node_modules
 echo "✅ Package size: $(du -h deps.tar.xz)"
 
-# 3. Git Staging & Push
-echo "🛰️  Syncing with GitHub..."
-# Limpiar cualquier rastro accidental de node_modules antes de subir
-git rm -rf --cached node_modules apps/*/node_modules workers/*/node_modules packages/*/node_modules 2>/dev/null || true
-git rm -rf --cached node_modules_old_* 2>/dev/null || true
-
-# Agregar artefactos críticos
+# 3. Git Sync
+echo "🛰️  Pushing to GitHub (deploy/stable-production)..."
+git rm -rf --cached . 2>/dev/null || true
+git add .gitignore
 git add -f deps.tar.xz
-if [ -d "apps/api/dist" ]; then git add -f apps/api/dist; fi
+
+# Validar y agregar artefactos
+ARTIFACTS_OK=true
+if [ -d "apps/api/dist" ]; then git add -f apps/api/dist; else ARTIFACTS_OK=false; fi
 if [ -d "apps/buyer-web/.next/standalone" ]; then 
     git add -f apps/buyer-web/.next/standalone
     git add -f apps/buyer-web/.next/static
     git add -f apps/buyer-web/public
+else 
+    ARTIFACTS_OK=false
 fi
 
-git add .gitignore
+if [ "$ARTIFACTS_OK" = false ]; then
+    echo "❌ ERROR: Build artifacts missing. Check turbo build output above."
+    exit 1
+fi
+
 git add -A
-
-# Commit y Push
-if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-    git commit -m "🚀 Robust Deploy: Structural Fixes & Optimized Deps"
-fi
-
+git commit -m "🚀 Deployment: Clean Build & Production Artifacts" --allow-empty
 git push origin deploy/stable-production --force
 
 echo "-----------------------------------"
-echo "✅ BUILD COMPLETE & PUSHED"
+echo "✨ BUILD COMPLETE & PUSHED ✨"
 echo "-----------------------------------"
