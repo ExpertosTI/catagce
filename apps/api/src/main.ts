@@ -18,7 +18,7 @@ async function bootstrap() {
   });
 
   // Logger sencillo para depuración de rutas
-  app.use((req, res, next) => {
+  app.use((req: any, res: any, next: () => void) => {
     if (req.method !== 'OPTIONS') {
       Logger.log(`🚀 ${req.method} ${req.url}`, 'Network');
     }

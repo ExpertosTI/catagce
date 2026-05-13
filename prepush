@@ -73,10 +73,29 @@ echo "✅ Build exitoso — subiendo artefactos optimizados"
 # 4. Stage EVERYTHING + artifacts + compressed deps
 echo "git: Staging artifacts with extreme force..."
 git rm -r --cached apps/api/dist apps/buyer-web/.next workers/*/dist packages/*/dist 2>/dev/null || true
-git add -f apps/api/dist/.
-git add -f apps/buyer-web/.next/.
-git add -f workers/*/dist/.
-git add -f packages/*/dist/.
+
+# Verificar y subir API
+if [ -d "apps/api/dist" ]; then git add -f apps/api/dist; fi
+
+# VERIFICACIÓN CRÍTICA DE NEXT.JS STANDALONE
+if [ ! -d "apps/buyer-web/.next/standalone" ]; then
+    echo "❌ ERROR: No se encontró apps/buyer-web/.next/standalone."
+    echo "El build de Next.js falló o no generó el modo standalone."
+    exit 1
+fi
+
+echo "📦 Staging Next.js Standalone..."
+git add -f apps/buyer-web/.next/standalone
+git add -f apps/buyer-web/.next/static
+git add -f apps/buyer-web/public
+
+# Otros artefactos
+if [ -d "workers/catalog-renderer/dist" ]; then git add -f workers/catalog-renderer/dist; fi
+if [ -d "workers/media-processor/dist" ]; then git add -f workers/media-processor/dist; fi
+if [ -d "workers/notifications/dist" ]; then git add -f workers/notifications/dist; fi
+if [ -d "packages/db/dist" ]; then git add -f packages/db/dist; fi
+if [ -d "packages/ui/dist" ]; then git add -f packages/ui/dist; fi
+
 git add -f deps.tar.xz
 git add -A
 
