@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
 import { Database, DRIZZLE } from '../database/database.module';
-import { products, uoms } from '@catagce/db';
+import { products, uoms, warehouses, stockLevels } from '@catagce/db';
 import { eq, sql, and } from 'drizzle-orm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -80,6 +80,31 @@ export class ProductsService {
     } catch (e: any) {
       this.logger.error(`Product insert failed: ${e.message}`);
       throw new BadRequestException(`No se pudo crear el producto: ${e.message}`);
+    }
+
+    // Inicializar stock en el almacén predeterminado
+    try {
+      const [warehouse] = await this.db
+        .select()
+        .from(warehouses)
+        .where(and(eq(warehouses.sellerId, sellerId), eq(warehouses.isDefault, true)))
+        .limit(1);
+
+      const warehouseId = warehouse?.id;
+      if (warehouseId) {
+        await this.db
+          .insert(stockLevels)
+          .values({
+            sellerId,
+            warehouseId,
+            productId: product.id,
+            onHandBase: '0.0000',
+            reservedBase: '0.0000',
+          })
+          .onConflictDoNothing();
+      }
+    } catch (e: any) {
+      this.logger.warn(`Could not initialize stock for product ${product.id}: ${e.message}`);
     }
 
     if (product?.imageUrl) {

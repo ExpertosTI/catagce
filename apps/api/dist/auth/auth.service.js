@@ -133,6 +133,11 @@ let AuthService = AuthService_1 = class AuthService {
                 primaryColor: '#FACD01',
                 accentColor: '#000000',
             });
+            await this.db.insert(db_1.warehouses).values({
+                sellerId: seller.id,
+                name: 'Almacén Principal',
+                isDefault: true,
+            });
             this.logger.log(`Bootstrap ${config.role} created: ${email}`);
         }
         catch (err) {
@@ -172,6 +177,13 @@ let AuthService = AuthService_1 = class AuthService {
                 sellerId: seller.id,
                 primaryColor: '#FACD01',
                 accentColor: '#000000',
+            });
+            await this.db
+                .insert(db_1.warehouses)
+                .values({
+                sellerId: seller.id,
+                name: 'Almacén Principal',
+                isDefault: true,
             });
         }
         catch (e) {

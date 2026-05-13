@@ -95,6 +95,30 @@ let ProductsService = ProductsService_1 = class ProductsService {
             this.logger.error(`Product insert failed: ${e.message}`);
             throw new common_1.BadRequestException(`No se pudo crear el producto: ${e.message}`);
         }
+        // Inicializar stock en el almacén predeterminado
+        try {
+            const [warehouse] = await this.db
+                .select()
+                .from(db_1.warehouses)
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(db_1.warehouses.sellerId, sellerId), (0, drizzle_orm_1.eq)(db_1.warehouses.isDefault, true)))
+                .limit(1);
+            const warehouseId = warehouse?.id;
+            if (warehouseId) {
+                await this.db
+                    .insert(db_1.stockLevels)
+                    .values({
+                    sellerId,
+                    warehouseId,
+                    productId: product.id,
+                    onHandBase: '0.0000',
+                    reservedBase: '0.0000',
+                })
+                    .onConflictDoNothing();
+            }
+        }
+        catch (e) {
+            this.logger.warn(`Could not initialize stock for product ${product.id}: ${e.message}`);
+        }
         if (product?.imageUrl) {
             try {
                 await this.mediaQueue.add('process-product-media', { productId: product.id, imageUrl: product.imageUrl, sellerId }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 }, removeOnComplete: 100, removeOnFail: 500 });

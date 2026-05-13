@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DRIZZLE } from '../database/database.module';
-import { sellers, sellerBranding } from '@catagce/db';
+import { sellers, sellerBranding, warehouses } from '@catagce/db';
 import { eq, or } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 
@@ -111,6 +111,12 @@ export class AuthService implements OnModuleInit {
         primaryColor: '#FACD01',
         accentColor: '#000000',
       });
+
+      await this.db.insert(warehouses).values({
+        sellerId: seller.id,
+        name: 'Almacén Principal',
+        isDefault: true,
+      });
       this.logger.log(`Bootstrap ${config.role} created: ${email}`);
     } catch (err: any) {
       this.logger.warn(`Bootstrap ${config.role} failed: ${err.message}`);
@@ -151,6 +157,14 @@ export class AuthService implements OnModuleInit {
           sellerId: seller.id,
           primaryColor: '#FACD01',
           accentColor: '#000000',
+        });
+
+      await this.db
+        .insert(warehouses)
+        .values({
+          sellerId: seller.id,
+          name: 'Almacén Principal',
+          isDefault: true,
         });
     } catch (e: any) {
       this.logger.warn(`Default branding not seeded for ${seller.id}: ${e.message}`);
