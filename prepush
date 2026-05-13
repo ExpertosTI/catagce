@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# 🚀 CATAGCE ULTRA-FAST PRE-PUSH v3.2
+# 🚀 CATAGCE FULL-STACK PRE-PUSH v3.3
 # ==============================================================================
 set -euo pipefail
 
@@ -12,34 +12,29 @@ cleanup() {
 trap cleanup EXIT
 
 echo "-----------------------------------"
-echo "💻 Starting Ultra-Fast Build (Mac)..."
+echo "💻 Starting Full-Stack Build (Mac)..."
 echo "-----------------------------------"
 
-# 0. Instant Purge (Rename to avoid TS conflicts, then delete in background)
-echo "🧹 [1/6] Purging node_modules (Instant Mode)..."
+# 0. Instant Purge
+echo "🧹 [1/6] Purging old files..."
 TIMESTAMP=$(date +%s)
-# Movemos a una carpeta oculta fuera del radar de TS
 mv node_modules .node_modules_purge_$TIMESTAMP 2>/dev/null || true
 (rm -rf .node_modules_purge_$TIMESTAMP &) 2>/dev/null
-
-echo "🧹 [2/6] Cleaning build artifacts..."
 rm -rf apps/*/.next apps/*/dist packages/*/dist workers/*/dist .turbo 2>/dev/null || true
 
 # 1. Install & Build
-echo "📦 [3/6] Installing dev dependencies..."
+echo "📦 [2/6] Installing dev dependencies..."
 pnpm install --no-frozen-lockfile
 
-echo "🏗️  [4/6] Compiling project (Turbo Build)..."
+echo "🏗️  [3/6] Compiling project (Turbo Build)..."
 pnpm exec turbo build --continue || echo "⚠️ Build had minor errors, checking artifacts..."
 
 # 2. Linux Production Bundle
-echo "🧹 [5/6] Preparing Linux production bundle..."
-# Usamos un directorio temporal para el bundle de producción para no ensuciar el actual
-mkdir -p .prod_bundle
+echo "🧹 [4/6] Preparing Linux production bundle..."
 rm -rf node_modules
 npm_config_platform=linux npm_config_arch=x64 npm_config_libc=musl pnpm install --prod --no-frozen-lockfile --node-linker=hoisted
 
-echo "🔗 [6/6] Solidifying internal packages & Compressing..."
+echo "🔗 [5/6] Solidifying internal packages & Compressing..."
 mkdir -p node_modules/@catagce
 for pkg in db ui domain contracts; do
     cp -r packages/$pkg node_modules/@catagce/ 2>/dev/null || true
@@ -49,31 +44,41 @@ tar -cJf deps.tar.xz node_modules
 echo "✅ Package size: $(du -h deps.tar.xz)"
 
 # 3. Git Sync
-echo "🛰️  Pushing to GitHub (deploy/stable-production)..."
+echo "🛰️  [6/6] Syncing everything with GitHub..."
 git rm -rf --cached . 2>/dev/null || true
 git add .gitignore
 git add -f deps.tar.xz
 
-# Validar y agregar artefactos
-ARTIFACTS_OK=true
-if [ -d "apps/api/dist" ]; then git add -f apps/api/dist; else ARTIFACTS_OK=false; fi
+# Validar y agregar DIST de la API
+if [ -d "apps/api/dist" ]; then 
+    git add -f apps/api/dist
+else 
+    echo "❌ ERROR: API dist missing."; exit 1; 
+fi
+
+# Validar y agregar DIST de los Workers
+for worker in catalog-renderer media-processor notifications; do
+    if [ -d "workers/$worker/dist" ]; then
+        echo "✅ Worker $worker dist found."
+        git add -f workers/$worker/dist
+    else
+        echo "❌ ERROR: Worker $worker dist missing."; exit 1;
+    fi
+done
+
+# Validar y agregar STANDALONE de la Web
 if [ -d "apps/buyer-web/.next/standalone" ]; then 
     git add -f apps/buyer-web/.next/standalone
     git add -f apps/buyer-web/.next/static
     git add -f apps/buyer-web/public
 else 
-    ARTIFACTS_OK=false
-fi
-
-if [ "$ARTIFACTS_OK" = false ]; then
-    echo "❌ ERROR: Build artifacts missing. Check turbo build output above."
-    exit 1
+    echo "❌ ERROR: Next.js standalone missing."; exit 1; 
 fi
 
 git add -A
-git commit -m "🚀 Deployment: Clean Build & Production Artifacts" --allow-empty
+git commit -m "🚀 Full-Stack Deploy: API + Web + Workers + Deps" --allow-empty
 git push origin deploy/stable-production --force
 
 echo "-----------------------------------"
-echo "✨ BUILD COMPLETE & PUSHED ✨"
+echo "✨ SYSTEM PUSHED TO GITHUB ✨"
 echo "-----------------------------------"
