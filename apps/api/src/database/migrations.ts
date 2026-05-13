@@ -253,35 +253,109 @@ export const MIGRATIONS: Migration[] = [
     ],
   },
   {
-    id: '20260513_0001_repair_global_schema',
-    description: 'Global schema repair: Ensure all tables have missing production columns',
+    id: '20260513_0001_repair_global_schema_v3',
+    description: 'Global schema repair: Reset inventory tables to fix UUID/Integer mismatches',
     statements: [
-      // Reparación de Products
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS base_uom_id INTEGER;`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS base_price DECIMAL(12, 2);`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT;`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS b2b_price DECIMAL(12, 2);`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS min_order_quantity DECIMAL(12, 4) DEFAULT '1.0000';`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0;`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();`,
-      
-      // Reparación de Sellers
-      `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS email TEXT;`,
-      `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS password TEXT;`,
-      `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'seller';`,
-      `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';`,
-      `ALTER TABLE sellers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();`,
+      // Eliminamos en cascada las tablas que tienen tipos inconsistentes (mockup legacy)
+      `DROP TABLE IF EXISTS stock_reservations CASCADE;`,
+      `DROP TABLE IF EXISTS order_items CASCADE;`,
+      `DROP TABLE IF EXISTS orders CASCADE;`,
+      `DROP TABLE IF EXISTS stock_movements CASCADE;`,
+      `DROP TABLE IF EXISTS stock_levels CASCADE;`,
+      `DROP TABLE IF EXISTS catalog_products CASCADE;`,
+      `DROP TABLE IF EXISTS products CASCADE;`,
+      `DROP TABLE IF EXISTS uoms CASCADE;`,
 
-      // Data fixing para evitar errores de NOT NULL
-      `UPDATE products SET base_price = 0 WHERE base_price IS NULL;`,
-      `UPDATE products SET base_uom_id = 1 WHERE base_uom_id IS NULL;`, // Asumimos ID 1 como fallback
-      
-      // Aplicación de constraints finales
-      `ALTER TABLE products ALTER COLUMN base_price SET NOT NULL;`,
+      // Recreamos UOMs con el tipo correcto (SERIAL/INTEGER)
+      `CREATE TABLE uoms (
+        id SERIAL PRIMARY KEY,
+        seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        symbol TEXT,
+        base_uom_id INTEGER,
+        conversion_factor DECIMAL(12, 4) DEFAULT '1.0000'
+      );`,
+
+      // Recreamos Products con tipos oficiales
+      `CREATE TABLE products (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        sku TEXT,
+        description TEXT,
+        base_uom_id INTEGER NOT NULL REFERENCES uoms(id),
+        base_price DECIMAL(12, 2) NOT NULL,
+        b2b_price DECIMAL(12, 2),
+        min_order_quantity DECIMAL(12, 4) DEFAULT '1.0000',
+        is_active BOOLEAN DEFAULT TRUE,
+        image_url TEXT,
+        views INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );`,
+
+      // Recreamos las tablas dependientes mínimas para que el sistema no rompa
+      `CREATE TABLE catalog_products (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        catalog_id UUID NOT NULL REFERENCES catalogs(id) ON DELETE CASCADE,
+        product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        sort_order INTEGER DEFAULT 0
+      );`,
+      `CREATE TABLE stock_levels (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        warehouse_id UUID NOT NULL REFERENCES warehouses(id) ON DELETE CASCADE,
+        product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        on_hand_base DECIMAL(12, 4) DEFAULT '0.0000',
+        reserved_base DECIMAL(12, 4) DEFAULT '0.0000',
+        updated_at TIMESTAMP DEFAULT NOW()
+      );`,
+      // Recreamos las tablas de Órdenes y Reservas
+      `CREATE TABLE orders (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        catalog_id UUID REFERENCES catalogs(id),
+        idempotency_key TEXT UNIQUE,
+        status order_status DEFAULT 'submitted',
+        buyer_name TEXT NOT NULL,
+        buyer_phone TEXT NOT NULL,
+        total_amount DECIMAL(12, 2),
+        created_at TIMESTAMP DEFAULT NOW()
+      );`,
+      `CREATE TABLE order_items (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id UUID NOT NULL REFERENCES products(id),
+        uom_id INTEGER REFERENCES uoms(id),
+        quantity DECIMAL(12, 4) NOT NULL,
+        unit_price DECIMAL(12, 2) NOT NULL,
+        subtotal DECIMAL(12, 2) NOT NULL
+      );`,
+      `CREATE TABLE stock_reservations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        warehouse_id UUID NOT NULL REFERENCES warehouses(id),
+        product_id UUID NOT NULL REFERENCES products(id),
+        reserved_base DECIMAL(12, 4) NOT NULL,
+        status reservation_status DEFAULT 'active',
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );`,
+      `CREATE TABLE stock_movements (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
+        warehouse_id UUID NOT NULL REFERENCES warehouses(id),
+        product_id UUID NOT NULL REFERENCES products(id),
+        movement_type movement_type NOT NULL,
+        quantity_base_delta DECIMAL(12, 4) NOT NULL,
+        source_uom_id INTEGER REFERENCES uoms(id),
+        source_quantity DECIMAL(12, 4),
+        reason_code TEXT,
+        reference_type TEXT,
+        reference_id UUID,
+        created_at TIMESTAMP DEFAULT NOW()
+      );`,
     ],
   },
 ];
