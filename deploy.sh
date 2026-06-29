@@ -4,7 +4,19 @@
 # 🚀 CATAGCE DEPLOYMENT PROTOCOL (RENACE VPS) - DIAGNOSTIC MODE
 # ==============================================================================
 
-PROJECT_DIR="/opt/QuickCtgo"
+PROJECT_DIR=""
+for dir in /opt/catagce /opt/QuickCtgo; do
+  if [ -d "$dir" ] && [ -f "$dir/docker-compose.yml" ]; then
+    PROJECT_DIR="$dir"
+    break
+  fi
+done
+
+if [ -z "$PROJECT_DIR" ]; then
+  echo "❌ No se encontró catagce en /opt/catagce ni /opt/QuickCtgo"
+  exit 1
+fi
+
 REPO_URL="https://github.com/ExpertosTI/catagce"
 
 echo "-----------------------------------"
@@ -29,6 +41,8 @@ DB_PASSWORD=${DB_PASSWORD:-$(openssl rand -base64 24)}
 JWT_SECRET=${JWT_SECRET:-$(openssl rand -base64 32)}
 REDIS_HOST=redis
 REDIS_PORT=6379
+NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech/api
+GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-}
 EOF
 fi
 

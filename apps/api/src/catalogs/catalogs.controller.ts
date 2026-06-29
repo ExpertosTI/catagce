@@ -1,25 +1,32 @@
-import { Controller, Get, Post, Body, Param, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { CatalogsService } from './catalogs.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
-import { TenantInterceptor } from '../common/interceptors/tenant.interceptor';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('catalogs')
 export class CatalogsController {
   constructor(private readonly catalogsService: CatalogsService) {}
 
   @Get()
-  @UseInterceptors(TenantInterceptor)
   async findAll(@CurrentUser() user: UserPayload) {
     return this.catalogsService.findAll(user.sellerId);
   }
 
   @Post()
-  @UseInterceptors(TenantInterceptor)
-  async create(@CurrentUser() user: UserPayload, @Body() createCatalogDto: any) {
-    return this.catalogsService.create(user.sellerId, createCatalogDto);
+  async create(
+    @CurrentUser() user: UserPayload,
+    @Body() body: { name: string; slug: string; description?: string; productIds?: string[] },
+  ) {
+    return this.catalogsService.create(user.sellerId, body);
+  }
+
+  @Post(':id/publish')
+  async publish(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.catalogsService.publish(id, user.sellerId);
   }
 
   @Get(':slug')
+  @Public()
   async findBySlug(@Param('slug') slug: string) {
     return this.catalogsService.findBySlug(slug);
   }

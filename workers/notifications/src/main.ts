@@ -1,7 +1,8 @@
 import { Worker, Job } from 'bullmq';
 import { WhatsAppService } from './whatsapp.service';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
 
 const whatsappService = new WhatsAppService();
 
@@ -17,7 +18,8 @@ const worker = new Worker(
   },
   {
     connection: {
-      url: REDIS_URL,
+      host: REDIS_HOST,
+      port: REDIS_PORT,
     },
   }
 );

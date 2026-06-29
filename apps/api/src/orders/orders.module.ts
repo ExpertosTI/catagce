@@ -1,17 +1,14 @@
 import { Module } from '@nestjs/common';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
-import { DatabaseModule } from '../database/database.module';
-import { BullModule } from '@nestjs/bullmq';
+import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
+import { InventoryModule } from '../inventory/inventory.module';
+import { AuditService } from '../common/services/audit.service';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    BullModule.registerQueue({
-      name: 'notifications',
-    }),
-  ],
+  imports: [InventoryModule],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, WebhookDispatcherService, AuditService],
+  exports: [OrdersService],
 })
 export class OrdersModule {}

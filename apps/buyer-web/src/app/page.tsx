@@ -22,8 +22,8 @@ export default function LandingPage() {
           <a href="#about" className="hover:text-white transition-colors">Visión</a>
           <a href="#" className="hover:text-white transition-colors">Precios</a>
         </nav>
-        <button className="px-6 py-3 bg-white text-black rounded-lg font-black text-sm uppercase tracking-wider hover:bg-[#00D1FF] transition-all hover:translate-x-1 hover:-translate-y-1 shadow-[4px_4px_0px_#00D1FF]">
-          Entrar
+        <button onClick={() => window.location.href = '/register'} className="px-6 py-3 bg-white text-black rounded-lg font-black text-sm uppercase tracking-wider hover:bg-[#00D1FF] transition-all hover:translate-x-1 hover:-translate-y-1 shadow-[4px_4px_0px_#00D1FF]">
+          Empezar Gratis
         </button>
       </header>
 
@@ -53,12 +53,12 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <button className="group w-full sm:w-auto px-10 py-5 bg-[#00D1FF] text-black rounded-xl font-black text-xl uppercase tracking-tighter flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-[8px_8px_0px_white]">
+              <button onClick={() => window.location.href = '/login'} className="group w-full sm:w-auto px-10 py-5 bg-[#00D1FF] text-black rounded-xl font-black text-xl uppercase tracking-tighter flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-[8px_8px_0px_white]">
                 Crear Catálogo <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
               </button>
-              <div className="flex items-center gap-4 text-gray-500 font-bold uppercase text-sm tracking-widest cursor-pointer hover:text-white transition-colors">
+              <button onClick={() => window.location.href = '/catalog/mayorista-2026'} className="flex items-center gap-4 text-gray-500 font-bold uppercase text-sm tracking-widest cursor-pointer hover:text-white transition-colors">
                 Ver Demo <div className="w-10 h-[2px] bg-gray-700" />
-              </div>
+              </button>
             </div>
           </motion.div>
         </div>

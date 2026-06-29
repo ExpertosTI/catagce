@@ -11,6 +11,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
     networks:
       - RenaceNet
     healthcheck:
@@ -49,7 +50,7 @@ services:
       context: .
       dockerfile: apps/buyer-web/Dockerfile
     environment:
-      - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech
+      - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech/api
       - DATABASE_URL=${DATABASE_URL}
     networks:
       - RenaceNet
@@ -140,7 +141,6 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
         max-size: "10m"
         max-file: "3"
     deploy:

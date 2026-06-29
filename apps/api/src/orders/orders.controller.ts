@@ -1,29 +1,29 @@
-import { Controller, Get, Post, Body, Param, Patch, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
-import { TenantInterceptor } from '../common/interceptors/tenant.interceptor';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
-  @UseInterceptors(TenantInterceptor)
-  async findAll(@CurrentUser() user: UserPayload) {
+  findAll(@CurrentUser() user: UserPayload) {
     return this.ordersService.findAll(user.sellerId);
   }
 
   @Post()
-  async create(@Body() createOrderDto: any) {
-    return this.ordersService.create(createOrderDto);
+  @Public()
+  create(@Body() body: any) {
+    return this.ordersService.create(body);
   }
 
   @Patch(':id/status')
-  @UseInterceptors(TenantInterceptor)
-  async updateStatus(
+  updateStatus(
     @Param('id') id: string,
-    @Body('status') status: string
+    @CurrentUser() user: UserPayload,
+    @Body('status') status: string,
   ) {
-    return this.ordersService.updateStatus(id, status);
+    return this.ordersService.updateStatus(id, user.sellerId, status, user.userId);
   }
 }
