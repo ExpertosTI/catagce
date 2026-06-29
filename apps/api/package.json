@@ -19,7 +19,7 @@
     "rxjs": "^7.8.1",
     "@nestjs/bullmq": "^10.1.1",
     "bullmq": "^5.7.0",
-    "drizzle-orm": "^0.30.0",
+    "drizzle-orm": "^0.38.4",
     "@catagce/db": "workspace:*",
     "@nestjs/jwt": "^10.2.0",
     "@google/generative-ai": "^0.24.0",

@@ -11,7 +11,7 @@
     "bullmq": "^5.0.0",
     "twilio": "^5.0.0",
     "firebase-admin": "^12.0.0",
-    "drizzle-orm": "latest",
+    "drizzle-orm": "^0.38.4",
     "@catagce/db": "workspace:*",
     "@catagce/contracts": "workspace:*"
   },
