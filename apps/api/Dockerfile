@@ -4,7 +4,7 @@ RUN npm install -g pnpm
 COPY . .
 RUN pnpm install
 RUN pnpm --filter @catagce/db build
-RUN pnpm --filter @catagce/api build
+RUN pnpm --filter @catagce/api build && test -f apps/api/dist/main.js
 
 FROM node:20-alpine AS runner
 WORKDIR /app
