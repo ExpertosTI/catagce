@@ -8,8 +8,8 @@
   "scripts": {
     "build": "tsup src/index.ts src/schema.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts src/schema.ts --format cjs,esm --watch --dts",
-    "generate": "drizzle-kit generate",
-    "push": "drizzle-kit push",
+    "generate": "drizzle-kit generate:pg",
+    "push": "drizzle-kit push:pg",
     "reset": "tsx src/reset.ts",
     "seed": "tsx src/seed.ts"
   },

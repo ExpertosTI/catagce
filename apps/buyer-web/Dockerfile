@@ -10,11 +10,10 @@ RUN pnpm --filter @catagce/buyer-web build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN npm install -g pnpm
-COPY --from=builder /app/apps/buyer-web/package.json ./apps/buyer-web/
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+COPY --from=builder /app/apps/buyer-web/.next/standalone ./
+COPY --from=builder /app/apps/buyer-web/.next/static ./apps/buyer-web/.next/static
 COPY --from=builder /app/apps/buyer-web/public ./apps/buyer-web/public
-COPY --from=builder /app/apps/buyer-web/.next ./apps/buyer-web/.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
 EXPOSE 3000
-CMD ["npx", "next", "start", "apps/buyer-web"]
+CMD ["node", "apps/buyer-web/server.js"]
