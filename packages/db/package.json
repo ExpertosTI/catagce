@@ -10,6 +10,7 @@
     "dev": "tsup src/index.ts src/schema.ts --format cjs,esm --watch --dts",
     "generate": "drizzle-kit generate",
     "push": "drizzle-kit push",
+    "reset": "tsx src/reset.ts",
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {

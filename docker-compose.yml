@@ -29,8 +29,8 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: '0.50'
-          memory: 512M
+          cpus: "0.50"
+          memory: "512M"
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
@@ -69,8 +69,8 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: '0.50'
-          memory: 512M
+          cpus: "0.50"
+          memory: "512M"
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
@@ -104,8 +104,8 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: '0.50'
-          memory: 1G
+          cpus: "0.50"
+          memory: "1G"
 
   media-processor:
     image: catagce-media:latest

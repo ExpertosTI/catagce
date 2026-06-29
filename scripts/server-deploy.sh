@@ -85,29 +85,23 @@ docker compose build --parallel api web
 # 7. Deploy stack
 echo ""
 echo "🚢 Desplegando stack..."
-docker stack deploy -c <(docker compose config) catagce
+docker stack deploy -c docker-compose.yml catagce
 
-# 8. Migraciones DB (schema completo vía drizzle-kit push)
-echo ""
-echo "🗄️  Aplicando schema DB..."
-DB_PASSWORD=$(grep '^DB_PASSWORD=' .env | cut -d= -f2-)
-DB_HOST="catagce_db"
-docker run --rm --network RenaceNet \
-  -e DATABASE_URL="postgres://catagce_admin:${DB_PASSWORD}@${DB_HOST}:5432/catagce_prod" \
-  -v "$PROJECT_DIR:/app" \
-  -w /app node:20-alpine sh -c "
-    set -e
-    npm install -g pnpm
-    pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-    pnpm --filter @catagce/db push
-  " && echo "  ✓ drizzle push OK" || echo "⚠️  drizzle push falló — ejecuta manualmente (ver abajo)"
-
-# 9. Force update servicios
+# 8. Reiniciar servicios con nuevas imágenes
 echo ""
 echo "🔄 Reiniciando servicios..."
 for svc in api web media-processor catalog-renderer notifications; do
   docker service update --force "catagce_${svc}" 2>/dev/null && echo "  ✓ catagce_${svc}" || true
 done
+
+# 9. Migraciones DB + seed (solo si se pasa --seed)
+if [ "${1:-}" = "--seed" ]; then
+  echo ""
+  bash scripts/reset-and-seed-server.sh all
+else
+  echo ""
+  echo "ℹ️  Para purgar DB y crear admin: bash scripts/reset-and-seed-server.sh all"
+fi
 
 # 10. Health check
 echo ""

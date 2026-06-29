@@ -10,43 +10,50 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://catagce:catagce@localhost:5432/catagce';
-const DEMO_API_KEY = 'cat_demo_renace_2026';
-const DEMO_PASSWORD = 'demo1234';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@renace.tech';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CatagceAdmin2026!';
+const ADMIN_NAME = process.env.ADMIN_NAME || 'Admin Renace';
+const SELLER_NAME = process.env.SELLER_NAME || 'Renace Tech';
+const SELLER_SLUG = process.env.SELLER_SLUG || 'renace';
+const API_KEY = process.env.ADMIN_API_KEY || 'cat_renace_admin_2026';
 
 async function seed() {
   console.log('🌱 Iniciando Seeding completo de Catagce...');
   const db = createClient(DATABASE_URL);
 
   // ─── Seller & Identity ───────────────────────────────────────────────────
-  console.log('🏢 Creando vendedor demo...');
+  console.log('🏢 Creando vendedor principal...');
   const [demoSeller] = await db.insert(sellers).values({
-    name: 'Renace Tech Demo',
-    slug: 'renace-demo',
-    email: 'demo@renace.tech',
+    name: SELLER_NAME,
+    slug: SELLER_SLUG,
+    email: ADMIN_EMAIL,
     phone: '+18095551234',
   }).returning();
 
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
   const [demoUser] = await db.insert(sellerUsers).values({
     sellerId: demoSeller.id,
-    email: 'demo@renace.tech',
+    email: ADMIN_EMAIL,
     passwordHash,
-    name: 'Admin Demo',
+    name: ADMIN_NAME,
     role: 'owner',
   }).returning();
 
-  await db.insert(sellerApiKeys).values({ sellerId: demoSeller.id, key: DEMO_API_KEY, name: 'Demo Key' });
+  await db.insert(sellerApiKeys).values({ sellerId: demoSeller.id, key: API_KEY, name: 'Admin Key' });
   await db.insert(sellerBranding).values({
     sellerId: demoSeller.id,
     primaryColor: '#00D1FF',
     accentColor: '#FF8A00',
-    welcomeMessage: 'Bienvenido a nuestro catálogo B2B. Realiza tu pedido en minutos.',
+    customDomain: 'catagce.renace.tech',
+    welcomeMessage: 'Bienvenido a Catagce — tu catálogo B2B de Renace Tech.',
   });
   await db.insert(sellerSettings).values({
     sellerId: demoSeller.id,
     currency: 'USD',
     whatsappNumber: '+18095551234',
     lowStockThreshold: '50',
+    onboardingCompleted: true,
+    onboardingStep: 6,
   });
 
   // ─── UOMs ────────────────────────────────────────────────────────────────
@@ -130,8 +137,8 @@ async function seed() {
   // ─── Catalog ───────────────────────────────────────────────────────────────
   console.log('📚 Creando catálogo...');
   const [catalog] = await db.insert(catalogs).values({
-    sellerId: demoSeller.id, name: 'Catálogo Mayorista 2026', slug: 'mayorista-2026',
-    description: 'Selección premium para distribuidores',
+    sellerId: demoSeller.id, name: 'Catálogo Renace 2026', slug: 'renace-2026',
+    description: 'Catálogo B2B oficial de Renace Tech',
   }).returning();
 
   await db.insert(catalogProducts).values(
@@ -139,7 +146,7 @@ async function seed() {
   );
 
   const [publication] = await db.insert(catalogPublications).values({
-    catalogId: catalog.id, token: 'cat_demo_share_token_2026',
+    catalogId: catalog.id, token: 'cat_renace_share_2026',
   }).returning();
 
   // ─── Buyer contacts ────────────────────────────────────────────────────────
@@ -158,11 +165,11 @@ async function seed() {
   console.log('\n✅ Seeding completado exitosamente.\n');
   console.log('═══════════════════════════════════════');
   console.log(`🚀 Seller ID:    ${demoSeller.id}`);
-  console.log(`🔑 API Key:      ${DEMO_API_KEY}`);
-  console.log(`📧 Email:        demo@renace.tech`);
-  console.log(`🔒 Password:     ${DEMO_PASSWORD}`);
+  console.log(`🔑 API Key:      ${API_KEY}`);
+  console.log(`📧 Email:        ${ADMIN_EMAIL}`);
+  console.log(`🔒 Password:     ${ADMIN_PASSWORD}`);
   console.log(`📎 Share Token:  ${publication.token}`);
-  console.log(`🌐 Catálogo:     /catalog/mayorista-2026`);
+  console.log(`🌐 Catálogo:     /catalog/renace-2026`);
   console.log(`🛒 Pedido:       /order/${publication.token}`);
   console.log('═══════════════════════════════════════\n');
   process.exit(0);
