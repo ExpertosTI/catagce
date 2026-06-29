@@ -52,7 +52,7 @@ if [ "$DISK_PCT" -gt 85 ]; then
   docker builder prune -af 2>/dev/null || true
 fi
 
-# 4. Sync código
+# 4. Sync código (forzar versión remota — evita error "divergent branches")
 echo ""
 echo "📥 Actualizando código desde Git..."
 git fetch --all
@@ -87,9 +87,13 @@ echo ""
 echo "🚢 Desplegando stack..."
 docker stack deploy -c <(docker compose config) catagce
 
-# 8. Migraciones DB (push schema)
+# 8. Migraciones DB
 echo ""
 echo "🗄️  Aplicando schema DB..."
+DB_CONTAINER=$(docker ps -q -f name=catagce_db.1 | head -1)
+if [ -n "$DB_CONTAINER" ] && [ -f scripts/migrate-prod.sql ]; then
+  docker exec -i "$DB_CONTAINER" psql -U catagce_admin -d catagce_prod < scripts/migrate-prod.sql 2>/dev/null && echo "  ✓ migrate-prod.sql" || true
+fi
 docker run --rm --network RenaceNet \
   -e DATABASE_URL="postgres://catagce_admin:${DB_PASSWORD}@db:5432/catagce_prod" \
   -v "$PROJECT_DIR/packages/db:/app/packages/db" \

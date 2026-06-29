@@ -2,6 +2,7 @@ node_modules/
 dist/
 .next/
 .turbo/
+.pnpm-store/
 .env
 *.log
 .DS_Store
