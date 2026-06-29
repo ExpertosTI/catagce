@@ -1,28 +1,20 @@
 #!/bin/bash
-# Recuperar servicios api/web tras deploy fallido
-set -e
+# Recuperación producción — sin rebuild si las imágenes ya están OK
+set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd /opt/catagce
 
 git fetch --all && git reset --hard origin/main
 
-echo "🏗️  Rebuild api + web..."
-export $(grep -v '^#' .env | xargs)
-docker compose build --no-cache api web
-
-echo "🚢 Deploy stack..."
+echo "🚢 Actualizar stack (healthchecks corregidos)..."
 docker stack deploy -c docker-compose.yml catagce
 
-echo "🔄 Force update api + web..."
+echo "🗄️  Reset DB + schema + seed..."
+bash scripts/reset-and-seed-server.sh all
+
+echo "🔄 Reiniciar api + web..."
 docker service update --force catagce_api
 docker service update --force catagce_web
 
-echo "⏳ Esperando arranque..."
-sleep 25
-
-echo "🗄️  DB schema + seed..."
-bash scripts/reset-and-seed-server.sh all || bash scripts/reset-and-seed-server.sh push && bash scripts/reset-and-seed-server.sh seed
-
-docker service update --force catagce_api
-
-sleep 15
+echo "⏳ Esperando..."
+sleep 30
 bash scripts/diagnose-server.sh

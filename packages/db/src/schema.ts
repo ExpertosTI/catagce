@@ -1,6 +1,7 @@
 import {
   pgTable, serial, text, timestamp, integer, pgEnum, decimal, uuid, boolean, jsonb, uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
@@ -333,7 +334,7 @@ export const webhooks = pgTable('webhooks', {
   sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
   url: text('url').notNull(),
   secret: text('secret'),
-  events: text('events').array().notNull().default([]),
+  events: text('events').array().notNull().default(sql`'{}'::text[]`),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
 });

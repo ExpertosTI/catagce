@@ -1,6 +1,6 @@
 #!/bin/bash
 # Ejecuta comandos Node con acceso a Postgres vía red del contenedor DB (Swarm)
-set -e
+set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd /opt/catagce
 
 DB_CONTAINER=$(docker ps -q -f name=catagce_db.1 | head -1)
@@ -19,6 +19,7 @@ run_node() {
     -e ADMIN_EMAIL="${ADMIN_EMAIL:-admin@renace.tech}" \
     -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-CatagceAdmin2026!}" \
     node:20-alpine sh -c "
+      set -e
       npm install -g pnpm >/dev/null 2>&1
       pnpm install --frozen-lockfile 2>/dev/null || pnpm install
       $1
@@ -28,7 +29,7 @@ run_node() {
 case "${1:-all}" in
   push)
     echo "🗄️  drizzle-kit push..."
-    run_node "yes | pnpm --filter @catagce/db push"
+    run_node "pnpm --filter @catagce/db push --force"
     ;;
   seed)
     echo "🌱 seed..."
@@ -42,7 +43,7 @@ case "${1:-all}" in
     echo "🗑️  1/3 Purga datos antiguos..."
     docker exec -i "$DB_CONTAINER" psql -U catagce_admin -d catagce_prod < scripts/reset-db.sql
     echo "🗄️  2/3 Schema drizzle..."
-    run_node "yes | pnpm --filter @catagce/db push"
+    run_node "pnpm --filter @catagce/db push --force"
     echo "🌱 3/3 Seed admin..."
     run_node "pnpm --filter @catagce/db seed"
     echo ""

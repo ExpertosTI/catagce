@@ -15,4 +15,4 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 EXPOSE 3000
 ENV NODE_ENV=production
-CMD ["node", "apps/api/dist/main"]
+CMD ["node", "apps/api/dist/main.js"]
