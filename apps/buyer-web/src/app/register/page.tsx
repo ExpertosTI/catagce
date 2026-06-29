@@ -2,10 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Box, ArrowRight } from 'lucide-react';
-import { setAuth } from '@/lib/api';
+import { setAuth, API_URL } from '@/lib/api';
+import { AuthShell, AuthInput, AuthButton, AuthLink } from '@/components/AuthShell';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -20,7 +18,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/auth/register`, {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -29,8 +27,8 @@ export default function RegisterPage() {
       if (!res.ok) throw new Error(data.message);
       setAuth(data.apiKey, data.token);
       router.push('/onboarding');
-    } catch (err: any) {
-      setError(err.message || 'Error al registrar');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al registrar');
     } finally {
       setLoading(false);
     }
@@ -47,37 +45,25 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg">
-        <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-10 h-10 bg-[#00D1FF] rounded-lg flex items-center justify-center">
-            <Box className="text-black w-6 h-6" />
-          </div>
-          <span className="text-2xl font-black">CATAGCE</span>
-        </div>
-
-        <form onSubmit={handleSubmit} className="glass rounded-3xl p-8 space-y-4">
-          <h1 className="text-2xl font-bold mb-2">Crear cuenta</h1>
-          <p className="text-gray-400 text-sm mb-4">Configura tu tienda B2B en minutos</p>
-
-          <input placeholder="Nombre de tu negocio" value={form.sellerName} onChange={(e) => update('sellerName', e.target.value)} className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#00D1FF]" required />
-          <input placeholder="slug-tu-negocio" value={form.sellerSlug} onChange={(e) => update('sellerSlug', e.target.value)} className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none font-mono text-sm" required />
-          <input placeholder="Tu nombre" value={form.name} onChange={(e) => update('name', e.target.value)} className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none" required />
-          <input type="email" placeholder="Email" value={form.email} onChange={(e) => update('email', e.target.value)} className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none" required />
-          <input type="password" placeholder="Contraseña (mín. 6)" value={form.password} onChange={(e) => update('password', e.target.value)} className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none" minLength={6} required />
-          <input placeholder="WhatsApp (opcional)" value={form.phone} onChange={(e) => update('phone', e.target.value)} className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none" />
-
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-
-          <button type="submit" disabled={loading} className="w-full py-4 bg-[#FF8A00] text-black font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
-            {loading ? 'Creando...' : 'Crear mi tienda'} <ArrowRight className="w-5 h-5" />
-          </button>
-
-          <p className="text-center text-sm text-gray-500">
-            ¿Ya tienes cuenta? <Link href="/login" className="text-[#00D1FF] hover:underline">Iniciar sesión</Link>
-          </p>
-        </form>
-      </motion.div>
-    </div>
+    <AuthShell
+      title="Crea tu cuenta en Catagce"
+      subtitle="Configura tu tienda B2B en minutos"
+      footer={
+        <>
+          ¿Ya tienes cuenta? <AuthLink href="/login">Iniciar sesión</AuthLink>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthInput label="Nombre del negocio" value={form.sellerName} onChange={(v) => update('sellerName', v)} placeholder="Mi Empresa SRL" required />
+        <AuthInput label="URL de tu tienda" value={form.sellerSlug} onChange={(v) => update('sellerSlug', v)} placeholder="mi-empresa" required />
+        <AuthInput label="Tu nombre" value={form.name} onChange={(v) => update('name', v)} placeholder="Juan Pérez" required />
+        <AuthInput label="Correo electrónico" type="email" value={form.email} onChange={(v) => update('email', v)} placeholder="tu@empresa.com" required />
+        <AuthInput label="Contraseña" type="password" value={form.password} onChange={(v) => update('password', v)} minLength={6} required />
+        <AuthInput label="WhatsApp (opcional)" value={form.phone} onChange={(v) => update('phone', v)} placeholder="+1809..." />
+        {error && <p className="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-lg px-3 py-2">{error}</p>}
+        <AuthButton loading={loading}>{loading ? 'Creando cuenta...' : 'Crear mi tienda'}</AuthButton>
+      </form>
+    </AuthShell>
   );
 }

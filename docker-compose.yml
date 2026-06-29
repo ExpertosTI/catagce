@@ -8,8 +8,8 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
     networks:
       - RenaceNet
@@ -49,6 +49,8 @@ services:
     build:
       context: .
       dockerfile: apps/buyer-web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://api.catagce.renace.tech/api
     environment:
       - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech/api
       - DATABASE_URL=${DATABASE_URL}
