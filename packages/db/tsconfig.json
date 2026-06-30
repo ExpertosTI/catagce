@@ -2,7 +2,8 @@
   "extends": "@catagce/typescript-config/base.json",
   "compilerOptions": {
     "moduleResolution": "node",
-    "outDir": "dist"
+    "outDir": "dist",
+    "types": ["node"]
   },
   "include": ["src"]
 }

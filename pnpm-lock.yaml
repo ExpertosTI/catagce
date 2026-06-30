@@ -47,6 +47,9 @@ importers:
       drizzle-orm:
         specifier: ^0.38.4
         version: 0.38.4(@opentelemetry/api@1.9.1)(@types/react@18.3.28)(postgres@3.4.9)(react@18.3.1)
+      postgres:
+        specifier: ^3.4.0
+        version: 3.4.9
       reflect-metadata:
         specifier: ^0.1.13
         version: 0.1.14
@@ -146,6 +149,9 @@ importers:
       '@catagce/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.40
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
