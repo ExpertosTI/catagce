@@ -21,6 +21,10 @@ docker compose build api
 # Verificar imagen antes de deploy (falla rápido si falta dist/)
 echo "🔬 Verificar imagen api..."
 docker run --rm catagce-api:latest node -e "require('fs').accessSync('dist/main.js')"
+docker run --rm catagce-api:latest node -e "require('@catagce/db')"
+
+echo "🔬 Verificar bootstrap Nest (5s, sin red)..."
+docker run --rm --name api-boot-test catagce-api:latest sh -c 'timeout 5 node dist/main.js 2>&1 || true' | tail -5
 
 echo "🚢 Deploy stack..."
 docker stack deploy -c docker-compose.yml catagce
