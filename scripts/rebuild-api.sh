@@ -29,8 +29,11 @@ docker run --rm --name api-boot-test catagce-api:latest sh -c 'timeout 5 node di
 echo "🚢 Deploy stack..."
 docker stack deploy -c docker-compose.yml catagce
 
-echo "🔄 Reiniciar api..."
-docker service update --force catagce_api
+echo "🔄 Reiniciar api (rollback si falla)..."
+docker service update --force \
+  --update-failure-action rollback \
+  --update-order start-first \
+  catagce_api
 
-sleep 25
+sleep 60
 bash scripts/diagnose-server.sh

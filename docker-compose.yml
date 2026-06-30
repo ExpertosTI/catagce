@@ -27,6 +27,13 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+        delay: 5s
+        max_attempts: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
       resources:
         limits:
           cpus: "0.50"

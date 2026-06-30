@@ -7,31 +7,36 @@ import { DRIZZLE } from './database/database.module';
 export class HealthController {
   constructor(@Inject(DRIZZLE) private readonly db: any) {}
 
+  /** Liveness — sin DB (usado por Traefik y Docker healthcheck) */
   @Get()
   @Public()
-  async check() {
-    let dbOk = false;
+  check() {
+    return {
+      estado: 'ok',
+      marca_de_tiempo: new Date().toISOString(),
+      tiempo_activo: process.uptime(),
+      version: process.env.npm_package_version || '0.1.0',
+    };
+  }
+
+  /** Readiness — incluye ping a Postgres */
+  @Get('ready')
+  @Public()
+  async ready() {
     try {
       await this.db.execute(sql`SELECT 1`);
-      dbOk = true;
+      return {
+        estado: 'ok',
+        db: 'ok',
+        marca_de_tiempo: new Date().toISOString(),
+      };
     } catch (err) {
       console.error('Health DB check failed:', err);
-    }
-
-    if (!dbOk) {
       throw new ServiceUnavailableException({
         estado: 'degradado',
         db: 'error',
         marca_de_tiempo: new Date().toISOString(),
       });
     }
-
-    return {
-      estado: 'ok',
-      db: 'ok',
-      marca_de_tiempo: new Date().toISOString(),
-      tiempo_activo: process.uptime(),
-      version: process.env.npm_package_version || '0.1.0',
-    };
   }
 }
