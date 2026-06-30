@@ -1,0 +1,28 @@
+#!/bin/bash
+# Rebuild API (imagen más liviana). Ejecutar solo si hace falta nueva versión del API.
+set -euo pipefail
+cd /opt/QuickCtgo 2>/dev/null || cd /opt/catagce
+
+git fetch --all && git reset --hard origin/main
+
+echo "💾 Espacio en disco:"
+df -h / | tail -1
+
+echo "🧹 Limpiar build cache si disco > 85%..."
+DISK_PCT=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
+if [ "$DISK_PCT" -gt 85 ]; then
+  docker builder prune -af 2>/dev/null || true
+  docker system prune -f 2>/dev/null || true
+fi
+
+echo "🏗️  Build api..."
+docker compose build api
+
+echo "🚢 Deploy stack..."
+docker stack deploy -c docker-compose.yml catagce
+
+echo "🔄 Reiniciar api..."
+docker service update --force catagce_api
+
+sleep 25
+bash scripts/diagnose-server.sh

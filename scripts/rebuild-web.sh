@@ -1,21 +1,20 @@
 #!/bin/bash
-# Rebuild web (API URL + UI) + api, deploy y reiniciar
+# Rebuild y deploy SOLO web (API URL + UI). No toca la API.
 set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd /opt/catagce
 
 git fetch --all && git reset --hard origin/main
 
-export $(grep -v '^#' .env | xargs)
-
-echo "🏗️  Build web + api..."
-docker compose build --no-cache web api
+echo "🏗️  Build web..."
+docker compose build web
 
 echo "🚢 Deploy stack..."
 docker stack deploy -c docker-compose.yml catagce
 
-echo "🔄 Reiniciar servicios..."
-docker service update --force catagce_api
+echo "🔄 Reiniciar web..."
 docker service update --force catagce_web
 
-sleep 35
-bash scripts/diagnose-server.sh
+sleep 20
+echo "═══ Estado web ═══"
+docker service ps catagce_web --no-trunc 2>/dev/null | head -3
+curl -sf -o /dev/null -w "Web HTTP %{http_code}\n" https://catagce.renace.tech/login || true

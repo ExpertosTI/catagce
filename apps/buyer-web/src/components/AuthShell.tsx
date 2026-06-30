@@ -2,6 +2,10 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Layers3 } from 'lucide-react';
 
+/** Amarillo chillón — acento principal auth */
+const BRAND = '#FFD60A';
+const BRAND_LINK = '#B45309';
+
 type AuthShellProps = {
   title: string;
   subtitle?: string;
@@ -15,8 +19,11 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
       <div className="w-full max-w-[420px]">
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center gap-2.5 mb-6">
-            <div className="w-11 h-11 rounded-xl bg-[#635BFF] flex items-center justify-center shadow-sm">
-              <Layers3 className="w-6 h-6 text-white" strokeWidth={2.2} />
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm"
+              style={{ backgroundColor: BRAND }}
+            >
+              <Layers3 className="w-6 h-6 text-[#1A1D26]" strokeWidth={2.2} />
             </div>
             <span className="text-[1.65rem] font-bold tracking-tight text-[#1A1D26]">Catagce</span>
           </div>
@@ -64,7 +71,7 @@ export function AuthInput({
         required={required}
         minLength={minLength}
         autoComplete={autoComplete}
-        className="w-full h-12 px-4 rounded-xl border border-[#D1D5DB] bg-white text-[#111827] placeholder:text-[#9CA3AF] text-[15px] focus:outline-none focus:ring-2 focus:ring-[#635BFF]/25 focus:border-[#635BFF] transition"
+        className="w-full h-12 px-4 rounded-xl border border-[#D1D5DB] bg-white text-[#111827] placeholder:text-[#9CA3AF] text-[15px] focus:outline-none focus:ring-2 focus:ring-[#FFD60A]/40 focus:border-[#FFD60A] transition"
       />
     </label>
   );
@@ -85,7 +92,7 @@ export function AuthButton({
     <button
       type={type}
       disabled={disabled || loading}
-      className="w-full h-12 rounded-xl bg-[#635BFF] hover:bg-[#564FE8] text-white font-semibold text-[15px] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+      className="w-full h-12 rounded-xl bg-[#FFD60A] hover:bg-[#F5C400] text-[#1A1D26] font-bold text-[15px] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
     >
       {children}
     </button>
@@ -94,7 +101,11 @@ export function AuthButton({
 
 export function AuthLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="text-[#635BFF] font-medium hover:text-[#564FE8] hover:underline">
+    <Link
+      href={href}
+      className="font-semibold hover:underline"
+      style={{ color: BRAND_LINK }}
+    >
       {children}
     </Link>
   );
