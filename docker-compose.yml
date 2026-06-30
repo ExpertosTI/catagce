@@ -10,7 +10,6 @@ services:
       - DB_USER=catagce_admin
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=catagce_prod
-      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_HOST=catagce-redis
       - REDIS_PORT=6379
