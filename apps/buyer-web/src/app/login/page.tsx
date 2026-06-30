@@ -26,8 +26,8 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setAuth('', data.token);
+      if (!res.ok) throw new Error(data.message || 'Credenciales inválidas');
+      setAuth(data.apiKey || '', data.token);
       const onboarding = await fetch(`${API_URL}/sellers/onboarding`, {
         headers: { Authorization: `Bearer ${data.token}` },
       }).then((r) => r.json()).catch(() => ({ completed: true }));

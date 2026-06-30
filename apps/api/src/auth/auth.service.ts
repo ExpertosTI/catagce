@@ -75,23 +75,53 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.db.query.sellerUsers.findFirst({
-      where: and(eq(sellerUsers.email, email), eq(sellerUsers.isActive, true)),
-      with: { seller: true },
-    });
+    try {
+      const user = await this.db.query.sellerUsers.findFirst({
+        where: and(eq(sellerUsers.email, email), eq(sellerUsers.isActive, true)),
+      });
 
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      if (!user) {
+        throw new UnauthorizedException('Credenciales inválidas');
+      }
+
+      let passwordOk = false;
+      try {
+        passwordOk = await bcrypt.compare(password, user.passwordHash);
+      } catch {
+        throw new UnauthorizedException('Credenciales inválidas');
+      }
+      if (!passwordOk) {
+        throw new UnauthorizedException('Credenciales inválidas');
+      }
+
+      const seller = await this.db.query.sellers.findFirst({
+        where: eq(sellers.id, user.sellerId),
+      });
+      if (!seller) {
+        throw new UnauthorizedException('Cuenta sin vendedor asociado');
+      }
+
+      await this.db
+        .update(sellerUsers)
+        .set({ lastLoginAt: new Date() })
+        .where(eq(sellerUsers.id, user.id));
+
+      const apiKeyRecord = await this.db.query.sellerApiKeys.findFirst({
+        where: eq(sellerApiKeys.sellerId, seller.id),
+      });
+
+      const token = this.signToken(user, seller);
+      return {
+        token,
+        apiKey: apiKeyRecord?.key,
+        user: { id: user.id, email: user.email, name: user.name, role: user.role },
+        seller: { id: seller.id, name: seller.name, slug: seller.slug, email: seller.email },
+      };
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      console.error('Login failed:', err);
+      throw err;
     }
-
-    await this.db.update(sellerUsers).set({ lastLoginAt: new Date() }).where(eq(sellerUsers.id, user.id));
-
-    const token = this.signToken(user, user.seller);
-    return {
-      token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-      seller: user.seller,
-    };
   }
 
   private signToken(user: any, seller: any) {
