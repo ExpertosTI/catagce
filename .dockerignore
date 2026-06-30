@@ -1,11 +1,31 @@
+# Dependencias y artefactos (se instalan/compilan dentro del build)
 node_modules
+**/node_modules
+.pnpm-store
+**/.pnpm-store
 .next
+**/.next
 dist
+**/dist
 .turbo
+**/.turbo
+
+# Git y entorno local
 .git
+.gitignore
 .env
+.env.*
+!.env.example
 *.log
-docker-compose.yml
-deploy.sh
-prepush
+
+# No necesarios en imagen
 docs
+prepush
+deploy.sh
+docker-compose.yml
+scripts
+**/*.md
+**/.DS_Store
+coverage
+**/*.test.ts
+**/*.spec.ts

@@ -1,35 +1,35 @@
 #!/bin/bash
-# Arreglar API (404 en login) + redeploy web amarillo
+# Arreglar login: requiere espacio en disco. Si imágenes ya existen, usa emergency-recover.sh
 set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd /opt/catagce
 
 git fetch --all && git reset --hard origin/main
 
-echo "💾 Disco:"
-df -h / | tail -1
-DISK_PCT=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-if [ "$DISK_PCT" -gt 85 ]; then
-  docker builder prune -af 2>/dev/null || true
+FREE_KB=$(df / | tail -1 | awk '{print $4}')
+FREE_MB=$((FREE_KB / 1024))
+echo "💾 Espacio libre: ${FREE_MB}MB"
+
+if [ "$FREE_MB" -lt 3000 ]; then
+  echo "❌ Menos de 3GB libres. Ejecuta primero: bash scripts/emergency-recover.sh"
+  echo "   (Los builds llenan el disco y los contenedores no pueden arrancar)"
+  exit 1
 fi
 
 export $(grep -v '^#' .env | xargs)
 
-echo "🏗️  Build api (imagen liviana)..."
-docker compose build api
-
-echo "🏗️  Build web (amarillo + API URL)..."
-docker compose build web
-
-echo "🚢 Deploy..."
-docker stack deploy -c docker-compose.yml catagce
-
-echo "🔄 Reiniciar api + web..."
-docker service update --force catagce_api
-docker service update --force catagce_web
+# Si las imágenes ya existen, no rebuild
+if docker image inspect catagce-api:latest >/dev/null 2>&1 && docker image inspect catagce-web:latest >/dev/null 2>&1; then
+  echo "ℹ️  Imágenes ya existen — deploy sin rebuild"
+  docker stack deploy -c docker-compose.yml catagce
+  docker service update --force catagce_api
+  docker service update --force catagce_web
+else
+  echo "🏗️  Build api + web..."
+  docker compose build api web
+  docker stack deploy -c docker-compose.yml catagce
+  docker service update --force catagce_api
+  docker service update --force catagce_web
+fi
 
 sleep 40
 bash scripts/diagnose-server.sh
-curl -sf -o /dev/null -w "API OPTIONS → %{http_code}\n" -X OPTIONS \
-  -H "Origin: https://catagce.renace.tech" \
-  -H "Access-Control-Request-Method: POST" \
-  https://api.catagce.renace.tech/api/auth/login || echo "API aún no responde"

@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@db:5432/catagce_prod
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -30,7 +30,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: "768M"
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"

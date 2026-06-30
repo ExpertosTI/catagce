@@ -18,6 +18,10 @@ fi
 echo "🏗️  Build api..."
 docker compose build api
 
+# Verificar imagen antes de deploy (falla rápido si falta dist/)
+echo "🔬 Verificar imagen api..."
+docker run --rm catagce-api:latest node -e "require('fs').accessSync('dist/main.js')"
+
 echo "🚢 Deploy stack..."
 docker stack deploy -c docker-compose.yml catagce
 
