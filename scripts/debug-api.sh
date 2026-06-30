@@ -15,22 +15,31 @@ echo "═══ ¿Arranca @catagce/db? ═══"
 docker run --rm catagce-api:latest node -e "require('@catagce/db'); console.log('db ok')" 2>&1 || true
 
 echo ""
-echo "═══ Probar arranque API (10s) ═══"
+echo "═══ Probar arranque API (módulos, sin red) ═══"
+docker run --rm catagce-api:latest node -e "require('@catagce/db'); console.log('modules ok')" 2>&1 || true
+
+echo ""
+echo "═══ Probar arranque API con DB (network container) ═══"
 export $(grep -v '^#' .env | xargs)
-docker rm -f api-debug 2>/dev/null || true
-docker run -d --name api-debug --network RenaceNet \
-  -e DATABASE_URL="postgres://catagce_admin:${DB_PASSWORD}@db:5432/catagce_prod" \
-  -e REDIS_HOST=redis -e REDIS_PORT=6379 -e JWT_SECRET="${JWT_SECRET}" \
-  catagce-api:latest
-sleep 8
-if docker ps --filter name=api-debug --format '{{.Names}}' | grep -q api-debug; then
-  echo "✓ Contenedor vivo"
-  docker logs api-debug --tail 15
+DB_TASK=$(docker ps -q -f name=catagce_db | head -1)
+if [ -z "$DB_TASK" ]; then
+  echo "⚠️  No hay contenedor catagce_db corriendo — omitiendo prueba con red"
 else
-  echo "✗ Contenedor murió — logs:"
-  docker logs api-debug 2>&1 || true
+  docker rm -f api-debug 2>/dev/null || true
+  docker run -d --name api-debug --network "container:${DB_TASK}" \
+    -e DATABASE_URL="postgres://catagce_admin:${DB_PASSWORD}@127.0.0.1:5432/catagce_prod" \
+    -e REDIS_HOST=redis -e REDIS_PORT=6379 -e JWT_SECRET="${JWT_SECRET}" \
+    catagce-api:latest
+  sleep 8
+  if docker ps --filter name=api-debug --format '{{.Names}}' | grep -q api-debug; then
+    echo "✓ Contenedor vivo"
+    docker logs api-debug --tail 15
+  else
+    echo "✗ Contenedor murió — logs:"
+    docker logs api-debug 2>&1 || true
+  fi
+  docker rm -f api-debug 2>/dev/null || true
 fi
-docker rm -f api-debug 2>/dev/null || true
 
 echo ""
 echo "═══ Swarm task error ═══"

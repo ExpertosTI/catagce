@@ -23,6 +23,7 @@
     "@nestjs/bullmq": "^10.1.1",
     "bullmq": "^5.7.0",
     "drizzle-orm": "^0.38.4",
+    "postgres": "^3.4.0",
     "@catagce/db": "workspace:*",
     "@nestjs/jwt": "^10.2.0",
     "@google/generative-ai": "^0.24.0",
