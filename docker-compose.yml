@@ -6,9 +6,13 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@db:5432/catagce_prod
+      - DB_HOST=catagce-db
+      - DB_USER=catagce_admin
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=catagce_prod
+      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
       - JWT_SECRET=${JWT_SECRET}
-      - REDIS_HOST=redis
+      - REDIS_HOST=catagce-redis
       - REDIS_PORT=6379
       - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
     networks:
@@ -103,7 +107,9 @@ services:
     volumes:
       - catagce_db_data:/var/lib/postgresql/data
     networks:
-      - RenaceNet
+      RenaceNet:
+        aliases:
+          - catagce-db
     logging:
       driver: "json-file"
       options:
@@ -123,9 +129,9 @@ services:
       context: .
       dockerfile: workers/media-processor/Dockerfile
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
+      - REDIS_HOST=catagce-redis
+      - REDIS_PORT=6379
     networks:
       - RenaceNet
     logging:
@@ -143,9 +149,9 @@ services:
       context: .
       dockerfile: workers/catalog-renderer/Dockerfile
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
+      - REDIS_HOST=catagce-redis
+      - REDIS_PORT=6379
     networks:
       - RenaceNet
     logging:
@@ -163,9 +169,9 @@ services:
       context: .
       dockerfile: workers/notifications/Dockerfile
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
+      - REDIS_HOST=catagce-redis
+      - REDIS_PORT=6379
     networks:
       - RenaceNet
     logging:
@@ -180,7 +186,9 @@ services:
   redis:
     image: redis:7-alpine
     networks:
-      - RenaceNet
+      RenaceNet:
+        aliases:
+          - catagce-redis
     deploy:
       restart_policy:
         condition: on-failure
