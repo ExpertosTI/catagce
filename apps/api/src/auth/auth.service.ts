@@ -26,9 +26,11 @@ export class AuthService {
     name: string;
     phone?: string;
   }) {
-    const existing = await this.db.query.sellerUsers.findFirst({
-      where: eq(sellerUsers.email, data.email),
-    });
+    const [existing] = await this.db
+      .select({ id: sellerUsers.id })
+      .from(sellerUsers)
+      .where(eq(sellerUsers.email, data.email))
+      .limit(1);
     if (existing) throw new ConflictException('Email ya registrado');
 
     const passwordHash = await bcrypt.hash(data.password, 12);
@@ -75,10 +77,16 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
+    if (!email?.trim() || !password) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
     try {
-      const user = await this.db.query.sellerUsers.findFirst({
-        where: and(eq(sellerUsers.email, email), eq(sellerUsers.isActive, true)),
-      });
+      const [user] = await this.db
+        .select()
+        .from(sellerUsers)
+        .where(and(eq(sellerUsers.email, email.trim()), eq(sellerUsers.isActive, true)))
+        .limit(1);
 
       if (!user) {
         throw new UnauthorizedException('Credenciales inválidas');
@@ -94,9 +102,11 @@ export class AuthService {
         throw new UnauthorizedException('Credenciales inválidas');
       }
 
-      const seller = await this.db.query.sellers.findFirst({
-        where: eq(sellers.id, user.sellerId),
-      });
+      const [seller] = await this.db
+        .select()
+        .from(sellers)
+        .where(eq(sellers.id, user.sellerId))
+        .limit(1);
       if (!seller) {
         throw new UnauthorizedException('Cuenta sin vendedor asociado');
       }
@@ -106,9 +116,11 @@ export class AuthService {
         .set({ lastLoginAt: new Date() })
         .where(eq(sellerUsers.id, user.id));
 
-      const apiKeyRecord = await this.db.query.sellerApiKeys.findFirst({
-        where: eq(sellerApiKeys.sellerId, seller.id),
-      });
+      const [apiKeyRecord] = await this.db
+        .select({ key: sellerApiKeys.key })
+        .from(sellerApiKeys)
+        .where(eq(sellerApiKeys.sellerId, seller.id))
+        .limit(1);
 
       const token = this.signToken(user, seller);
       return {
@@ -135,17 +147,26 @@ export class AuthService {
   }
 
   async validateJwt(payload: any) {
-    const user = await this.db.query.sellerUsers.findFirst({
-      where: eq(sellerUsers.id, payload.sub),
-      with: { seller: true },
-    });
+    const [user] = await this.db
+      .select()
+      .from(sellerUsers)
+      .where(eq(sellerUsers.id, payload.sub))
+      .limit(1);
+
     if (!user || !user.isActive) throw new UnauthorizedException('Usuario inactivo');
+
+    const [seller] = await this.db
+      .select({ name: sellers.name })
+      .from(sellers)
+      .where(eq(sellers.id, user.sellerId))
+      .limit(1);
+
     return {
       userId: user.id,
       sellerId: user.sellerId,
       email: user.email,
       role: user.role,
-      sellerName: user.seller?.name || '',
+      sellerName: seller?.name || '',
     };
   }
 }

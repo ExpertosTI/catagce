@@ -21,7 +21,7 @@ run_node() {
     node:20-alpine sh -c "
       set -e
       npm install -g pnpm >/dev/null 2>&1
-      pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+      pnpm install --no-frozen-lockfile 2>/dev/null || pnpm install
       $1
     "
 }

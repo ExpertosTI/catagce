@@ -46,6 +46,9 @@ else
 fi
 
 echo ""
+echo "═══ Logs API tras login ═══"
+docker service logs catagce_api --tail 10 2>&1 | grep -i login || docker service logs catagce_api --tail 5 2>&1 || true
+
 COUNT=$(docker exec "$DB_CONTAINER" psql -U catagce_admin -d catagce_prod -tAc "SELECT count(*) FROM seller_users;" 2>/dev/null || echo "0")
 if [ "${COUNT// /}" = "0" ]; then
   echo "❌ No hay usuarios — ejecuta: bash scripts/reset-and-seed-server.sh seed"

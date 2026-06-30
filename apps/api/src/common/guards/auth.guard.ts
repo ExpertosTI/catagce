@@ -4,7 +4,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { eq } from 'drizzle-orm';
-import { sellerApiKeys } from '@catagce/db';
+import { sellerApiKeys, sellers } from '@catagce/db';
 import { DRIZZLE } from '../../database/database.module';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService } from '../../auth/auth.service';
@@ -43,12 +43,19 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Autenticación requerida (JWT Bearer o x-api-key)');
     }
 
-    const keyRecord = await this.db.query.sellerApiKeys.findFirst({
-      where: eq(sellerApiKeys.key, apiKey),
-      with: { seller: true },
-    });
+    const [keyRecord] = await this.db
+      .select()
+      .from(sellerApiKeys)
+      .where(eq(sellerApiKeys.key, apiKey))
+      .limit(1);
 
     if (!keyRecord) throw new UnauthorizedException('API key inválida');
+
+    const [seller] = await this.db
+      .select()
+      .from(sellers)
+      .where(eq(sellers.id, keyRecord.sellerId))
+      .limit(1);
 
     await this.db.update(sellerApiKeys)
       .set({ lastUsedAt: new Date() })
@@ -57,9 +64,9 @@ export class AuthGuard implements CanActivate {
     request.user = {
       userId: keyRecord.id,
       sellerId: keyRecord.sellerId,
-      email: keyRecord.seller?.email || '',
+      email: seller?.email || '',
       role: 'api_key',
-      sellerName: keyRecord.seller?.name || '',
+      sellerName: seller?.name || '',
     };
 
     return true;
