@@ -26,9 +26,15 @@ export class SellersService {
   }
 
   async getBranding(sellerId: string) {
-    return this.db.query.sellerBranding.findFirst({
+    const row = await this.db.query.sellerBranding.findFirst({
       where: eq(sellerBranding.sellerId, sellerId),
     });
+    return row ?? {
+      primaryColor: '#00D1FF',
+      accentColor: '#FF8A00',
+      welcomeMessage: '',
+      logoUrl: null,
+    };
   }
 
   async updateBranding(sellerId: string, data: {
@@ -38,12 +44,19 @@ export class SellersService {
     customDomain?: string;
     welcomeMessage?: string;
   }) {
+    const payload = {
+      logoUrl: data.logoUrl,
+      primaryColor: data.primaryColor,
+      accentColor: data.accentColor,
+      customDomain: data.customDomain,
+      welcomeMessage: data.welcomeMessage,
+    };
     const existing = await this.getBranding(sellerId);
 
     if (existing) {
       const [branding] = await this.db
         .update(sellerBranding)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...payload, updatedAt: new Date() })
         .where(eq(sellerBranding.sellerId, sellerId))
         .returning();
       return branding;
@@ -51,7 +64,7 @@ export class SellersService {
 
     const [branding] = await this.db
       .insert(sellerBranding)
-      .values({ sellerId, ...data })
+      .values({ sellerId, ...payload })
       .returning();
     return branding;
   }

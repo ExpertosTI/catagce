@@ -1,6 +1,6 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DRIZZLE } from '../database/database.module';
-import { products, productVariants, productBarcodes, productMedia, stockLevels } from '@catagce/db';
+import { products, productVariants, productBarcodes, productMedia, stockLevels, uoms, warehouses } from '@catagce/db';
 import { eq, and, sql } from 'drizzle-orm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -33,38 +33,67 @@ export class ProductsService {
   }
 
   async create(sellerId: string, data: any, actorUserId?: string) {
+    let baseUomId = data.baseUomId;
+    if (!baseUomId) {
+      const [defaultUom] = await this.db
+        .select({ id: uoms.id })
+        .from(uoms)
+        .where(eq(uoms.sellerId, sellerId))
+        .limit(1);
+      if (!defaultUom) throw new BadRequestException('Configura una unidad de medida primero');
+      baseUomId = defaultUom.id;
+    }
+
+    let warehouseId = data.warehouseId;
+    if (!warehouseId && data.initialStock) {
+      const [defaultWh] = await this.db
+        .select({ id: warehouses.id })
+        .from(warehouses)
+        .where(and(eq(warehouses.sellerId, sellerId), eq(warehouses.isDefault, true)))
+        .limit(1);
+      warehouseId = defaultWh?.id;
+    }
+
     const [product] = await this.db.insert(products).values({
       sellerId,
-      name: data.name,
-      sku: data.sku,
-      description: data.description,
-      category: data.category,
-      baseUomId: data.baseUomId,
+      name: data.name?.trim(),
+      sku: data.sku?.trim() || null,
+      description: data.description?.trim() || null,
+      category: data.category?.trim() || null,
+      baseUomId,
       basePrice: String(data.basePrice),
       b2bPrice: data.b2bPrice ? String(data.b2bPrice) : null,
       minOrderQuantity: data.minOrderQuantity ? String(data.minOrderQuantity) : '1',
-      imageUrl: data.imageUrl,
+      imageUrl: data.imageUrl?.trim() || null,
       isActive: data.isActive ?? true,
     }).returning();
 
-    if (data.initialStock && data.warehouseId) {
+    if (data.initialStock && warehouseId) {
       await this.db.insert(stockLevels).values({
-        sellerId, warehouseId: data.warehouseId, productId: product.id,
+        sellerId, warehouseId, productId: product.id,
         onHandBase: String(data.initialStock),
       });
     }
 
     if (product.imageUrl) {
-      await this.mediaQueue.add('process-product-media', {
-        productId: product.id, imageUrl: product.imageUrl, sellerId,
-      });
+      try {
+        await this.mediaQueue.add('process-product-media', {
+          productId: product.id, imageUrl: product.imageUrl, sellerId,
+        });
+      } catch (err) {
+        console.warn('Media queue unavailable:', err);
+      }
     }
 
-    await this.webhookDispatcher.dispatch(sellerId, 'product.created', { product });
-    await this.auditService.log({
-      sellerId, actorUserId, action: 'product.created',
-      entityType: 'product', entityId: product.id,
-    });
+    try {
+      await this.webhookDispatcher.dispatch(sellerId, 'product.created', { product });
+      await this.auditService.log({
+        sellerId, actorUserId, action: 'product.created',
+        entityType: 'product', entityId: product.id,
+      });
+    } catch (err) {
+      console.warn('Post-create hooks failed:', err);
+    }
 
     return product;
   }

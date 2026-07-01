@@ -536,6 +536,10 @@ export const orderItemsRelations = relations(orderItems, ({ one, many }) => ({
   allocations: many(orderItemAllocations),
 }));
 
+export const orderEventsRelations = relations(orderEvents, ({ one }) => ({
+  order: one(orders, { fields: [orderEvents.orderId], references: [orders.id] }),
+}));
+
 export const webhooksRelations = relations(webhooks, ({ one, many }) => ({
   seller: one(sellers, { fields: [webhooks.sellerId], references: [sellers.id] }),
   deliveries: many(webhookDeliveries),

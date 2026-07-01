@@ -21,8 +21,15 @@ export default function SettingsPage() {
   const [newWebhook, setNewWebhook] = useState({ url: '', events: ['order.created'] });
   const [odooConfig, setOdooConfig] = useState({ url: '', database: '', username: '', apiKey: '' });
   const [syncing, setSyncing] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [saveErr, setSaveErr] = useState('');
   const [error, setError] = useState('');
+
+  const flash = (msg: string) => {
+    setSaveMsg(msg);
+    setSaveErr('');
+    setTimeout(() => setSaveMsg(''), 2500);
+  };
 
   useEffect(() => {
     if (!ensureAuth()) return;
@@ -44,34 +51,57 @@ export default function SettingsPage() {
   }, [router, ensureAuth, onApiError]);
 
   const saveBranding = async () => {
-    await apiFetch('/sellers/branding', { method: 'PATCH', body: JSON.stringify(branding) });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveErr('');
+    try {
+      const updated = await apiFetch<any>('/sellers/branding', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          primaryColor: branding.primaryColor,
+          accentColor: branding.accentColor,
+          welcomeMessage: branding.welcomeMessage,
+          logoUrl: branding.logoUrl || undefined,
+        }),
+      });
+      setBranding(updated);
+      flash('Marca guardada correctamente');
+    } catch (err) {
+      setSaveErr(getErrorMessage(err, 'No se pudo guardar la marca'));
+    }
   };
 
   const addWebhook = async (e: React.FormEvent) => {
     e.preventDefault();
-    const hook = await apiFetch('/webhooks', { method: 'POST', body: JSON.stringify(newWebhook) });
-    setWebhooks([...webhooks, hook]);
-    setNewWebhook({ url: '', events: ['order.created'] });
+    setSaveErr('');
+    try {
+      const hook = await apiFetch('/webhooks', { method: 'POST', body: JSON.stringify(newWebhook) });
+      setWebhooks([...webhooks, hook]);
+      setNewWebhook({ url: '', events: ['order.created'] });
+      flash('Webhook agregado');
+    } catch (err) {
+      setSaveErr(getErrorMessage(err, 'No se pudo crear el webhook'));
+    }
   };
 
   const saveOdoo = async () => {
-    const existing = integrations.find((i) => i.type === 'odoo');
-    if (existing) {
-      await apiFetch(`/integrations/${existing.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ config: odooConfig, name: 'Odoo ERP' }),
-      });
-    } else {
-      const created = await apiFetch('/integrations', {
-        method: 'POST',
-        body: JSON.stringify({ type: 'odoo', name: 'Odoo ERP', config: odooConfig }),
-      });
-      setIntegrations([...integrations, created]);
+    setSaveErr('');
+    try {
+      const existing = integrations.find((i) => i.type === 'odoo');
+      if (existing) {
+        await apiFetch(`/integrations/${existing.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ config: odooConfig, name: 'Odoo ERP' }),
+        });
+      } else {
+        const created = await apiFetch('/integrations', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'odoo', name: 'Odoo ERP', config: odooConfig }),
+        });
+        setIntegrations([...integrations, created]);
+      }
+      flash('Integración Odoo guardada');
+    } catch (err) {
+      setSaveErr(getErrorMessage(err, 'No se pudo guardar Odoo'));
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   };
 
   const syncOdoo = async (id: string) => {
@@ -87,15 +117,19 @@ export default function SettingsPage() {
   };
 
   const saveAiConfig = async () => {
-    const payload: Record<string, unknown> = {
-      aiModel: aiConfig.aiModel,
-      aiEnabled: aiConfig.aiEnabled,
-    };
-    if (aiConfig.googleAiApiKey) payload.googleAiApiKey = aiConfig.googleAiApiKey;
-    const updated = await apiFetch<any>('/ai/config', { method: 'PATCH', body: JSON.stringify(payload) });
-    setAiConfig((prev) => ({ ...prev, ...updated, googleAiApiKey: '' }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveErr('');
+    try {
+      const payload: Record<string, unknown> = {
+        aiModel: aiConfig.aiModel,
+        aiEnabled: aiConfig.aiEnabled,
+      };
+      if (aiConfig.googleAiApiKey) payload.googleAiApiKey = aiConfig.googleAiApiKey;
+      const updated = await apiFetch<any>('/ai/config', { method: 'PATCH', body: JSON.stringify(payload) });
+      setAiConfig((prev) => ({ ...prev, ...updated, googleAiApiKey: '' }));
+      flash('Superpower AI guardado');
+    } catch (err) {
+      setSaveErr(getErrorMessage(err, 'No se pudo guardar la configuración AI'));
+    }
   };
 
   const tabs = [
@@ -109,6 +143,8 @@ export default function SettingsPage() {
     <DashboardLayout>
       <h2 className="text-2xl font-bold mb-6">Configuración</h2>
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {saveMsg && <p className="mb-4 text-sm text-green-400">{saveMsg}</p>}
+      {saveErr && <p className="mb-4 text-sm text-red-400">{saveErr}</p>}
 
       <div className="flex gap-2 mb-8 overflow-x-auto">
         {tabs.map(({ id, label, icon: Icon }) => (
@@ -163,7 +199,7 @@ export default function SettingsPage() {
             />
           </div>
           <button onClick={saveBranding} className="px-6 py-3 bg-[#00D1FF] text-black font-bold rounded-xl">
-            {saved ? 'Guardado ✓' : 'Guardar Marca'}
+            Guardar Marca
           </button>
         </div>
       )}
@@ -276,7 +312,7 @@ export default function SettingsPage() {
           </div>
 
           <button onClick={saveAiConfig} className="px-6 py-3 bg-gradient-to-r from-[#00D1FF] to-[#0099cc] text-black font-bold rounded-xl">
-            {saved ? 'Guardado ✓' : 'Guardar Superpower AI'}
+            Guardar Superpower AI
           </button>
         </div>
       )}
@@ -314,7 +350,7 @@ export default function SettingsPage() {
           />
           <div className="flex gap-3">
             <button onClick={saveOdoo} className="px-6 py-3 bg-[#00D1FF] text-black font-bold rounded-xl">
-              {saved ? 'Guardado ✓' : 'Guardar'}
+              Guardar
             </button>
             {integrations.find((i) => i.type === 'odoo') && (
               <button

@@ -21,7 +21,7 @@ export class OrdersService {
   async findAll(sellerId: string) {
     const result = await this.db.query.orders.findMany({
       where: eq(orders.sellerId, sellerId),
-      with: { items: { with: { product: true } }, events: true },
+      with: { items: true },
     });
     return result.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
