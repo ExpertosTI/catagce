@@ -1,12 +1,24 @@
 import {
-  Controller, Post, Get, Param, Res, UseInterceptors, UploadedFile, NotFoundException,
+  Controller, Post, Get, Param, UseInterceptors, UploadedFile,
+  NotFoundException, StreamableFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { Response } from 'express';
+import { createReadStream } from 'fs';
+import { extname } from 'path';
 import { UploadsService } from './uploads.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
 import { Public } from '../common/decorators/public.decorator';
+
+const MIME: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.heic': 'image/heic',
+  '.avif': 'image/avif',
+};
 
 @Controller('uploads')
 export class UploadsController {
@@ -29,10 +41,12 @@ export class UploadsController {
   serveFile(
     @Param('sellerId') sellerId: string,
     @Param('filename') filename: string,
-    @Res() res: Response,
   ) {
-    const path = this.uploadsService.getFilePath(sellerId, filename);
-    if (!path) throw new NotFoundException('Imagen no encontrada');
-    res.sendFile(path);
+    const filePath = this.uploadsService.getFilePath(sellerId, filename);
+    if (!filePath) throw new NotFoundException('Imagen no encontrada');
+    const ext = extname(filename).toLowerCase();
+    return new StreamableFile(createReadStream(filePath), {
+      type: MIME[ext] || 'application/octet-stream',
+    });
   }
 }
