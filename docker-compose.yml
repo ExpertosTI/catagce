@@ -84,10 +84,15 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
       resources:
         limits:
           cpus: "0.50"
-          memory: "512M"
+          memory: "768M"
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
