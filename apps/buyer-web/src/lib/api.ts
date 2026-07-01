@@ -67,4 +67,21 @@ export async function publicFetch<T = unknown>(path: string, options: RequestIni
   return response.json();
 }
 
+export async function uploadImage(file: File): Promise<{ url: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  const apiKey = getApiKey();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  else if (apiKey) headers['x-api-key'] = apiKey;
+
+  const response = await fetch(`${API_URL}/uploads/image`, { method: 'POST', headers, body: form });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: response.statusText }));
+    throw new ApiError(error.message || 'Error al subir imagen', response.status, error);
+  }
+  return response.json();
+}
+
 export { API_URL };

@@ -48,10 +48,10 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
+          <Link key={product.id} href={`/dashboard/products/${product.id}`}>
           <motion.div
-            key={product.id}
             whileHover={{ y: -4 }}
-            className="glass rounded-3xl overflow-hidden"
+            className="glass rounded-3xl overflow-hidden cursor-pointer"
           >
             <div className="aspect-[4/3] relative">
               <img
@@ -89,6 +89,7 @@ export default function ProductsPage() {
               </div>
             </div>
           </motion.div>
+          </Link>
         ))}
       </div>
 

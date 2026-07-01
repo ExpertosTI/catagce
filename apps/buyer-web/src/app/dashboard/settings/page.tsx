@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Webhook, Plug, Palette, RefreshCw, Plus, Sparkles } from 'lucide-react';
-import { DashboardLayout } from '@/components/DashboardLayout';
+import { ImageUpload } from '@/components/ImageUpload';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const { ensureAuth, onApiError } = useRequireAuth();
   const [tab, setTab] = useState<'branding' | 'webhooks' | 'integrations' | 'ai'>('branding');
   const [branding, setBranding] = useState<any>({});
+  const [sellerSettings, setSellerSettings] = useState({ whatsappNumber: '' });
   const [aiConfig, setAiConfig] = useState({ googleAiApiKey: '', aiModel: 'gemini-2.5-flash', aiEnabled: true, hasApiKey: false, apiKeyPreview: null as string | null });
   const [webhooks, setWebhooks] = useState<any[]>([]);
   const [integrations, setIntegrations] = useState<any[]>([]);
@@ -35,11 +36,13 @@ export default function SettingsPage() {
     if (!ensureAuth()) return;
     Promise.all([
       apiFetch('/sellers/branding'),
+      apiFetch<any>('/sellers/settings'),
       apiFetch<any[]>('/webhooks'),
       apiFetch<any[]>('/integrations'),
       apiFetch<any>('/ai/config'),
-    ]).then(([b, w, i, ai]) => {
+    ]).then(([b, s, w, i, ai]) => {
       setBranding(b || {});
+      setSellerSettings(s || { whatsappNumber: '' });
       setWebhooks(w);
       setIntegrations(i);
       setAiConfig((prev) => ({ ...prev, ...ai, googleAiApiKey: '' }));
@@ -53,19 +56,26 @@ export default function SettingsPage() {
   const saveBranding = async () => {
     setSaveErr('');
     try {
-      const updated = await apiFetch<any>('/sellers/branding', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          primaryColor: branding.primaryColor,
-          accentColor: branding.accentColor,
-          welcomeMessage: branding.welcomeMessage,
-          logoUrl: branding.logoUrl || undefined,
+      const [updated, settings] = await Promise.all([
+        apiFetch<any>('/sellers/branding', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            primaryColor: branding.primaryColor,
+            accentColor: branding.accentColor,
+            welcomeMessage: branding.welcomeMessage,
+            logoUrl: branding.logoUrl || undefined,
+          }),
         }),
-      });
+        apiFetch('/sellers/settings', {
+          method: 'PATCH',
+          body: JSON.stringify({ whatsappNumber: sellerSettings.whatsappNumber }),
+        }),
+      ]);
       setBranding(updated);
-      flash('Marca guardada correctamente');
+      setSellerSettings(settings as { whatsappNumber: string });
+      flash('Configuración guardada');
     } catch (err) {
-      setSaveErr(getErrorMessage(err, 'No se pudo guardar la marca'));
+      setSaveErr(getErrorMessage(err, 'No se pudo guardar'));
     }
   };
 
@@ -163,6 +173,23 @@ export default function SettingsPage() {
       {tab === 'branding' && (
         <div className="glass rounded-2xl p-6 space-y-4 max-w-lg">
           <div>
+            <label className="text-sm text-gray-400 mb-1 block">WhatsApp del negocio *</label>
+            <input
+              value={sellerSettings.whatsappNumber}
+              onChange={(e) => setSellerSettings({ ...sellerSettings, whatsappNumber: e.target.value })}
+              placeholder="8095551234"
+              className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#00D1FF]"
+            />
+            <p className="text-xs text-gray-500 mt-1">Los clientes enviarán el pedido a este número</p>
+          </div>
+
+          <ImageUpload
+            value={branding.logoUrl || ''}
+            onChange={(url) => setBranding({ ...branding, logoUrl: url })}
+            label="Logo de tu tienda"
+          />
+
+          <div>
             <label className="text-sm text-gray-400 mb-1 block">Color primario</label>
             <input
               type="color"
@@ -190,7 +217,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">URL del logo</label>
+            <label className="text-sm text-gray-400 mb-1 block">URL del logo (opcional si subiste arriba)</label>
             <input
               value={branding.logoUrl || ''}
               onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })}
@@ -199,7 +226,7 @@ export default function SettingsPage() {
             />
           </div>
           <button onClick={saveBranding} className="px-6 py-3 bg-[#00D1FF] text-black font-bold rounded-xl">
-            Guardar Marca
+            Guardar configuración
           </button>
         </div>
       )}

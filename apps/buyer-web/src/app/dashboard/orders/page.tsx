@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Phone, User, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Phone, User, Clock, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
+import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
@@ -78,6 +79,17 @@ export default function OrdersPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <p className="text-2xl font-bold text-[#00D1FF]">${order.totalAmount}</p>
+                  {order.buyerPhone && (
+                    <a
+                      href={buildWhatsAppUrl(order.buyerPhone, `Hola ${order.buyerName}, soy tu vendedor en Catagce. Recibí tu pedido #${order.id.slice(0, 8)} por $${order.totalAmount}.`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 bg-[#25D366]/20 text-[#25D366] rounded-xl hover:bg-[#25D366]/30"
+                      title="Contactar por WhatsApp"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                    </a>
+                  )}
                   {order.status === 'submitted' && (
                     <div className="flex gap-2">
                       <button

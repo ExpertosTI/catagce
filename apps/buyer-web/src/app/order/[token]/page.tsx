@@ -3,8 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Send, User, Phone, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, Send, User, Phone, CheckCircle2, MessageCircle, Minus, Plus } from 'lucide-react';
 import { publicFetch } from '@/lib/api';
+import { buildOrderMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
 
 function OrderContent({ token }: { token: string }) {
   const searchParams = useSearchParams();
@@ -13,10 +14,10 @@ function OrderContent({ token }: { token: string }) {
   const [catalogData, setCatalogData] = useState<any>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     publicFetch(`/public/catalog/${token}`).then(setCatalogData).catch(console.error);
-
     const cartParam = searchParams.get('cart');
     if (cartParam) {
       try { setCart(JSON.parse(cartParam)); } catch { /* ignore */ }
@@ -32,10 +33,34 @@ function OrderContent({ token }: { token: string }) {
 
   const getQty = (id: string) => cart[id] || 1;
 
+  const setQty = (id: string, qty: number) => {
+    if (qty < 1) return;
+    setCart((c) => ({ ...c, [id]: qty }));
+  };
+
   const total = displayProducts.reduce((sum: number, p: any) => {
     const price = parseFloat(p.b2bPrice || p.basePrice);
     return sum + price * getQty(p.id);
   }, 0);
+
+  const catalogName = catalogData?.catalog?.name || 'Catálogo';
+  const sellerWhatsApp = catalogData?.whatsappNumber || catalogData?.seller?.phone || '';
+
+  const orderItems = displayProducts.map((p: any) => ({
+    name: p.name,
+    qty: getQty(p.id),
+    lineTotal: parseFloat(p.b2bPrice || p.basePrice) * getQty(p.id),
+  }));
+
+  const whatsappMessage = buildOrderMessage({
+    buyerName: formData.name || 'Cliente',
+    catalogName,
+    items: orderItems,
+    total,
+    orderId: orderId || undefined,
+  });
+
+  const whatsappUrl = sellerWhatsApp ? buildWhatsAppUrl(sellerWhatsApp, whatsappMessage) : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +71,7 @@ function OrderContent({ token }: { token: string }) {
         quantity: getQty(p.id),
       }));
 
-      const response = await publicFetch('/public/orders', {
+      const order = await publicFetch<any>('/public/orders', {
         method: 'POST',
         body: JSON.stringify({
           token,
@@ -56,9 +81,9 @@ function OrderContent({ token }: { token: string }) {
         }),
       });
 
-      if (response) setStep(3);
-    } catch (error) {
-      console.error('Order failed:', error);
+      setOrderId(order?.id || null);
+      setStep(3);
+    } catch {
       alert('Error al enviar el pedido. Intenta de nuevo.');
     } finally {
       setSubmitting(false);
@@ -75,9 +100,7 @@ function OrderContent({ token }: { token: string }) {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
               <ShoppingCart className="text-black w-5 h-5" />
             </div>
-            <h1 className="font-bold text-xl">
-              {catalogData?.catalog?.name || 'Pedido Rápido'}
-            </h1>
+            <h1 className="font-bold text-xl">{catalogName}</h1>
           </div>
         </header>
 
@@ -92,15 +115,26 @@ function OrderContent({ token }: { token: string }) {
                     alt={product.name}
                     className="w-16 h-16 rounded-2xl object-cover"
                   />
-                  <div className="flex-1">
-                    <h3 className="font-bold">{product.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold truncate">{product.name}</h3>
                     <p className="text-sm text-gray-400">${product.b2bPrice || product.basePrice}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold">x{getQty(product.id)}</p>
-                    <p className="text-xs text-gray-500">
-                      ${(parseFloat(product.b2bPrice || product.basePrice) * getQty(product.id)).toFixed(2)}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQty(product.id, getQty(product.id) - 1)}
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-6 text-center font-bold">{getQty(product.id)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setQty(product.id, getQty(product.id) + 1)}
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -114,38 +148,37 @@ function OrderContent({ token }: { token: string }) {
               className="w-full py-5 text-black rounded-3xl font-bold text-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
               style={{ backgroundColor: primaryColor }}
             >
-              Confirmar Selección <Send className="w-5 h-5" />
+              Continuar <Send className="w-5 h-5" />
             </button>
           </motion.div>
         )}
 
         {step === 2 && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <h2 className="text-2xl font-bold mb-6">Información de Contacto</h2>
+            <h2 className="text-2xl font-bold mb-6">Tus datos</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                  <User className="w-4 h-4" /> Nombre Completo
+                  <User className="w-4 h-4" /> Nombre
                 </label>
                 <input
                   required
                   type="text"
                   placeholder="Juan Pérez"
-                  className="w-full h-14 px-6 bg-white/5 border border-white/10 rounded-2xl focus:outline-none transition-all"
-                  style={{ borderColor: undefined }}
+                  className="w-full h-14 px-6 bg-white/5 border border-white/10 rounded-2xl focus:outline-none"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                  <Phone className="w-4 h-4" /> Número de WhatsApp
+                  <Phone className="w-4 h-4" /> WhatsApp
                 </label>
                 <input
                   required
                   type="tel"
-                  placeholder="+1 (809) 000-0000"
-                  className="w-full h-14 px-6 bg-white/5 border border-white/10 rounded-2xl focus:outline-none transition-all"
+                  placeholder="809 555 1234"
+                  className="w-full h-14 px-6 bg-white/5 border border-white/10 rounded-2xl focus:outline-none"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
@@ -156,7 +189,7 @@ function OrderContent({ token }: { token: string }) {
                 className="w-full py-5 text-black rounded-3xl font-bold text-lg transition-colors disabled:opacity-50"
                 style={{ backgroundColor: primaryColor }}
               >
-                {submitting ? 'Enviando...' : 'Realizar Pedido'}
+                {submitting ? 'Registrando...' : 'Confirmar Pedido'}
               </button>
             </form>
           </motion.div>
@@ -166,15 +199,35 @@ function OrderContent({ token }: { token: string }) {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-20"
+            className="text-center py-12"
           >
             <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
               <CheckCircle2 className="w-12 h-12" />
             </div>
-            <h2 className="text-3xl font-bold mb-4">¡Pedido Recibido!</h2>
-            <p className="text-gray-400 mb-10 leading-relaxed">
-              Gracias {formData.name}, hemos recibido tu pedido por ${total.toFixed(2)}. <br />
-              El vendedor se pondrá en contacto contigo por WhatsApp pronto.
+            <h2 className="text-3xl font-bold mb-4">¡Pedido Registrado!</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed">
+              Gracias {formData.name}. Total: <strong className="text-white">${total.toFixed(2)}</strong>
+              {orderId && <><br /><span className="text-xs font-mono text-gray-500">Ref: #{orderId.slice(0, 8)}</span></>}
+            </p>
+
+            {whatsappUrl ? (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-3 w-full py-5 bg-[#25D366] text-white rounded-3xl font-bold text-lg hover:scale-[1.02] transition-transform mb-4"
+              >
+                <MessageCircle className="w-6 h-6" />
+                Enviar pedido por WhatsApp
+              </a>
+            ) : (
+              <p className="text-yellow-400 text-sm mb-4">
+                El vendedor aún no configuró WhatsApp. Te contactará pronto.
+              </p>
+            )}
+
+            <p className="text-xs text-gray-500">
+              Al tocar el botón se abre WhatsApp con el resumen del pedido listo para enviar.
             </p>
           </motion.div>
         )}

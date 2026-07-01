@@ -13,6 +13,7 @@ import { PublicModule } from './public/public.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AiModule } from './ai/ai.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { BullModule } from '@nestjs/bullmq';
 
@@ -30,6 +31,7 @@ import { BullModule } from '@nestjs/bullmq';
     InventoryModule,
     AnalyticsModule,
     AiModule,
+    UploadsModule,
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST || 'localhost',

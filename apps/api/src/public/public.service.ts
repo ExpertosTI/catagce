@@ -25,7 +25,7 @@ export class PublicService {
         catalog: {
           with: {
             catalogProducts: { with: { product: { with: { stockLevels: true } } } },
-            seller: { with: { branding: true } },
+            seller: { with: { branding: true, settings: true } },
           },
         },
       },
@@ -48,6 +48,10 @@ export class PublicService {
       catalog: publication.catalog,
       branding: publication.catalog?.seller?.branding,
       seller: publication.catalog?.seller,
+      whatsappNumber:
+        publication.catalog?.seller?.settings?.whatsappNumber
+        || publication.catalog?.seller?.phone
+        || null,
       token: publication.token,
     };
   }

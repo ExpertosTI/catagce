@@ -14,6 +14,10 @@ services:
       - REDIS_HOST=catagce-redis
       - REDIS_PORT=6379
       - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - UPLOAD_DIR=/data/uploads
+      - PUBLIC_API_URL=https://api.catagce.renace.tech/api
+    volumes:
+      - catagce_uploads:/data/uploads
     networks:
       - RenaceNet
     healthcheck:
@@ -198,3 +202,4 @@ networks:
 
 volumes:
   catagce_db_data:
+  catagce_uploads:

@@ -51,7 +51,9 @@ export class SellersService {
       customDomain: data.customDomain,
       welcomeMessage: data.welcomeMessage,
     };
-    const existing = await this.getBranding(sellerId);
+    const existing = await this.db.query.sellerBranding.findFirst({
+      where: eq(sellerBranding.sellerId, sellerId),
+    });
 
     if (existing) {
       const [branding] = await this.db
@@ -90,6 +92,35 @@ export class SellersService {
       completed: settings?.onboardingCompleted ?? false,
       step: settings?.onboardingStep ?? 0,
     };
+  }
+
+  async getSettings(sellerId: string) {
+    const settings = await this.db.query.sellerSettings.findFirst({
+      where: eq(sellerSettings.sellerId, sellerId),
+    });
+    return {
+      whatsappNumber: settings?.whatsappNumber ?? '',
+      currency: settings?.currency ?? 'USD',
+    };
+  }
+
+  async updateSettings(sellerId: string, data: { whatsappNumber?: string; currency?: string }) {
+    const existing = await this.db.query.sellerSettings.findFirst({
+      where: eq(sellerSettings.sellerId, sellerId),
+    });
+    const payload = {
+      whatsappNumber: data.whatsappNumber?.trim() || null,
+      currency: data.currency,
+      updatedAt: new Date(),
+    };
+    if (existing) {
+      await this.db.update(sellerSettings)
+        .set(payload)
+        .where(eq(sellerSettings.sellerId, sellerId));
+    } else {
+      await this.db.insert(sellerSettings).values({ sellerId, ...payload });
+    }
+    return this.getSettings(sellerId);
   }
 
   async updateOnboarding(sellerId: string, data: { step?: number; completed?: boolean }) {

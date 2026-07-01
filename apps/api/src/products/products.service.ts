@@ -18,7 +18,7 @@ export class ProductsService {
 
   async findAll(sellerId: string) {
     return this.db.query.products.findMany({
-      where: eq(products.sellerId, sellerId),
+      where: and(eq(products.sellerId, sellerId), eq(products.isActive, true)),
       with: { stockLevels: true },
     });
   }
@@ -100,19 +100,64 @@ export class ProductsService {
 
   async update(id: string, sellerId: string, data: any, actorUserId?: string) {
     await this.findOne(id, sellerId);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.name != null) updates.name = String(data.name).trim();
+    if (data.sku != null) updates.sku = data.sku?.trim() || null;
+    if (data.description != null) updates.description = data.description?.trim() || null;
+    if (data.category != null) updates.category = data.category?.trim() || null;
+    if (data.basePrice != null) updates.basePrice = String(data.basePrice);
+    if (data.b2bPrice != null) updates.b2bPrice = data.b2bPrice ? String(data.b2bPrice) : null;
+    if (data.imageUrl !== undefined) updates.imageUrl = data.imageUrl || null;
+
     const [product] = await this.db.update(products)
-      .set({ ...data, basePrice: data.basePrice ? String(data.basePrice) : undefined,
-        b2bPrice: data.b2bPrice ? String(data.b2bPrice) : undefined, updatedAt: new Date() })
+      .set(updates)
       .where(and(eq(products.id, id), eq(products.sellerId, sellerId)))
       .returning();
 
-    await this.webhookDispatcher.dispatch(sellerId, 'product.updated', { product });
-    await this.auditService.log({
-      sellerId, actorUserId, action: 'product.updated',
-      entityType: 'product', entityId: id, changes: data,
-    });
+    if (data.stock != null) {
+      const stockVal = String(data.stock);
+      const [existing] = await this.db
+        .select()
+        .from(stockLevels)
+        .where(and(eq(stockLevels.productId, id), eq(stockLevels.sellerId, sellerId)))
+        .limit(1);
 
-    return product;
+      if (existing) {
+        await this.db.update(stockLevels)
+          .set({ onHandBase: stockVal })
+          .where(eq(stockLevels.id, existing.id));
+      } else if (parseFloat(stockVal) > 0) {
+        const [defaultWh] = await this.db
+          .select({ id: warehouses.id })
+          .from(warehouses)
+          .where(and(eq(warehouses.sellerId, sellerId), eq(warehouses.isDefault, true)))
+          .limit(1);
+        if (defaultWh) {
+          await this.db.insert(stockLevels).values({
+            sellerId, warehouseId: defaultWh.id, productId: id, onHandBase: stockVal,
+          });
+        }
+      }
+    }
+
+    if (data.imageUrl) {
+      try {
+        await this.mediaQueue.add('process-product-media', {
+          productId: id, imageUrl: data.imageUrl, sellerId,
+        });
+      } catch { /* queue optional */ }
+    }
+
+    try {
+      await this.webhookDispatcher.dispatch(sellerId, 'product.updated', { product });
+      await this.auditService.log({
+        sellerId, actorUserId, action: 'product.updated',
+        entityType: 'product', entityId: id, changes: data,
+      });
+    } catch { /* non-blocking */ }
+
+    return this.findOne(id, sellerId);
   }
 
   async delete(id: string, sellerId: string, actorUserId?: string) {

@@ -55,4 +55,17 @@ export class SellersController {
   ) {
     return this.sellersService.updateOnboarding(user.sellerId, body);
   }
+
+  @Get('settings')
+  async getSettings(@CurrentUser() user: UserPayload) {
+    return this.sellersService.getSettings(user.sellerId);
+  }
+
+  @Patch('settings')
+  async updateSettings(
+    @CurrentUser() user: UserPayload,
+    @Body() body: { whatsappNumber?: string; currency?: string },
+  ) {
+    return this.sellersService.updateSettings(user.sellerId, body);
+  }
 }
