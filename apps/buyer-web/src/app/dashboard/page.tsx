@@ -6,15 +6,19 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Package, ShoppingCart, FileText, Link2, TrendingUp, DollarSign, Users, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { apiFetch, getApiKey, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { getErrorMessage } from '@/lib/auth-errors';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function DashboardHome() {
   const router = useRouter();
+  const { ensureAuth, onApiError } = useRequireAuth();
   const [analytics, setAnalytics] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getApiKey() && !getToken()) { router.push('/login'); return; }
+    if (!ensureAuth()) return;
 
     Promise.all([
       apiFetch<any>('/analytics/dashboard'),
@@ -24,14 +28,17 @@ export default function DashboardHome() {
       if (!onboarding.completed) { router.push('/onboarding'); return; }
       setAnalytics(a);
       setSeller(profile);
-    }).catch(() => router.push('/login'));
-  }, [router]);
+    }).catch((err) => {
+      if (!onApiError(err)) setError(getErrorMessage(err));
+    });
+  }, [router, ensureAuth, onApiError]);
 
   return (
     <DashboardLayout>
       <div className="mb-8">
         <h2 className="text-3xl font-bold mb-2">Hola, {seller?.name || '...'}</h2>
         <p className="text-gray-400">Resumen de tu operación B2B</p>
+        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">

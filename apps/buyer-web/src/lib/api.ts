@@ -1,3 +1,8 @@
+import { ApiError } from './auth-errors';
+
+export { ApiError } from './auth-errors';
+export { isUnauthorizedError, handleAuthError, getErrorMessage } from './auth-errors';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export function getApiKey(): string {
@@ -42,7 +47,10 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Error ${response.status}`);
+    const message = Array.isArray(error.message)
+      ? error.message.join(', ')
+      : (error.message || `Error ${response.status}`);
+    throw new ApiError(message, response.status, error);
   }
   return response.json();
 }

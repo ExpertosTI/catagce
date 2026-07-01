@@ -6,20 +6,26 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { LayoutGrid, Plus } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { apiFetch, getApiKey, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { getErrorMessage } from '@/lib/auth-errors';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function ProductsPage() {
   const router = useRouter();
+  const { ensureAuth, onApiError } = useRequireAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getApiKey() && !getToken()) { router.push('/login'); return; }
+    if (!ensureAuth()) return;
     apiFetch<any[]>('/products')
       .then(setProducts)
-      .catch(() => router.push('/login'))
+      .catch((err) => {
+        if (!onApiError(err)) setError(getErrorMessage(err));
+      })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, ensureAuth, onApiError]);
 
   if (loading) {
     return (
@@ -37,6 +43,8 @@ export default function ProductsPage() {
           <Plus className="w-4 h-4" /> Nuevo
         </Link>
       </div>
+
+      {error && <p className="mb-6 text-sm text-red-400">{error}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (

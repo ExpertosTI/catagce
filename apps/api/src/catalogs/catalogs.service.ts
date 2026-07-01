@@ -18,7 +18,7 @@ export class CatalogsService {
   async findAll(sellerId: string) {
     return this.db.query.catalogs.findMany({
       where: eq(catalogs.sellerId, sellerId),
-      with: { catalogProducts: { with: { product: true } }, publications: { with: { assets: true } } },
+      with: { catalogProducts: true, publications: true },
     });
   }
 

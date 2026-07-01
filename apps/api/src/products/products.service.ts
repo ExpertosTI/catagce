@@ -19,7 +19,7 @@ export class ProductsService {
   async findAll(sellerId: string) {
     return this.db.query.products.findMany({
       where: eq(products.sellerId, sellerId),
-      with: { stockLevels: true, variants: true, media: true, baseUom: true },
+      with: { stockLevels: true },
     });
   }
 

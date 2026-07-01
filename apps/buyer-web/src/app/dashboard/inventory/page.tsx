@@ -3,32 +3,39 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { apiFetch, getApiKey, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { getErrorMessage } from '@/lib/auth-errors';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { Warehouse, ArrowDown, ArrowUp, AlertTriangle } from 'lucide-react';
 
 export default function InventoryPage() {
   const router = useRouter();
+  const { ensureAuth, onApiError } = useRequireAuth();
   const [levels, setLevels] = useState<any[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
   const [lowStock, setLowStock] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getApiKey() && !getToken()) { router.push('/login'); return; }
+    if (!ensureAuth()) return;
     Promise.all([
       apiFetch<any[]>('/inventory/levels'),
       apiFetch<any[]>('/inventory/movements'),
       apiFetch<any[]>('/inventory/low-stock'),
     ]).then(([l, m, ls]) => { setLevels(l); setMovements(m); setLowStock(ls); })
-      .catch(() => router.push('/login'))
+      .catch((err) => {
+        if (!onApiError(err)) setError(getErrorMessage(err));
+      })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, ensureAuth, onApiError]);
 
   if (loading) return <DashboardLayout><div className="text-center py-20 text-gray-400">Cargando inventario...</div></DashboardLayout>;
 
   return (
     <DashboardLayout>
       <h2 className="text-2xl font-bold mb-8">Inventario</h2>
+      {error && <p className="mb-6 text-sm text-red-400">{error}</p>}
 
       {lowStock.length > 0 && (
         <div className="glass rounded-2xl p-4 mb-6 border border-yellow-500/20 flex items-center gap-3">

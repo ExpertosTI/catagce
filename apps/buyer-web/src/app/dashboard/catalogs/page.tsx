@@ -5,25 +5,33 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Copy, Check, Share2, Plus, ExternalLink } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { apiFetch, getApiKey, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { getErrorMessage } from '@/lib/auth-errors';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function CatalogsPage() {
   const router = useRouter();
+  const { ensureAuth, onApiError } = useRequireAuth();
   const [catalogs, setCatalogs] = useState<any[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newCatalog, setNewCatalog] = useState({ name: '', slug: '' });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadCatalogs = () => {
-    apiFetch<any[]>('/catalogs').then(setCatalogs).catch(() => router.push('/login'));
+    apiFetch<any[]>('/catalogs')
+      .then(setCatalogs)
+      .catch((err) => {
+        if (!onApiError(err)) setError(getErrorMessage(err));
+      });
   };
 
   useEffect(() => {
-    if (!getApiKey() && !getToken()) { router.push('/login'); return; }
+    if (!ensureAuth()) return;
     loadCatalogs();
     setLoading(false);
-  }, [router]);
+  }, [router, ensureAuth]);
 
   const copyShareLink = (token: string) => {
     const url = `${window.location.origin}/order/${token}`;
@@ -62,6 +70,8 @@ export default function CatalogsPage() {
           <Plus className="w-4 h-4" /> Nuevo
         </button>
       </div>
+
+      {error && <p className="mb-6 text-sm text-red-400">{error}</p>}
 
       {showCreate && (
         <form onSubmit={handleCreate} className="glass rounded-2xl p-6 mb-6 space-y-4">

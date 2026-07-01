@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Phone, User, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { apiFetch, getApiKey, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { getErrorMessage } from '@/lib/auth-errors';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   submitted: { label: 'Nuevo', color: '#00D1FF' },
@@ -16,16 +18,20 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const { ensureAuth, onApiError } = useRequireAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getApiKey() && !getToken()) { router.push('/login'); return; }
+    if (!ensureAuth()) return;
     apiFetch<any[]>('/orders')
       .then(setOrders)
-      .catch(() => router.push('/login'))
+      .catch((err) => {
+        if (!onApiError(err)) setError(getErrorMessage(err));
+      })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, ensureAuth, onApiError]);
 
   const updateStatus = async (id: string, status: string) => {
     await apiFetch(`/orders/${id}/status`, {
@@ -46,6 +52,7 @@ export default function OrdersPage() {
   return (
     <DashboardLayout>
       <h2 className="text-2xl font-bold mb-8">Pedidos</h2>
+      {error && <p className="mb-6 text-sm text-red-400">{error}</p>}
 
       <div className="space-y-4">
         {orders.map((order) => {

@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { apiFetch, getApiKey, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { Plus } from 'lucide-react';
 
 export default function NewProductPage() {
   const router = useRouter();
+  const { ensureAuth } = useRequireAuth();
   const [uoms, setUoms] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [form, setForm] = useState({
@@ -19,7 +21,7 @@ export default function NewProductPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getApiKey() && !getToken()) { router.push('/login'); return; }
+    if (!ensureAuth()) return;
     Promise.all([apiFetch<any[]>('/inventory/uoms'), apiFetch<any[]>('/inventory/warehouses')])
       .then(([u, w]) => {
         setUoms(u);
@@ -27,7 +29,7 @@ export default function NewProductPage() {
         if (u[0]) setForm((f) => ({ ...f, baseUomId: u[0].id }));
         if (w[0]) setForm((f) => ({ ...f, warehouseId: w[0].id }));
       });
-  }, [router]);
+  }, [router, ensureAuth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

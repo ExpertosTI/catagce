@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Webhook, Plug, Palette, RefreshCw, Plus, Sparkles } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { apiFetch, getApiKey, getToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import { getErrorMessage } from '@/lib/auth-errors';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 const WEBHOOK_EVENTS = ['order.created', 'order.updated', 'catalog.published', 'product.created', 'integration.synced'];
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { ensureAuth, onApiError } = useRequireAuth();
   const [tab, setTab] = useState<'branding' | 'webhooks' | 'integrations' | 'ai'>('branding');
   const [branding, setBranding] = useState<any>({});
   const [aiConfig, setAiConfig] = useState({ googleAiApiKey: '', aiModel: 'gemini-2.5-flash', aiEnabled: true, hasApiKey: false, apiKeyPreview: null as string | null });
@@ -19,9 +22,10 @@ export default function SettingsPage() {
   const [odooConfig, setOdooConfig] = useState({ url: '', database: '', username: '', apiKey: '' });
   const [syncing, setSyncing] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getApiKey() && !getToken()) { router.push('/login'); return; }
+    if (!ensureAuth()) return;
     Promise.all([
       apiFetch('/sellers/branding'),
       apiFetch<any[]>('/webhooks'),
@@ -34,8 +38,10 @@ export default function SettingsPage() {
       setAiConfig((prev) => ({ ...prev, ...ai, googleAiApiKey: '' }));
       const odoo = i.find((x: any) => x.type === 'odoo');
       if (odoo?.config) setOdooConfig(odoo.config);
-    }).catch(() => router.push('/login'));
-  }, [router]);
+    }).catch((err) => {
+      if (!onApiError(err)) setError(getErrorMessage(err));
+    });
+  }, [router, ensureAuth, onApiError]);
 
   const saveBranding = async () => {
     await apiFetch('/sellers/branding', { method: 'PATCH', body: JSON.stringify(branding) });
@@ -102,6 +108,7 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <h2 className="text-2xl font-bold mb-6">Configuración</h2>
+      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
 
       <div className="flex gap-2 mb-8 overflow-x-auto">
         {tabs.map(({ id, label, icon: Icon }) => (
