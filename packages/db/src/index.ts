@@ -13,7 +13,9 @@ export const createClient = (connectionString: string) => {
 /** Conexión por host/user/password — evita romper URLs con caracteres especiales en la clave */
 export function createClientFromEnv(): ReturnType<typeof drizzle> {
   let client: Sql;
-  if (process.env.DB_HOST) {
+  if (process.env.DATABASE_URL) {
+    client = postgres(process.env.DATABASE_URL);
+  } else if (process.env.DB_HOST) {
     client = postgres({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT ?? 5432),
@@ -22,9 +24,7 @@ export function createClientFromEnv(): ReturnType<typeof drizzle> {
       password: process.env.DB_PASSWORD ?? '',
     });
   } else {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error('DB_HOST or DATABASE_URL is required');
-    client = postgres(url);
+    throw new Error('DATABASE_URL or DB_HOST is required');
   }
   return drizzle(client, { schema });
 }

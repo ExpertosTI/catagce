@@ -14,6 +14,8 @@ COPY --from=builder /prod/ ./
 # pnpm deploy omite dist/ (está en .gitignore) — overlay sin tocar deps de @catagce/db
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/packages/db/dist ./node_modules/@catagce/db/dist
-RUN test -f dist/main.js && node -e "require('@catagce/db'); console.log('api image ok')"
+COPY apps/api/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && test -f dist/main.js && node -e "require('@catagce/db'); console.log('api image ok')"
 EXPOSE 3000
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/main.js"]

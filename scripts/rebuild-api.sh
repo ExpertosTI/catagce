@@ -36,4 +36,5 @@ docker service update --force \
   catagce_api
 
 sleep 60
+bash scripts/ensure-api-db-env.sh
 bash scripts/diagnose-server.sh

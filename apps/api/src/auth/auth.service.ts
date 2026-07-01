@@ -26,54 +26,63 @@ export class AuthService {
     name: string;
     phone?: string;
   }) {
-    const [existing] = await this.db
-      .select({ id: sellerUsers.id })
-      .from(sellerUsers)
-      .where(eq(sellerUsers.email, data.email))
-      .limit(1);
-    if (existing) throw new ConflictException('Email ya registrado');
+    try {
+      const slug = data.sellerSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      if (!slug) throw new ConflictException('URL de tienda inválida');
 
-    const passwordHash = await bcrypt.hash(data.password, 12);
-    const apiKey = `cat_${randomBytes(24).toString('hex')}`;
+      const [existing] = await this.db
+        .select({ id: sellerUsers.id })
+        .from(sellerUsers)
+        .where(eq(sellerUsers.email, data.email.trim()))
+        .limit(1);
+      if (existing) throw new ConflictException('Email ya registrado');
 
-    const [seller] = await this.db.insert(sellers).values({
-      name: data.sellerName,
-      slug: data.sellerSlug,
-      email: data.email,
-      phone: data.phone,
-    }).returning();
+      const passwordHash = await bcrypt.hash(data.password, 12);
+      const apiKey = `cat_${randomBytes(24).toString('hex')}`;
 
-    const [user] = await this.db.insert(sellerUsers).values({
-      sellerId: seller.id,
-      email: data.email,
-      passwordHash,
-      name: data.name,
-      role: 'owner',
-    }).returning();
+      const [seller] = await this.db.insert(sellers).values({
+        name: data.sellerName.trim(),
+        slug,
+        email: data.email.trim(),
+        phone: data.phone?.trim(),
+      }).returning();
 
-    await this.db.insert(sellerApiKeys).values({ sellerId: seller.id, key: apiKey, name: 'Default' });
-    await this.db.insert(sellerBranding).values({ sellerId: seller.id });
-    await this.db.insert(sellerSettings).values({ sellerId: seller.id });
+      const [user] = await this.db.insert(sellerUsers).values({
+        sellerId: seller.id,
+        email: data.email.trim(),
+        passwordHash,
+        name: data.name.trim(),
+        role: 'owner',
+      }).returning();
 
-    const [unitUom] = await this.db.insert(uoms).values({
-      sellerId: seller.id, name: 'Unidad', symbol: 'un', conversionFactor: '1.0000',
-    }).returning();
+      await this.db.insert(sellerApiKeys).values({ sellerId: seller.id, key: apiKey, name: 'Default' });
+      await this.db.insert(sellerBranding).values({ sellerId: seller.id });
+      await this.db.insert(sellerSettings).values({ sellerId: seller.id });
 
-    await this.db.insert(uoms).values([
-      { sellerId: seller.id, name: 'Docena', symbol: 'dz', baseUomId: unitUom.id, conversionFactor: '12.0000' },
-      { sellerId: seller.id, name: 'Caja', symbol: 'bx', baseUomId: unitUom.id, conversionFactor: '144.0000' },
-    ]);
+      const [unitUom] = await this.db.insert(uoms).values({
+        sellerId: seller.id, name: 'Unidad', symbol: 'un', conversionFactor: '1.0000',
+      }).returning();
 
-    await this.db.insert(warehouses).values({ sellerId: seller.id, name: 'Almacén Principal', isDefault: true });
-    await this.db.insert(priceLists).values({ sellerId: seller.id, name: 'Lista General', isDefault: true });
+      await this.db.insert(uoms).values([
+        { sellerId: seller.id, name: 'Docena', symbol: 'dz', baseUomId: unitUom.id, conversionFactor: '12.0000' },
+        { sellerId: seller.id, name: 'Caja', symbol: 'bx', baseUomId: unitUom.id, conversionFactor: '144.0000' },
+      ]);
 
-    await this.auditService.log({
-      sellerId: seller.id, actorUserId: user.id, action: 'seller.registered',
-      entityType: 'seller', entityId: seller.id,
-    });
+      await this.db.insert(warehouses).values({ sellerId: seller.id, name: 'Almacén Principal', isDefault: true });
+      await this.db.insert(priceLists).values({ sellerId: seller.id, name: 'Lista General', isDefault: true });
 
-    const token = this.signToken(user, seller);
-    return { token, apiKey, seller, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+      await this.auditService.log({
+        sellerId: seller.id, actorUserId: user.id, action: 'seller.registered',
+        entityType: 'seller', entityId: seller.id,
+      });
+
+      const token = this.signToken(user, seller);
+      return { token, apiKey, seller, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+    } catch (err) {
+      if (err instanceof ConflictException) throw err;
+      console.error('Register failed:', err);
+      throw err;
+    }
   }
 
   async login(email: string, password: string) {
