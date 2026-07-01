@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Webhook, Plug, Palette, RefreshCw, Plus, Sparkles } from 'lucide-react';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
