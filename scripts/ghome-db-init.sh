@@ -45,22 +45,29 @@ case "${1:-all}" in
   push)
     echo "🗄️  drizzle-kit push..."
     run_db_cmd "pnpm --filter @ghome/db push --force"
+    echo "🩹 Parche SQL de respaldo..."
+    bash scripts/ghome-schema-patch.sh
     ;;
   seed)
     echo "🌱 seed..."
     run_db_cmd "pnpm --filter @ghome/db seed"
     ;;
+  patch)
+    bash scripts/ghome-schema-patch.sh
+    ;;
   all)
-    echo "🗄️  1/2 Schema..."
+    echo "🗄️  1/3 Schema (drizzle)..."
     run_db_cmd "pnpm --filter @ghome/db push --force"
-    echo "🌱 2/2 Seed..."
+    echo "🩹 2/3 Parche SQL..."
+    bash scripts/ghome-schema-patch.sh
+    echo "🌱 3/3 Seed..."
     run_db_cmd "pnpm --filter @ghome/db seed"
     echo ""
     echo "✅ Listo — admin: admin@generalhome.tech / demo1234"
     echo "   Portal: https://generalhome.tech"
     ;;
   *)
-    echo "Uso: $0 [push|seed|all]"
+    echo "Uso: $0 [push|seed|patch|all]"
     exit 1
     ;;
 esac
