@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { clearAuth, getUser } from '../lib/api';
 import { SITE_URL } from '../lib/site';
+import { NotificationBell } from './NotificationBell';
+import { AiChatWidget } from './AiChatWidget';
 
 const nav = [
   { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -89,7 +91,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Menu size={22} />
         </button>
         <p className="font-bold text-sm">GHome Admin</p>
-        <div className="w-9" />
+        <NotificationBell />
       </header>
 
       {menuOpen && (
@@ -132,14 +134,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Escritorio: sidebar fijo */}
         <aside className="hidden lg:flex w-60 bg-blue-900 text-white flex-col shrink-0">
           <div className="p-5 border-b border-blue-800">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg bg-white text-blue-900 flex items-center justify-center font-bold">G</div>
-              <div className="min-w-0">
-                <p className="font-bold text-sm">GHome Admin</p>
-                <p className="text-xs text-blue-300 truncate" suppressHydrationWarning>
-                  {userName ?? 'Administrador'}
-                </p>
+            <div className="flex items-center gap-2 justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-white text-blue-900 flex items-center justify-center font-bold">G</div>
+                <div className="min-w-0">
+                  <p className="font-bold text-sm">GHome Admin</p>
+                  <p className="text-xs text-blue-300 truncate" suppressHydrationWarning>
+                    {userName ?? 'Administrador'}
+                  </p>
+                </div>
               </div>
+              <NotificationBell />
             </div>
           </div>
           <SidebarNav pathname={pathname} />
@@ -157,6 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      <AiChatWidget />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { products, productMedia, productCategories, stockLevels, warehouses } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
+import { generateWithGemini } from '../ai/gemini.util';
 
 @Injectable()
 export class ProductsService {
@@ -144,26 +145,12 @@ export class ProductsService {
   }
 
   async generateDescription(name: string, category?: string) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return {
-        description: `${name} de excelente calidad, ideal para el hogar. Producto importado con garantía, listo para entrega inmediata en Santo Domingo.`,
-        source: 'template',
-      };
-    }
-    try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const prompt = `Escribe una descripción de venta corta (máximo 40 palabras), en español, persuasiva y profesional para este producto de electrodomésticos/hogar: "${name}"${category ? ` (categoría: ${category})` : ''}. No uses emojis ni comillas.`;
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-      return { description: text, source: 'ai' };
-    } catch {
-      return {
-        description: `${name} de excelente calidad, ideal para el hogar. Producto importado con garantía, listo para entrega inmediata en Santo Domingo.`,
-        source: 'template',
-      };
-    }
+    const prompt = `Escribe una descripción de venta corta (máximo 40 palabras), en español, persuasiva y profesional para este producto de electrodomésticos/hogar: "${name}"${category ? ` (categoría: ${category})` : ''}. No uses emojis ni comillas.`;
+    const text = await generateWithGemini(prompt);
+    if (text) return { description: text, source: 'ai' };
+    return {
+      description: `${name} de excelente calidad, ideal para el hogar. Producto importado con garantía, listo para entrega inmediata en Santo Domingo.`,
+      source: 'template',
+    };
   }
 }

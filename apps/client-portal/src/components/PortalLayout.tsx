@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FileText, Package, BookOpen, LogOut, Truck, Home, Menu, X } from 'lucide-react';
 import { clearAuth, getClient } from '../lib/api';
+import { NotificationBell } from './NotificationBell';
+import { AiChatWidget } from './AiChatWidget';
 
 const nav = [
   { href: '/portal/invoices', label: 'Mis facturas', icon: FileText },
@@ -73,6 +75,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <Link href="/" className="text-sm text-slate-500 hover:text-blue-700 hidden sm:flex items-center gap-1">
               <Home size={16} /> Inicio
             </Link>
+            <NotificationBell />
             <button type="button" onClick={logout} className="text-sm text-slate-500 hover:text-red-600 flex items-center gap-1">
               <LogOut size={16} /> <span className="hidden sm:inline">Salir</span>
             </button>
@@ -92,6 +95,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         </aside>
         <main className="flex-1 min-w-0 w-full">{children}</main>
       </div>
+      <AiChatWidget />
     </div>
   );
 }
