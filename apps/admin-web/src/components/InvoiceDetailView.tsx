@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X, Receipt, Ban } from 'lucide-react';
+import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X, Receipt, Ban, FileMinus } from 'lucide-react';
 import { useState } from 'react';
 import {
   InvoiceDetail, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary,
-  printPaymentReceipt, sharePaymentReceiptWhatsApp,
+  printPaymentReceipt, sharePaymentReceiptWhatsApp, fiscalDocumentTitle,
 } from '../lib/invoice-utils';
 import { invoiceStatusLabel, paymentMethodLabel } from '../lib/labels';
 import { useCompany } from '../lib/useCompany';
@@ -41,6 +41,9 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [voidingId, setVoidingId] = useState<string | null>(null);
+  const [creditNoteSaving, setCreditNoteSaving] = useState(false);
+
+  const canIssueCreditNote = ['B01', 'B02', 'B14'].includes(invoice.comprobanteType ?? '') && invoice.status !== 'cancelled';
 
   async function handleCopy() {
     const ok = await copyInvoiceSummary(invoice);
@@ -89,6 +92,25 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
     }
   }
 
+  async function issueCreditNote() {
+    const reason = prompt('Motivo de la nota de crédito (devolución, error, descuento, etc.):');
+    if (!reason?.trim()) return;
+    if (!confirm('¿Emitir nota de crédito (B04) por el total de esta factura?')) return;
+    setCreditNoteSaving(true);
+    try {
+      const note = await apiFetch<InvoiceDetail>(`/invoices/${invoice.id}/credit-note`, {
+        method: 'POST',
+        body: JSON.stringify({ modificationReason: reason.trim() }),
+      });
+      alert(`Nota de crédito emitida: ${note.ncf ?? note.reference}`);
+      onInvoiceUpdated?.(invoice);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'No se pudo emitir la nota de crédito');
+    } finally {
+      setCreditNoteSaving(false);
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <Link href={backHref} className="text-blue-700 text-sm font-medium hover:underline inline-flex items-center gap-1">
@@ -100,8 +122,17 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
           <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide">
             {invoice.clientName ?? invoice.client?.name}
           </p>
-          <h2 className="text-2xl font-bold text-slate-900 mt-1">{invoice.reference}</h2>
-          <p className="text-slate-500 text-sm">{invoiceTypeLabel(invoice.invoiceType)} · {formatDate(invoice.issuedAt)}</p>
+          <h2 className="text-2xl font-bold text-slate-900 mt-1">{invoice.ncf ?? invoice.reference}</h2>
+          <p className="text-slate-500 text-sm">
+            {fiscalDocumentTitle(invoice)} · {invoiceTypeLabel(invoice.invoiceType)} · {formatDate(invoice.issuedAt)}
+          </p>
+          {invoice.ncf && <p className="text-xs text-slate-400 mt-0.5">Ref. interna: {invoice.reference}</p>}
+          {invoice.relatedInvoice && (
+            <p className="text-xs text-amber-700 mt-1">
+              Modifica factura {invoice.relatedInvoice.ncf ?? invoice.relatedInvoice.reference}
+              {invoice.modificationReason ? ` — ${invoice.modificationReason}` : ''}
+            </p>
+          )}
         </div>
         {invoice.status && (
           <span className="badge-blue h-fit">{invoiceStatusLabel[invoice.status] ?? invoice.status}</span>
@@ -112,10 +143,10 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
         <button type="button" onClick={() => shareInvoiceWhatsApp(invoice, invoice.client?.phone)} className="btn-action btn-action-whatsapp">
           <MessageCircle size={16} /> Enviar WhatsApp
         </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl)} className="btn-action btn-action-secondary">
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-action btn-action-secondary">
           <FileDown size={16} /> Guardar PDF
         </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl)} className="btn-action btn-action-secondary">
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-action btn-action-secondary">
           <Printer size={16} /> Imprimir
         </button>
         <button type="button" onClick={handleCopy} className="btn-action btn-action-ghost">
@@ -125,6 +156,11 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
         {canManagePayments && balance > 0 && (
           <button type="button" onClick={() => setShowPaymentForm((v) => !v)} className="btn-action btn-action-primary">
             {showPaymentForm ? <X size={16} /> : <Plus size={16} />} Registrar abono
+          </button>
+        )}
+        {canIssueCreditNote && (
+          <button type="button" onClick={issueCreditNote} disabled={creditNoteSaving} className="btn-action btn-action-secondary disabled:opacity-50">
+            <FileMinus size={16} /> {creditNoteSaving ? 'Emitiendo...' : 'Nota de crédito'}
           </button>
         )}
       </div>

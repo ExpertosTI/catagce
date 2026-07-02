@@ -6,6 +6,7 @@ import {
   companies, staffUsers, warehouses, priceLists, clients, productCategories,
   products, productMedia, importShipments, importItems, stockLevels, catalogs, catalogProducts,
   invoices, invoiceItems, clientAllocations, dispatches, dispatchItems, invoicePayments,
+  fiscalSequences,
 } from './schema';
 
 async function seed() {
@@ -140,14 +141,31 @@ async function seed() {
     });
   }
 
+  // Secuencias NCF demo (DGII)
+  for (const type of ['B01', 'B02', 'B03', 'B04'] as const) {
+    await db.insert(fiscalSequences).values({
+      companyId: company.id,
+      comprobanteType: type,
+      rangeFrom: 1,
+      rangeTo: 99999,
+      currentNumber: type === 'B01' ? 2 : 1,
+      authorizedUntil: new Date(Date.now() + 365 * 86400000),
+      isActive: true,
+    });
+  }
+
   // Demo factura a crédito con despacho parcial
   const [invoice] = await db.insert(invoices).values({
     companyId: company.id,
     clientId: client.id,
     reference: 'FAC-DEMO-001',
+    ncf: 'B0100000001',
+    comprobanteType: 'B01',
     invoiceType: 'credit',
     status: 'partially_paid',
-    subtotal: '1348.00',
+    subtotal: '1142.37',
+    taxAmount: '205.63',
+    itbisRate: '18.00',
     totalAmount: '1348.00',
     paidAmount: '500.00',
     dueDate: new Date(Date.now() + 30 * 86400000),

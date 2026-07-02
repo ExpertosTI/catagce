@@ -1,6 +1,8 @@
 export type InvoiceListItem = {
   id: string;
   reference: string;
+  ncf?: string | null;
+  comprobanteType?: string | null;
   invoiceType: string;
   status?: string;
   subtotal?: string | null;
@@ -14,7 +16,10 @@ export type InvoiceListItem = {
 export type InvoiceDetail = InvoiceListItem & {
   notes?: string | null;
   dueDate?: string | null;
-  client?: { name?: string; phone?: string; email?: string; code?: string };
+  itbisRate?: string | null;
+  client?: { name?: string; phone?: string; email?: string; code?: string; taxId?: string };
+  relatedInvoice?: { id: string; reference: string; ncf?: string | null } | null;
+  modificationReason?: string | null;
   items?: Array<{
     id: string;
     productName?: string;
@@ -42,6 +47,7 @@ function escapeHtml(value: string) {
 }
 
 import { formatCurrency } from './currency';
+import { comprobanteTypeLabel } from './labels';
 
 export function formatUsd(n: number | string) {
   return formatCurrency(n);
@@ -53,7 +59,17 @@ export function formatDate(value?: string | null) {
 }
 
 export function invoiceTypeLabel(type: string) {
-  return type === 'credit' ? 'FACTURA DE CRÉDITO FISCAL' : 'FACTURA';
+  return type === 'credit' ? 'Crédito' : 'Contado';
+}
+
+export function comprobanteLabel(type?: string | null) {
+  if (!type) return 'Comprobante fiscal';
+  return comprobanteTypeLabel[type] ?? type;
+}
+
+export function fiscalDocumentTitle(inv: Pick<InvoiceListItem, 'comprobanteType' | 'invoiceType'>) {
+  if (inv.comprobanteType) return comprobanteLabel(inv.comprobanteType);
+  return inv.invoiceType === 'credit' ? 'FACTURA DE CRÉDITO FISCAL' : 'FACTURA';
 }
 
 export function invoiceBalance(inv: Pick<InvoiceListItem, 'totalAmount' | 'paidAmount'>) {
@@ -65,8 +81,9 @@ export function buildInvoiceWhatsAppMessage(inv: InvoiceDetail, companyName = 'G
     (i) => `• ${i.productName} x${i.quantity} — ${formatUsd(i.lineTotal)}`,
   );
   const balance = invoiceBalance(inv);
-  let msg = `*${companyName}*\n📄 *${inv.reference}*\n`;
-  msg += `${invoiceTypeLabel(inv.invoiceType)}\n`;
+  let msg = `*${companyName}*\n📄 *${inv.ncf ?? inv.reference}*\n`;
+  msg += `${fiscalDocumentTitle(inv)}\n`;
+  if (inv.ncf) msg += `NCF: ${inv.ncf}\n`;
   msg += `Fecha: ${formatDate(inv.issuedAt)}\n\n`;
   if (inv.clientName || inv.client?.name) {
     msg += `Cliente: *${inv.clientName ?? inv.client?.name}*\n\n`;
@@ -89,12 +106,21 @@ export function shareInvoiceWhatsApp(inv: InvoiceDetail, phone?: string | null) 
   window.open(url, '_blank');
 }
 
-export function printInvoicePdf(inv: InvoiceDetail, companyName = 'General Home', logoUrl?: string) {
+export function printInvoicePdf(
+  inv: InvoiceDetail,
+  companyName = 'General Home',
+  logoUrl?: string,
+  companyTaxId?: string,
+) {
   const items = inv.items ?? [];
   const balance = invoiceBalance(inv);
   const safeCompany = escapeHtml(companyName);
   const safeRef = escapeHtml(inv.reference);
   const safeClient = escapeHtml(inv.clientName ?? inv.client?.name ?? '—');
+  const safeClientRnc = inv.client?.taxId ? escapeHtml(inv.client.taxId) : '';
+  const safeCompanyRnc = companyTaxId ? escapeHtml(companyTaxId) : '';
+  const safeNcf = inv.ncf ? escapeHtml(inv.ncf) : '';
+  const docTitle = escapeHtml(fiscalDocumentTitle(inv));
   const safeNotes = inv.notes ? escapeHtml(inv.notes) : '';
   const statusLabel = inv.status
     ? ({ draft: 'Borrador', issued: 'Emitida', paid: 'Pagada', partially_paid: 'Pago parcial', overdue: 'Vencida', cancelled: 'Anulada' } as Record<string, string>)[inv.status] ?? inv.status
@@ -153,16 +179,19 @@ export function printInvoicePdf(inv: InvoiceDetail, companyName = 'General Home'
         </div>
       </div>
       <div class="header-doc">
-        <div class="doc-type">${invoiceTypeLabel(inv.invoiceType)}</div>
-        <div class="doc-ref">${safeRef}</div>
+        <div class="doc-type">${docTitle}</div>
+        <div class="doc-ref">${safeNcf || safeRef}</div>
+        ${safeNcf ? `<div style="font-size:11px;opacity:0.85;margin-top:4px">Ref. interna: ${safeRef}</div>` : ''}
         ${statusLabel ? `<span class="status-pill">${escapeHtml(statusLabel)}</span>` : ''}
       </div>
     </div>
 
     <div class="meta-bar">
-      <div class="meta-block"><p>Cliente</p><p>${safeClient}</p></div>
+      <div class="meta-block"><p>Cliente</p><p>${safeClient}</p>${safeClientRnc ? `<p style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">RNC: ${safeClientRnc}</p>` : ''}</div>
+      ${safeCompanyRnc ? `<div class="meta-block"><p>RNC emisor</p><p>${safeCompanyRnc}</p></div>` : ''}
       <div class="meta-block"><p>Fecha de emisión</p><p>${formatDate(inv.issuedAt)}</p></div>
       ${inv.dueDate ? `<div class="meta-block"><p>Fecha de vencimiento</p><p>${formatDate(inv.dueDate)}</p></div>` : ''}
+      ${inv.itbisRate ? `<div class="meta-block"><p>ITBIS</p><p>${inv.itbisRate}%</p></div>` : ''}
     </div>
 
     <div class="body">

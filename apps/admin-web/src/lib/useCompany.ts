@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from './api';
 
-export type CompanyInfo = { name: string; logoUrl?: string };
+export type CompanyInfo = { name: string; logoUrl?: string; taxId?: string };
 
 let cache: CompanyInfo | null = null;
 let inflight: Promise<CompanyInfo> | null = null;

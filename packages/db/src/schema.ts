@@ -10,6 +10,9 @@ export const invoiceStatusEnum = pgEnum('invoice_status', [
   'draft', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled',
 ]);
 export const invoiceTypeEnum = pgEnum('invoice_type', ['cash', 'credit']);
+export const comprobanteTypeEnum = pgEnum('comprobante_type', [
+  'B01', 'B02', 'B03', 'B04', 'B11', 'B12', 'B13', 'B14', 'B15', 'B16', 'B17',
+]);
 export const paymentMethodEnum = pgEnum('payment_method', ['cash', 'transfer', 'card', 'check', 'other']);
 export const dispatchStatusEnum = pgEnum('dispatch_status', ['pending', 'partial', 'completed', 'cancelled']);
 export const presaleStatusEnum = pgEnum('presale_status', ['open', 'confirmed', 'converted', 'cancelled']);
@@ -301,27 +304,49 @@ export const quoteItems = pgTable('quote_items', {
   lineTotal: decimal('line_total', { precision: 14, scale: 2 }).notNull(),
 });
 
+// ─── Secuencias NCF (DGII) ───────────────────────────────────────────────────
+export const fiscalSequences = pgTable('fiscal_sequences', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  comprobanteType: comprobanteTypeEnum('comprobante_type').notNull(),
+  rangeFrom: integer('range_from').notNull(),
+  rangeTo: integer('range_to').notNull(),
+  currentNumber: integer('current_number').notNull(),
+  authorizedUntil: timestamp('authorized_until'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  companyTypeIdx: uniqueIndex('fiscal_sequences_company_type_idx').on(t.companyId, t.comprobanteType),
+}));
+
 // ─── Facturas ────────────────────────────────────────────────────────────────
 export const invoices = pgTable('invoices', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').references(() => companies.id).notNull(),
   clientId: uuid('client_id').references(() => clients.id).notNull(),
   reference: text('reference').notNull(),
+  ncf: text('ncf'),
+  comprobanteType: comprobanteTypeEnum('comprobante_type').default('B01').notNull(),
   invoiceType: invoiceTypeEnum('invoice_type').default('cash').notNull(),
   status: invoiceStatusEnum('status').default('draft'),
   subtotal: decimal('subtotal', { precision: 14, scale: 2 }).default('0'),
   taxAmount: decimal('tax_amount', { precision: 14, scale: 2 }).default('0'),
+  itbisRate: decimal('itbis_rate', { precision: 5, scale: 2 }).default('18.00'),
   totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).default('0'),
   paidAmount: decimal('paid_amount', { precision: 14, scale: 2 }).default('0'),
   dueDate: timestamp('due_date'),
   issuedAt: timestamp('issued_at'),
   notes: text('notes'),
+  relatedInvoiceId: uuid('related_invoice_id'),
+  modificationReason: text('modification_reason'),
   presaleId: uuid('presale_id').references(() => presales.id),
   createdById: uuid('created_by_id').references(() => staffUsers.id),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 }, (t) => ({
   referenceCompanyIdx: uniqueIndex('invoices_reference_company_idx').on(t.reference, t.companyId),
+  ncfCompanyIdx: uniqueIndex('invoices_ncf_company_idx').on(t.ncf, t.companyId),
 }));
 
 export const invoiceItems = pgTable('invoice_items', {

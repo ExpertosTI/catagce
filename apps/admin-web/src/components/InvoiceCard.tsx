@@ -73,8 +73,9 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
               <span className="badge-blue text-[10px]">{invoiceStatusLabel[invoice.status] ?? invoice.status}</span>
             )}
           </div>
-          <p className="text-blue-700 font-bold text-base mt-1">{invoice.reference}</p>
+          <p className="text-blue-700 font-bold text-base mt-1">{invoice.ncf ?? invoice.reference}</p>
           <p className="text-xs text-slate-500 mt-0.5">{invoiceTypeLabel(invoice.invoiceType)}</p>
+          {invoice.ncf && <p className="text-xs text-slate-400">Ref: {invoice.reference}</p>}
           <p className="text-xs text-slate-400">{formatDate(invoice.issuedAt)}</p>
         </div>
 

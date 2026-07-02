@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, UserPlus, Check, ChevronDown } from 'lucide-react';
 import { QuickClientModal } from './QuickClientModal';
 
-export type PickerClient = { id: string; name: string; code?: string; email?: string; phone?: string };
+export type PickerClient = { id: string; name: string; code?: string; email?: string; phone?: string; taxId?: string };
 
 type Props = {
   clients: PickerClient[];

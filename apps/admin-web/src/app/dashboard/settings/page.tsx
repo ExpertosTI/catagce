@@ -6,6 +6,119 @@ import { FormField } from '../../../components/FormField';
 import { ImageUploadField } from '../../../components/ImageUploadField';
 import { apiFetch } from '../../../lib/api';
 import { SITE_URL, ADMIN_URL } from '../../../lib/site';
+import { comprobanteTypeLabel } from '../../../lib/labels';
+
+type FiscalSequence = {
+  id: string;
+  comprobanteType: string;
+  rangeFrom: number;
+  rangeTo: number;
+  currentNumber: number;
+  authorizedUntil?: string | null;
+  isActive: boolean;
+};
+
+function FiscalSequencesPanel() {
+  const [sequences, setSequences] = useState<FiscalSequence[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({
+    comprobanteType: 'B01', rangeFrom: 1, rangeTo: 10000, currentNumber: 1, authorizedUntil: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  function load() {
+    setLoading(true);
+    apiFetch<FiscalSequence[]>('/fiscal/sequences').then(setSequences).finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function saveSequence(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await apiFetch('/fiscal/sequences', {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...form,
+          authorizedUntil: form.authorizedUntil || undefined,
+        }),
+      });
+      load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'No se pudo guardar la secuencia');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="form-card max-w-2xl space-y-4 mt-6">
+      <div>
+        <p className="text-sm font-semibold text-slate-700">Secuencias NCF (DGII)</p>
+        <p className="text-xs text-slate-500 mt-1">Configure los rangos autorizados por la DGII para cada tipo de comprobante.</p>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Cargando secuencias...</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-slate-500 border-b">
+              <tr>
+                <th className="text-left py-2">Tipo</th>
+                <th className="text-right py-2">Rango</th>
+                <th className="text-right py-2">Siguiente</th>
+                <th className="text-right py-2">Restantes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sequences.map((s) => (
+                <tr key={s.id} className="border-b border-slate-100">
+                  <td className="py-2">{comprobanteTypeLabel[s.comprobanteType] ?? s.comprobanteType}</td>
+                  <td className="py-2 text-right text-slate-500">{s.rangeFrom}–{s.rangeTo}</td>
+                  <td className="py-2 text-right font-mono">{s.comprobanteType}{String(s.currentNumber).padStart(8, '0')}</td>
+                  <td className="py-2 text-right">{Math.max(0, s.rangeTo - s.currentNumber + 1)}</td>
+                </tr>
+              ))}
+              {!sequences.length && (
+                <tr><td colSpan={4} className="py-4 text-center text-slate-400">Sin secuencias configuradas</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <form onSubmit={saveSequence} className="border-t border-slate-100 pt-4 space-y-3">
+        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Agregar / actualizar secuencia</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <FormField label="Tipo de comprobante">
+            <select value={form.comprobanteType} onChange={(e) => setForm({ ...form, comprobanteType: e.target.value })} className="input text-sm">
+              {['B01', 'B02', 'B03', 'B04', 'B14'].map((t) => (
+                <option key={t} value={t}>{comprobanteTypeLabel[t]}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Válido hasta">
+            <input type="date" value={form.authorizedUntil} onChange={(e) => setForm({ ...form, authorizedUntil: e.target.value })} className="input text-sm" />
+          </FormField>
+          <FormField label="Desde">
+            <input type="number" min={1} value={form.rangeFrom} onChange={(e) => setForm({ ...form, rangeFrom: parseInt(e.target.value, 10) })} className="input text-sm" />
+          </FormField>
+          <FormField label="Hasta">
+            <input type="number" min={1} value={form.rangeTo} onChange={(e) => setForm({ ...form, rangeTo: parseInt(e.target.value, 10) })} className="input text-sm" />
+          </FormField>
+          <FormField label="Número actual">
+            <input type="number" min={1} value={form.currentNumber} onChange={(e) => setForm({ ...form, currentNumber: parseInt(e.target.value, 10) })} className="input text-sm" />
+          </FormField>
+        </div>
+        <button type="submit" disabled={saving} className="btn-secondary text-sm disabled:opacity-50">
+          {saving ? 'Guardando...' : 'Guardar secuencia NCF'}
+        </button>
+      </form>
+    </div>
+  );
+}
 
 type Company = {
   name: string;
@@ -100,6 +213,8 @@ export default function SettingsPage() {
           {saved && <span className="text-sm text-emerald-600 font-medium">Guardado ✓</span>}
         </div>
       </form>
+
+      <FiscalSequencesPanel />
 
       <div className="form-card max-w-lg space-y-3 mt-6">
         <p className="text-sm font-semibold text-slate-700">Enlaces de la plataforma</p>

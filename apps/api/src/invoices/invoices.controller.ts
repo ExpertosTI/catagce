@@ -53,6 +53,16 @@ export class InvoicesController {
     return this.invoicesService.addPayment(user, id, body);
   }
 
+  @Post(':id/credit-note')
+  createCreditNote(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
+    return this.invoicesService.createCreditNote(user, id, body);
+  }
+
+  @Post(':id/debit-note')
+  createDebitNote(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
+    return this.invoicesService.createDebitNote(user, id, body);
+  }
+
   @Delete(':id/payments/:paymentId')
   voidPayment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('paymentId') paymentId: string) {
     return this.invoicesService.voidPayment(user, id, paymentId);

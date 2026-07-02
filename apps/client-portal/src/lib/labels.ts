@@ -21,3 +21,11 @@ export const paymentMethodLabel: Record<string, string> = {
   check: 'Cheque',
   other: 'Otro',
 };
+
+export const comprobanteTypeLabel: Record<string, string> = {
+  B01: 'Factura de crédito fiscal',
+  B02: 'Factura de consumo',
+  B03: 'Nota de débito',
+  B04: 'Nota de crédito',
+  B14: 'Regímenes especiales',
+};

@@ -6,15 +6,25 @@ import {
 } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
+import { FiscalService } from '../fiscal/fiscal.service';
+import {
+  ComprobanteType, MODIFICATION_TYPES, calculateTaxTotals,
+  suggestComprobanteType, validateComprobanteForClient, DEFAULT_ITBIS_RATE,
+} from '../fiscal/fiscal.util';
 
 @Injectable()
 export class InvoicesService {
-  constructor(@Inject(DRIZZLE) private db: any) {}
+  constructor(
+    @Inject(DRIZZLE) private db: any,
+    private fiscalService: FiscalService,
+  ) {}
 
   async list(user: AuthUser) {
     return this.db.select({
       id: invoices.id,
       reference: invoices.reference,
+      ncf: invoices.ncf,
+      comprobanteType: invoices.comprobanteType,
       invoiceType: invoices.invoiceType,
       status: invoices.status,
       subtotal: invoices.subtotal,
@@ -56,18 +66,55 @@ export class InvoicesService {
 
     const [client] = await this.db.select().from(clients).where(eq(clients.id, invoice.clientId)).limit(1);
 
-    return { ...invoice, client, clientName: client?.name, items, payments };
+    let relatedInvoice = null;
+    if (invoice.relatedInvoiceId) {
+      const [rel] = await this.db.select({
+        id: invoices.id, reference: invoices.reference, ncf: invoices.ncf,
+      }).from(invoices).where(eq(invoices.id, invoice.relatedInvoiceId)).limit(1);
+      relatedInvoice = rel ?? null;
+    }
+
+    return { ...invoice, client, clientName: client?.name, items, payments, relatedInvoice };
   }
 
   async create(user: AuthUser, data: {
     clientId: string;
     invoiceType: 'cash' | 'credit';
+    comprobanteType?: ComprobanteType;
+    itbisRate?: number;
     items: { productId: string; quantity: number; unitPrice: number; warehouseId?: string }[];
     dueDate?: string;
     notes?: string;
     issue?: boolean;
+    relatedInvoiceId?: string;
+    modificationReason?: string;
   }) {
-    const reference = `FAC-${Date.now().toString(36).toUpperCase()}`;
+    const [client] = await this.db.select().from(clients)
+      .where(and(eq(clients.id, data.clientId), eq(clients.companyId, user.companyId))).limit(1);
+    if (!client) throw new NotFoundException('Cliente no encontrado');
+
+    const comprobanteType = data.comprobanteType ?? suggestComprobanteType(client.taxId, data.invoiceType);
+    const validationError = validateComprobanteForClient(comprobanteType, client.taxId);
+    if (validationError) throw new BadRequestException(validationError);
+
+    if (MODIFICATION_TYPES.includes(comprobanteType) && !data.relatedInvoiceId) {
+      throw new BadRequestException('Las notas de débito/crédito requieren la factura de referencia');
+    }
+
+    let relatedInvoice = null;
+    if (data.relatedInvoiceId) {
+      relatedInvoice = await this.getById(user, data.relatedInvoiceId);
+      if (!['B01', 'B02', 'B14'].includes(relatedInvoice.comprobanteType)) {
+        throw new BadRequestException('Solo se pueden modificar facturas válidas (B01, B02, B14)');
+      }
+    }
+
+    const reference = comprobanteType === 'B04'
+      ? `NCR-${Date.now().toString(36).toUpperCase()}`
+      : comprobanteType === 'B03'
+        ? `NDB-${Date.now().toString(36).toUpperCase()}`
+        : `FAC-${Date.now().toString(36).toUpperCase()}`;
+
     let subtotal = 0;
     const lineItems = data.items.map((item) => {
       const lineTotal = item.quantity * item.unitPrice;
@@ -75,25 +122,35 @@ export class InvoicesService {
       return { ...item, lineTotal };
     });
 
-    const [client] = await this.db.select().from(clients)
-      .where(and(eq(clients.id, data.clientId), eq(clients.companyId, user.companyId))).limit(1);
-    if (!client) throw new NotFoundException('Cliente no encontrado');
+    const itbisRate = data.itbisRate ?? DEFAULT_ITBIS_RATE;
+    const totals = calculateTaxTotals(subtotal, itbisRate);
 
     const dueDate = data.invoiceType === 'credit'
       ? new Date(Date.now() + (client.creditDays ?? 30) * 86400000)
       : data.dueDate ? new Date(data.dueDate) : null;
 
+    let ncf: string | null = null;
+    if (data.issue) {
+      ncf = await this.fiscalService.allocateNcf(user, comprobanteType);
+    }
+
     const [invoice] = await this.db.insert(invoices).values({
       companyId: user.companyId,
       clientId: data.clientId,
       reference,
+      ncf,
+      comprobanteType,
       invoiceType: data.invoiceType,
       status: data.issue ? 'issued' : 'draft',
-      subtotal: subtotal.toFixed(2),
-      totalAmount: subtotal.toFixed(2),
+      subtotal: totals.subtotal.toFixed(2),
+      taxAmount: totals.taxAmount.toFixed(2),
+      itbisRate: itbisRate.toFixed(2),
+      totalAmount: totals.totalAmount.toFixed(2),
       dueDate,
       issuedAt: data.issue ? new Date() : null,
       notes: data.notes,
+      relatedInvoiceId: data.relatedInvoiceId ?? null,
+      modificationReason: data.modificationReason ?? null,
       createdById: user.userId,
     }).returning();
 
@@ -107,7 +164,7 @@ export class InvoicesService {
         warehouseId: item.warehouseId,
       }).returning();
 
-      if (data.issue) {
+      if (data.issue && !MODIFICATION_TYPES.includes(comprobanteType)) {
         await this.reserveStock(user.companyId, item.productId, item.quantity, item.warehouseId);
         await this.db.insert(clientAllocations).values({
           companyId: user.companyId,
@@ -121,7 +178,92 @@ export class InvoicesService {
       }
     }
 
+    if (data.issue && comprobanteType === 'B04' && relatedInvoice) {
+      const creditTotal = totals.totalAmount;
+      const newTotal = Math.max(0, parseFloat(relatedInvoice.totalAmount ?? '0') - creditTotal);
+      const paid = parseFloat(relatedInvoice.paidAmount ?? '0');
+      let status = relatedInvoice.status;
+      if (newTotal <= 0) status = 'cancelled';
+      else if (paid >= newTotal) status = 'paid';
+      else if (paid > 0) status = 'partially_paid';
+      else status = 'issued';
+      await this.db.update(invoices).set({
+        totalAmount: newTotal.toFixed(2),
+        status,
+        updatedAt: new Date(),
+      }).where(eq(invoices.id, relatedInvoice.id));
+    }
+
+    if (data.issue && comprobanteType === 'B03' && relatedInvoice) {
+      const debitTotal = totals.totalAmount;
+      const newTotal = parseFloat(relatedInvoice.totalAmount ?? '0') + debitTotal;
+      const paid = parseFloat(relatedInvoice.paidAmount ?? '0');
+      let status = relatedInvoice.status;
+      if (paid >= newTotal) status = 'paid';
+      else if (paid > 0) status = 'partially_paid';
+      else status = 'issued';
+      await this.db.update(invoices).set({
+        totalAmount: newTotal.toFixed(2),
+        status,
+        updatedAt: new Date(),
+      }).where(eq(invoices.id, relatedInvoice.id));
+    }
+
     return this.getById(user, invoice.id);
+  }
+
+  async createCreditNote(user: AuthUser, invoiceId: string, data: {
+    items?: { productId: string; quantity: number; unitPrice: number }[];
+    modificationReason: string;
+    notes?: string;
+  }) {
+    const original = await this.getById(user, invoiceId);
+    if (!['B01', 'B02', 'B14'].includes(original.comprobanteType)) {
+      throw new BadRequestException('Solo se emiten notas de crédito sobre facturas B01, B02 o B14');
+    }
+
+    const items = data.items?.length
+      ? data.items
+      : (original.items ?? []).map((i: any) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        unitPrice: parseFloat(i.unitPrice),
+      }));
+
+    return this.create(user, {
+      clientId: original.clientId,
+      invoiceType: original.invoiceType,
+      comprobanteType: 'B04',
+      itbisRate: parseFloat(original.itbisRate ?? '18'),
+      items,
+      issue: true,
+      relatedInvoiceId: invoiceId,
+      modificationReason: data.modificationReason,
+      notes: data.notes,
+    });
+  }
+
+  async createDebitNote(user: AuthUser, invoiceId: string, data: {
+    items: { productId: string; quantity: number; unitPrice: number }[];
+    modificationReason: string;
+    notes?: string;
+  }) {
+    const original = await this.getById(user, invoiceId);
+    if (!['B01', 'B02', 'B14'].includes(original.comprobanteType)) {
+      throw new BadRequestException('Solo se emiten notas de débito sobre facturas B01, B02 o B14');
+    }
+
+    return this.create(user, {
+      clientId: original.clientId,
+      invoiceType: original.invoiceType,
+      comprobanteType: 'B03',
+      itbisRate: parseFloat(original.itbisRate ?? '18'),
+      items: data.items,
+      issue: true,
+      relatedInvoiceId: invoiceId,
+      modificationReason: data.modificationReason,
+      notes: data.notes,
+    });
   }
 
   async addPayment(user: AuthUser, invoiceId: string, data: {
