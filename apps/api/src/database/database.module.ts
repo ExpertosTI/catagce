@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import { createClientFromEnv } from '@catagce/db';
+import { createClientFromEnv } from '@ghome/db';
 
 export const DRIZZLE = 'DRIZZLE';
 

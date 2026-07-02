@@ -1,23 +1,18 @@
 
 services:
   api:
-    image: catagce-api:latest
+    image: ghome-api:latest
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      - DB_HOST=catagce-db
-      - DB_USER=catagce_admin
+      - DB_HOST=ghome-db
+      - DB_USER=ghome_admin
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=catagce_prod
+      - DB_NAME=ghome_prod
       - JWT_SECRET=${JWT_SECRET}
-      - REDIS_HOST=catagce-redis
-      - REDIS_PORT=6379
-      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
-      - UPLOAD_DIR=/data/uploads
-      - PUBLIC_API_URL=https://api.catagce.renace.tech/api
-    volumes:
-      - catagce_uploads:/data/uploads
+      - PUBLIC_API_URL=https://api.generalhome.tech/api
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://generalhome.tech,https://www.generalhome.tech,https://admin.generalhome.tech}
     networks:
       - RenaceNet
     healthcheck:
@@ -26,177 +21,100 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 5
-      update_config:
-        parallelism: 1
-        delay: 10s
-        failure_action: rollback
-        order: start-first
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "768M"
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        - "traefik.http.routers.catagce-api-http.rule=Host(`api.catagce.renace.tech`)"
-        - "traefik.http.routers.catagce-api-http.entrypoints=web"
-        - "traefik.http.routers.catagce-api-http.middlewares=catagce-api-redirect"
-        - "traefik.http.middlewares.catagce-api-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.catagce-api.rule=Host(`api.catagce.renace.tech`)"
-        - "traefik.http.routers.catagce-api.entrypoints=websecure"
-        - "traefik.http.routers.catagce-api.tls=true"
-        - "traefik.http.routers.catagce-api.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.catagce-api.loadbalancer.server.port=3000"
+        - "traefik.http.routers.ghome-api-http.rule=Host(`api.generalhome.tech`)"
+        - "traefik.http.routers.ghome-api-http.entrypoints=web"
+        - "traefik.http.routers.ghome-api-http.middlewares=ghome-api-redirect"
+        - "traefik.http.middlewares.ghome-api-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.ghome-api.rule=Host(`api.generalhome.tech`)"
+        - "traefik.http.routers.ghome-api.entrypoints=websecure"
+        - "traefik.http.routers.ghome-api.tls=true"
+        - "traefik.http.routers.ghome-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.ghome-api.loadbalancer.server.port=3000"
 
-  web:
-    image: catagce-web:latest
+  portal:
+    image: ghome-portal:latest
     build:
       context: .
-      dockerfile: apps/buyer-web/Dockerfile
+      dockerfile: apps/client-portal/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://api.catagce.renace.tech/api
+        NEXT_PUBLIC_API_URL: https://api.generalhome.tech/api
+        NEXT_PUBLIC_SITE_URL: https://generalhome.tech
+        NEXT_PUBLIC_ADMIN_URL: https://admin.generalhome.tech
+        NEXT_PUBLIC_COMPANY_SLUG: generalhome
     environment:
-      - NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech/api
-      - DATABASE_URL=${DATABASE_URL}
+      - NEXT_PUBLIC_API_URL=https://api.generalhome.tech/api
+      - NEXT_PUBLIC_SITE_URL=https://generalhome.tech
+      - NEXT_PUBLIC_ADMIN_URL=https://admin.generalhome.tech
+      - NEXT_PUBLIC_COMPANY_SLUG=generalhome
     networks:
       - RenaceNet
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))\""]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
     deploy:
       restart_policy:
         condition: on-failure
-      update_config:
-        parallelism: 1
-        delay: 10s
-        failure_action: rollback
-        order: start-first
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "768M"
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=RenaceNet"
-        - "traefik.http.routers.catagce-web-http.rule=Host(`catagce.renace.tech`)"
-        - "traefik.http.routers.catagce-web-http.entrypoints=web"
-        - "traefik.http.routers.catagce-web-http.middlewares=catagce-web-redirect"
-        - "traefik.http.middlewares.catagce-web-redirect.redirectscheme.scheme=https"
-        - "traefik.http.routers.catagce-web.rule=Host(`catagce.renace.tech`)"
-        - "traefik.http.routers.catagce-web.entrypoints=websecure"
-        - "traefik.http.routers.catagce-web.tls=true"
-        - "traefik.http.routers.catagce-web.tls.certresolver=letsencryptresolver"
-        - "traefik.http.services.catagce-web.loadbalancer.server.port=3000"
+        - "traefik.http.routers.ghome-portal-http.rule=Host(`generalhome.tech`) || Host(`www.generalhome.tech`)"
+        - "traefik.http.routers.ghome-portal-http.entrypoints=web"
+        - "traefik.http.routers.ghome-portal-http.middlewares=ghome-portal-redirect"
+        - "traefik.http.middlewares.ghome-portal-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.ghome-portal.rule=Host(`generalhome.tech`) || Host(`www.generalhome.tech`)"
+        - "traefik.http.routers.ghome-portal.entrypoints=websecure"
+        - "traefik.http.routers.ghome-portal.tls=true"
+        - "traefik.http.routers.ghome-portal.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.ghome-portal.loadbalancer.server.port=3000"
+
+  admin:
+    image: ghome-admin:latest
+    build:
+      context: .
+      dockerfile: apps/admin-web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://api.generalhome.tech/api
+        NEXT_PUBLIC_SITE_URL: https://generalhome.tech
+        NEXT_PUBLIC_ADMIN_URL: https://admin.generalhome.tech
+        NEXT_PUBLIC_COMPANY_SLUG: generalhome
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.generalhome.tech/api
+      - NEXT_PUBLIC_SITE_URL=https://generalhome.tech
+      - NEXT_PUBLIC_ADMIN_URL=https://admin.generalhome.tech
+      - NEXT_PUBLIC_COMPANY_SLUG=generalhome
+    networks:
+      - RenaceNet
+    deploy:
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=RenaceNet"
+        - "traefik.http.routers.ghome-admin-http.rule=Host(`admin.generalhome.tech`)"
+        - "traefik.http.routers.ghome-admin-http.entrypoints=web"
+        - "traefik.http.routers.ghome-admin-http.middlewares=ghome-admin-redirect"
+        - "traefik.http.middlewares.ghome-admin-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.ghome-admin.rule=Host(`admin.generalhome.tech`)"
+        - "traefik.http.routers.ghome-admin.entrypoints=websecure"
+        - "traefik.http.routers.ghome-admin.tls=true"
+        - "traefik.http.routers.ghome-admin.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.ghome-admin.loadbalancer.server.port=3000"
 
   db:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=catagce_admin
+      - POSTGRES_USER=ghome_admin
       - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=catagce_prod
+      - POSTGRES_DB=ghome_prod
     volumes:
-      - catagce_db_data:/var/lib/postgresql/data
+      - ghome_db_data:/var/lib/postgresql/data
     networks:
       RenaceNet:
         aliases:
-          - catagce-db
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          cpus: "0.50"
-          memory: "1G"
-
-  media-processor:
-    image: catagce-media:latest
-    build:
-      context: .
-      dockerfile: workers/media-processor/Dockerfile
-    environment:
-      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
-      - REDIS_HOST=catagce-redis
-      - REDIS_PORT=6379
-    networks:
-      - RenaceNet
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      restart_policy:
-        condition: on-failure
-
-  catalog-renderer:
-    image: catagce-renderer:latest
-    build:
-      context: .
-      dockerfile: workers/catalog-renderer/Dockerfile
-    environment:
-      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
-      - REDIS_HOST=catagce-redis
-      - REDIS_PORT=6379
-    networks:
-      - RenaceNet
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      restart_policy:
-        condition: on-failure
-
-  notifications:
-    image: catagce-notifications:latest
-    build:
-      context: .
-      dockerfile: workers/notifications/Dockerfile
-    environment:
-      - DATABASE_URL=postgres://catagce_admin:${DB_PASSWORD}@catagce-db:5432/catagce_prod
-      - REDIS_HOST=catagce-redis
-      - REDIS_PORT=6379
-    networks:
-      - RenaceNet
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      restart_policy:
-        condition: on-failure
-
-  redis:
-    image: redis:7-alpine
-    networks:
-      RenaceNet:
-        aliases:
-          - catagce-redis
+          - ghome-db
     deploy:
       restart_policy:
         condition: on-failure
@@ -206,5 +124,4 @@ networks:
     external: true
 
 volumes:
-  catagce_db_data:
-  catagce_uploads:
+  ghome_db_data:

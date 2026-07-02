@@ -1,5 +1,5 @@
 {
-  "name": "@catagce/catalog-renderer",
+  "name": "@ghome/catalog-renderer",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,11 +12,11 @@
     "puppeteer": "^22.0.0",
     "handlebars": "^4.7.8",
     "drizzle-orm": "^0.38.4",
-    "@catagce/db": "workspace:*",
-    "@catagce/contracts": "workspace:*"
+    "@ghome/db": "workspace:*",
+    "@ghome/contracts": "workspace:*"
   },
   "devDependencies": {
-    "@catagce/typescript-config": "workspace:*",
+    "@ghome/typescript-config": "workspace:*",
     "tsup": "^8.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"

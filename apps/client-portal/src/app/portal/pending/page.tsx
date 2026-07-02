@@ -1,0 +1,44 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import PortalLayout from '../../../components/PortalLayout';
+import { apiFetch } from '../../../lib/api';
+
+type Pending = {
+  productName: string;
+  productSku: string;
+  allocatedQty: number;
+  dispatchedQty: number;
+  pendingQty: number;
+  status: string;
+};
+
+export default function PendingMerchandisePage() {
+  const [items, setItems] = useState<Pending[]>([]);
+
+  useEffect(() => {
+    apiFetch<Pending[]>('/portal/pending-merchandise').then(setItems).catch(console.error);
+  }, []);
+
+  return (
+    <PortalLayout>
+      <h2 className="text-2xl font-bold">Mercancía pendiente de despacho</h2>
+      <p className="text-slate-500 mt-1">Productos facturados que aún están en nuestro almacén</p>
+      <div className="grid gap-4 mt-6">
+        {items.map((item, i) => (
+          <div key={i} className="card p-5 flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold">{item.productName}</h3>
+              <p className="text-sm text-slate-500">{item.productSku}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-amber-600">{item.pendingQty}</p>
+              <p className="text-xs text-slate-500">de {item.allocatedQty} facturados · {item.dispatchedQty} despachados</p>
+            </div>
+          </div>
+        ))}
+        {!items.length && <div className="card p-10 text-center text-slate-500">No tiene mercancía pendiente 🎉</div>}
+      </div>
+    </PortalLayout>
+  );
+}

@@ -5,17 +5,12 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
-import { OrdersModule } from './orders/orders.module';
-import { SellersModule } from './sellers/sellers.module';
-import { WebhooksModule } from './webhooks/webhooks.module';
-import { IntegrationsModule } from './integrations/integrations.module';
+import { ClientsModule } from './clients/clients.module';
+import { InvoicesModule } from './invoices/invoices.module';
+import { ImportsModule } from './imports/imports.module';
+import { PortalModule } from './portal/portal.module';
 import { PublicModule } from './public/public.module';
-import { InventoryModule } from './inventory/inventory.module';
-import { AnalyticsModule } from './analytics/analytics.module';
-import { AiModule } from './ai/ai.module';
-import { UploadsModule } from './uploads/uploads.module';
 import { AuthGuard } from './common/guards/auth.guard';
-import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -23,24 +18,11 @@ import { BullModule } from '@nestjs/bullmq';
     AuthModule,
     ProductsModule,
     CatalogsModule,
-    OrdersModule,
-    SellersModule,
-    WebhooksModule,
-    IntegrationsModule,
+    ClientsModule,
+    InvoicesModule,
+    ImportsModule,
+    PortalModule,
     PublicModule,
-    InventoryModule,
-    AnalyticsModule,
-    AiModule,
-    UploadsModule,
-    BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-        maxRetriesPerRequest: null,
-        lazyConnect: true,
-        enableOfflineQueue: false,
-      },
-    }),
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],

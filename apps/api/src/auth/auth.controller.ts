@@ -4,26 +4,34 @@ import { Public } from '../common/decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-  @Post('register')
   @Public()
-  async register(
-    @Body() body: {
-      sellerName: string;
-      sellerSlug: string;
-      email: string;
-      password: string;
-      name: string;
-      phone?: string;
-    },
-  ) {
-    return this.authService.register(body);
+  @Post('staff/register')
+  registerStaff(@Body() body: {
+    companyName: string; companySlug: string; email: string; password: string; name: string; phone?: string;
+  }) {
+    return this.authService.registerStaff(body);
   }
 
-  @Post('login')
   @Public()
-  async login(@Body() body: { email: string; password: string }) {
-    return this.authService.login(body.email, body.password);
+  @Post('staff/login')
+  loginStaff(@Body() body: { email: string; password: string }) {
+    return this.authService.loginStaff(body.email, body.password);
+  }
+
+  @Public()
+  @Post('client/register')
+  registerClient(@Body() body: {
+    companySlug: string; name: string; email: string; password: string;
+    phone?: string; taxId?: string; address?: string;
+  }) {
+    return this.authService.registerClient(body);
+  }
+
+  @Public()
+  @Post('client/login')
+  loginClient(@Body() body: { email: string; password: string; companySlug?: string }) {
+    return this.authService.loginClient(body.email, body.password, body.companySlug);
   }
 }

@@ -1,162 +1,336 @@
 import {
-  pgTable, serial, text, timestamp, integer, pgEnum, decimal, uuid, boolean, jsonb, uniqueIndex,
+  pgTable, text, timestamp, integer, pgEnum, decimal, uuid, boolean, jsonb, uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
-export const orderStatusEnum = pgEnum('order_status', [
-  'draft_capture', 'submitted', 'reserved', 'pending_seller_review',
-  'confirmed', 'partially_confirmed', 'rejected', 'cancelled', 'expired',
+export const staffRoleEnum = pgEnum('staff_role', ['owner', 'admin', 'sales', 'warehouse', 'viewer']);
+export const clientStatusEnum = pgEnum('client_status', ['pending', 'active', 'suspended']);
+export const invoiceStatusEnum = pgEnum('invoice_status', [
+  'draft', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled',
 ]);
+export const invoiceTypeEnum = pgEnum('invoice_type', ['cash', 'credit']);
+export const paymentMethodEnum = pgEnum('payment_method', ['cash', 'transfer', 'card', 'check', 'other']);
+export const dispatchStatusEnum = pgEnum('dispatch_status', ['pending', 'partial', 'completed', 'cancelled']);
+export const presaleStatusEnum = pgEnum('presale_status', ['open', 'confirmed', 'converted', 'cancelled']);
+export const quoteStatusEnum = pgEnum('quote_status', ['draft', 'sent', 'accepted', 'rejected', 'expired']);
+export const importStatusEnum = pgEnum('import_status', ['in_transit', 'customs', 'received', 'closed']);
+export const allocationStatusEnum = pgEnum('allocation_status', ['reserved', 'partially_dispatched', 'dispatched']);
 
-export const movementTypeEnum = pgEnum('movement_type', [
-  'inbound', 'outbound', 'adjustment', 'transfer_out', 'transfer_in',
-  'reservation_hold', 'reservation_release', 'order_confirmed', 'count_reconcile',
-]);
-
-export const integrationTypeEnum = pgEnum('integration_type', [
-  'odoo', 'shopify', 'woocommerce', 'custom',
-]);
-
-export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'operator', 'viewer']);
-
-export const reservationStatusEnum = pgEnum('reservation_status', [
-  'active', 'released', 'consumed', 'expired',
-]);
-
-export const notificationChannelEnum = pgEnum('notification_channel', [
-  'whatsapp', 'email', 'push', 'webhook',
-]);
-
-export const jobStatusEnum = pgEnum('job_status', [
-  'pending', 'running', 'completed', 'failed',
-]);
-
-// ─── Tenants & Identity ──────────────────────────────────────────────────────
-export const sellers = pgTable('sellers', {
+// ─── Empresa importadora ─────────────────────────────────────────────────────
+export const companies = pgTable('companies', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  taxId: text('tax_id'),
   email: text('email'),
   phone: text('phone'),
-  isActive: boolean('is_active').default(true),
+  address: text('address'),
+  logoUrl: text('logo_url'),
+  settings: jsonb('settings').default({}),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const sellerUsers = pgTable('seller_users', {
+export const staffUsers = pgTable('staff_users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
   email: text('email').notNull(),
   passwordHash: text('password_hash').notNull(),
   name: text('name').notNull(),
-  role: userRoleEnum('role').default('owner'),
+  role: staffRoleEnum('role').default('admin'),
   isActive: boolean('is_active').default(true),
   lastLoginAt: timestamp('last_login_at'),
   createdAt: timestamp('created_at').defaultNow(),
 }, (t) => ({
-  emailSellerIdx: uniqueIndex('seller_users_email_seller_idx').on(t.email, t.sellerId),
+  emailCompanyIdx: uniqueIndex('staff_users_email_company_idx').on(t.email, t.companyId),
 }));
 
-export const sellerApiKeys = pgTable('seller_api_keys', {
+// ─── Clientes (portal) ───────────────────────────────────────────────────────
+export const clients = pgTable('clients', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  key: text('key').notNull().unique(),
-  name: text('name').notNull().default('Default'),
-  lastUsedAt: timestamp('last_used_at'),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  code: text('code'),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  passwordHash: text('password_hash'),
+  phone: text('phone'),
+  taxId: text('tax_id'),
+  address: text('address'),
+  creditLimit: decimal('credit_limit', { precision: 14, scale: 2 }).default('0'),
+  creditDays: integer('credit_days').default(30),
+  status: clientStatusEnum('status').default('pending'),
+  notes: text('notes'),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  emailCompanyIdx: uniqueIndex('clients_email_company_idx').on(t.email, t.companyId),
+  codeCompanyIdx: uniqueIndex('clients_code_company_idx').on(t.code, t.companyId),
+}));
+
+// ─── Proveedores internacionales ─────────────────────────────────────────────
+export const suppliers = pgTable('suppliers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  name: text('name').notNull(),
+  country: text('country'),
+  contactName: text('contact_name'),
+  email: text('email'),
+  phone: text('phone'),
+  notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const sellerBranding = pgTable('seller_branding', {
+// ─── Almacenes ───────────────────────────────────────────────────────────────
+export const warehouses = pgTable('warehouses', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull().unique(),
-  logoUrl: text('logo_url'),
-  primaryColor: text('primary_color').default('#00D1FF'),
-  accentColor: text('accent_color').default('#FF8A00'),
-  customDomain: text('custom_domain'),
-  welcomeMessage: text('welcome_message'),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-export const sellerSettings = pgTable('seller_settings', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull().unique(),
-  currency: text('currency').default('USD'),
-  timezone: text('timezone').default('America/Santo_Domingo'),
-  lowStockThreshold: decimal('low_stock_threshold', { precision: 12, scale: 4 }).default('10'),
-  whatsappNumber: text('whatsapp_number'),
-  autoConfirmOrders: boolean('auto_confirm_orders').default(false),
-  reservationTtlMinutes: integer('reservation_ttl_minutes').default(60),
-  googleAiApiKey: text('google_ai_api_key'),
-  aiModel: text('ai_model').default('gemini-2.5-flash'),
-  aiEnabled: boolean('ai_enabled').default(true),
-  onboardingCompleted: boolean('onboarding_completed').default(false),
-  onboardingStep: integer('onboarding_step').default(0),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// ─── Products & Media ────────────────────────────────────────────────────────
-export const uoms = pgTable('uoms', {
-  id: serial('id').primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
   name: text('name').notNull(),
-  symbol: text('symbol'),
-  baseUomId: integer('base_uom_id'),
-  conversionFactor: decimal('conversion_factor', { precision: 12, scale: 4 }).default('1.0000'),
-  isSellable: boolean('is_sellable').default(true),
+  location: text('location'),
+  isDefault: boolean('is_default').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Productos / mercancía ───────────────────────────────────────────────────
+export const productCategories = pgTable('product_categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  parentId: uuid('parent_id'),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const products = pgTable('products', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  categoryId: uuid('category_id').references(() => productCategories.id),
+  sku: text('sku').notNull(),
   name: text('name').notNull(),
-  sku: text('sku'),
   description: text('description'),
-  category: text('category'),
-  baseUomId: integer('base_uom_id').references(() => uoms.id).notNull(),
-  basePrice: decimal('base_price', { precision: 12, scale: 2 }).notNull(),
-  b2bPrice: decimal('b2b_price', { precision: 12, scale: 2 }),
-  minOrderQuantity: decimal('min_order_quantity', { precision: 12, scale: 2 }).default('1'),
+  unit: text('unit').default('un'),
+  costPrice: decimal('cost_price', { precision: 14, scale: 2 }),
+  salePrice: decimal('sale_price', { precision: 14, scale: 2 }).notNull(),
   isActive: boolean('is_active').default(true),
-  imageUrl: text('image_url'),
-  externalId: text('external_id'),
-  externalSource: text('external_source'),
-  views: integer('views').default(0),
+  metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-export const productVariants = pgTable('product_variants', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  name: text('name').notNull(),
-  sku: text('sku'),
-  priceAdjustment: decimal('price_adjustment', { precision: 12, scale: 2 }).default('0'),
-  imageUrl: text('image_url'),
-  isActive: boolean('is_active').default(true),
-  sortOrder: integer('sort_order').default(0),
-});
-
-export const productBarcodes = pgTable('product_barcodes', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  variantId: uuid('variant_id').references(() => productVariants.id),
-  barcode: text('barcode').notNull(),
-  type: text('type').default('ean13'),
-});
+}, (t) => ({
+  skuCompanyIdx: uniqueIndex('products_sku_company_idx').on(t.sku, t.companyId),
+}));
 
 export const productMedia = pgTable('product_media', {
   id: uuid('id').defaultRandom().primaryKey(),
   productId: uuid('product_id').references(() => products.id).notNull(),
   url: text('url').notNull(),
-  isMain: boolean('is_main').default(false),
+  altText: text('alt_text'),
   sortOrder: integer('sort_order').default(0),
+  isPrimary: boolean('is_primary').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ─── Importaciones / contenedores ────────────────────────────────────────────
+export const importShipments = pgTable('import_shipments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  supplierId: uuid('supplier_id').references(() => suppliers.id),
+  reference: text('reference').notNull(),
+  containerNumber: text('container_number'),
+  status: importStatusEnum('status').default('in_transit'),
+  etaDate: timestamp('eta_date'),
+  receivedAt: timestamp('received_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const importItems = pgTable('import_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  shipmentId: uuid('shipment_id').references(() => importShipments.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  quantity: integer('quantity').notNull(),
+  unitCost: decimal('unit_cost', { precision: 14, scale: 2 }),
+  warehouseId: uuid('warehouse_id').references(() => warehouses.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Inventario (total, reservado, despachado, disponible) ───────────────────
+export const stockLevels = pgTable('stock_levels', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  warehouseId: uuid('warehouse_id').references(() => warehouses.id).notNull(),
+  totalQty: integer('total_qty').default(0).notNull(),
+  reservedQty: integer('reserved_qty').default(0).notNull(),
+  dispatchedQty: integer('dispatched_qty').default(0).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  productWarehouseIdx: uniqueIndex('stock_levels_product_warehouse_idx').on(t.productId, t.warehouseId),
+}));
+
+// ─── Catálogos y visual de mercancía ─────────────────────────────────────────
+export const catalogs = pgTable('catalogs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  description: text('description'),
+  isPresale: boolean('is_presale').default(false),
+  isPublic: boolean('is_public').default(false),
+  coverImageUrl: text('cover_image_url'),
+  validFrom: timestamp('valid_from'),
+  validUntil: timestamp('valid_until'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  slugCompanyIdx: uniqueIndex('catalogs_slug_company_idx').on(t.slug, t.companyId),
+}));
+
+export const catalogProducts = pgTable('catalog_products', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  catalogId: uuid('catalog_id').references(() => catalogs.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  displayPrice: decimal('display_price', { precision: 14, scale: 2 }),
+  sortOrder: integer('sort_order').default(0),
+  notes: text('notes'),
+});
+
+// ─── Preventas ───────────────────────────────────────────────────────────────
+export const presales = pgTable('presales', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  clientId: uuid('client_id').references(() => clients.id).notNull(),
+  catalogId: uuid('catalog_id').references(() => catalogs.id),
+  reference: text('reference').notNull(),
+  status: presaleStatusEnum('status').default('open'),
+  totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).default('0'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const presaleItems = pgTable('presale_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  presaleId: uuid('presale_id').references(() => presales.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(),
+  lineTotal: decimal('line_total', { precision: 14, scale: 2 }).notNull(),
+});
+
+// ─── Cotizaciones ────────────────────────────────────────────────────────────
+export const quotes = pgTable('quotes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  clientId: uuid('client_id').references(() => clients.id).notNull(),
+  reference: text('reference').notNull(),
+  status: quoteStatusEnum('status').default('draft'),
+  totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).default('0'),
+  validUntil: timestamp('valid_until'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const quoteItems = pgTable('quote_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quoteId: uuid('quote_id').references(() => quotes.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(),
+  lineTotal: decimal('line_total', { precision: 14, scale: 2 }).notNull(),
+});
+
+// ─── Facturas ────────────────────────────────────────────────────────────────
+export const invoices = pgTable('invoices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  clientId: uuid('client_id').references(() => clients.id).notNull(),
+  reference: text('reference').notNull(),
+  invoiceType: invoiceTypeEnum('invoice_type').default('cash').notNull(),
+  status: invoiceStatusEnum('status').default('draft'),
+  subtotal: decimal('subtotal', { precision: 14, scale: 2 }).default('0'),
+  taxAmount: decimal('tax_amount', { precision: 14, scale: 2 }).default('0'),
+  totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).default('0'),
+  paidAmount: decimal('paid_amount', { precision: 14, scale: 2 }).default('0'),
+  dueDate: timestamp('due_date'),
+  issuedAt: timestamp('issued_at'),
+  notes: text('notes'),
+  presaleId: uuid('presale_id').references(() => presales.id),
+  createdById: uuid('created_by_id').references(() => staffUsers.id),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  referenceCompanyIdx: uniqueIndex('invoices_reference_company_idx').on(t.reference, t.companyId),
+}));
+
+export const invoiceItems = pgTable('invoice_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  invoiceId: uuid('invoice_id').references(() => invoices.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(),
+  lineTotal: decimal('line_total', { precision: 14, scale: 2 }).notNull(),
+  dispatchedQty: integer('dispatched_qty').default(0).notNull(),
+  warehouseId: uuid('warehouse_id').references(() => warehouses.id),
+});
+
+// ─── Pagos / abonos ──────────────────────────────────────────────────────────
+export const invoicePayments = pgTable('invoice_payments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  invoiceId: uuid('invoice_id').references(() => invoices.id).notNull(),
+  amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  method: paymentMethodEnum('method').default('transfer'),
+  reference: text('reference'),
+  paidAt: timestamp('paid_at').defaultNow(),
+  notes: text('notes'),
+  recordedById: uuid('recorded_by_id').references(() => staffUsers.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Despachos parciales ─────────────────────────────────────────────────────
+export const dispatches = pgTable('dispatches', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  clientId: uuid('client_id').references(() => clients.id).notNull(),
+  invoiceId: uuid('invoice_id').references(() => invoices.id),
+  reference: text('reference').notNull(),
+  status: dispatchStatusEnum('status').default('pending'),
+  dispatchedAt: timestamp('dispatched_at'),
+  notes: text('notes'),
+  createdById: uuid('created_by_id').references(() => staffUsers.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const dispatchItems = pgTable('dispatch_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  dispatchId: uuid('dispatch_id').references(() => dispatches.id).notNull(),
+  invoiceItemId: uuid('invoice_item_id').references(() => invoiceItems.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  quantity: integer('quantity').notNull(),
+  warehouseId: uuid('warehouse_id').references(() => warehouses.id),
+});
+
+// ─── Asignaciones cliente (mercancía facturada vs en almacén) ────────────────
+export const clientAllocations = pgTable('client_allocations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  clientId: uuid('client_id').references(() => clients.id).notNull(),
+  invoiceItemId: uuid('invoice_item_id').references(() => invoiceItems.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  allocatedQty: integer('allocated_qty').notNull(),
+  dispatchedQty: integer('dispatched_qty').default(0).notNull(),
+  pendingQty: integer('pending_qty').notNull(),
+  status: allocationStatusEnum('status').default('reserved'),
+  warehouseId: uuid('warehouse_id').references(() => warehouses.id),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// ─── Listas de precios ───────────────────────────────────────────────────────
 export const priceLists = pgTable('price_lists', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
   name: text('name').notNull(),
   isDefault: boolean('is_default').default(false),
   createdAt: timestamp('created_at').defaultNow(),
@@ -166,395 +340,69 @@ export const priceListItems = pgTable('price_list_items', {
   id: uuid('id').defaultRandom().primaryKey(),
   priceListId: uuid('price_list_id').references(() => priceLists.id).notNull(),
   productId: uuid('product_id').references(() => products.id).notNull(),
-  price: decimal('price', { precision: 12, scale: 2 }).notNull(),
-  minQuantity: decimal('min_quantity', { precision: 12, scale: 4 }).default('1'),
-});
+  price: decimal('price', { precision: 14, scale: 2 }).notNull(),
+}, (t) => ({
+  priceListProductIdx: uniqueIndex('price_list_items_idx').on(t.priceListId, t.productId),
+}));
 
-// ─── Inventory ───────────────────────────────────────────────────────────────
-export const warehouses = pgTable('warehouses', {
+export const clientPriceLists = pgTable('client_price_lists', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  name: text('name').notNull(),
-  address: text('address'),
-  isDefault: boolean('is_default').default(false),
+  clientId: uuid('client_id').references(() => clients.id).notNull(),
+  priceListId: uuid('price_list_id').references(() => priceLists.id).notNull(),
 });
 
-export const stockLevels = pgTable('stock_levels', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  warehouseId: uuid('warehouse_id').references(() => warehouses.id).notNull(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  variantId: uuid('variant_id').references(() => productVariants.id),
-  onHandBase: decimal('on_hand_base', { precision: 12, scale: 4 }).default('0.0000'),
-  reservedBase: decimal('reserved_base', { precision: 12, scale: 4 }).default('0.0000'),
-  minimumThresholdBase: decimal('minimum_threshold_base', { precision: 12, scale: 4 }).default('0'),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-export const stockMovements = pgTable('stock_movements', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  warehouseId: uuid('warehouse_id').references(() => warehouses.id).notNull(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  variantId: uuid('variant_id').references(() => productVariants.id),
-  movementType: movementTypeEnum('movement_type').notNull(),
-  quantityBaseDelta: decimal('quantity_base_delta', { precision: 12, scale: 4 }).notNull(),
-  sourceUomId: integer('source_uom_id').references(() => uoms.id),
-  sourceQuantity: decimal('source_quantity', { precision: 12, scale: 4 }),
-  reasonCode: text('reason_code'),
-  actorUserId: uuid('actor_user_id'),
-  referenceType: text('reference_type'),
-  referenceId: text('reference_id'),
-  notes: text('notes'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// ─── Catalogs ────────────────────────────────────────────────────────────────
-export const catalogTemplates = pgTable('catalog_templates', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id),
-  name: text('name').notNull(),
-  layout: text('layout').default('grid'),
-  isSystem: boolean('is_system').default(false),
-});
-
-export const catalogs = pgTable('catalogs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  templateId: uuid('template_id').references(() => catalogTemplates.id),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-  description: text('description'),
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const catalogProducts = pgTable('catalog_products', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  catalogId: uuid('catalog_id').references(() => catalogs.id).notNull(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  sortOrder: integer('sort_order').default(0),
-  priceOverride: decimal('price_override', { precision: 12, scale: 2 }),
-});
-
-export const catalogPublications = pgTable('catalog_publications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  catalogId: uuid('catalog_id').references(() => catalogs.id).notNull(),
-  token: text('token').notNull().unique(),
-  brandingSnapshot: jsonb('branding_snapshot'),
-  productSnapshot: jsonb('product_snapshot'),
-  expiresAt: timestamp('expires_at'),
-  isActive: boolean('is_active').default(true),
-  viewCount: integer('view_count').default(0),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const catalogPublicationAssets = pgTable('catalog_publication_assets', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  publicationId: uuid('publication_id').references(() => catalogPublications.id).notNull(),
-  assetType: text('asset_type').notNull(),
-  url: text('url').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// ─── Orders ──────────────────────────────────────────────────────────────────
-export const orders = pgTable('orders', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  catalogId: uuid('catalog_id').references(() => catalogs.id),
-  publicationToken: text('publication_token'),
-  idempotencyKey: text('idempotency_key'),
-  status: orderStatusEnum('status').default('submitted'),
-  buyerName: text('buyer_name').notNull(),
-  buyerPhone: text('buyer_phone').notNull(),
-  buyerEmail: text('buyer_email'),
-  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }),
-  notes: text('notes'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-export const orderItems = pgTable('order_items', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  orderId: uuid('order_id').references(() => orders.id).notNull(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  variantId: uuid('variant_id').references(() => productVariants.id),
-  quantity: decimal('quantity', { precision: 12, scale: 4 }).notNull(),
-  unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
-  uomId: integer('uom_id').references(() => uoms.id),
-});
-
-export const orderItemAllocations = pgTable('order_item_allocations', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  orderItemId: uuid('order_item_id').references(() => orderItems.id).notNull(),
-  warehouseId: uuid('warehouse_id').references(() => warehouses.id).notNull(),
-  reservedBase: decimal('reserved_base', { precision: 12, scale: 4 }).notNull(),
-  confirmedBase: decimal('confirmed_base', { precision: 12, scale: 4 }).default('0'),
-  releasedBase: decimal('released_base', { precision: 12, scale: 4 }).default('0'),
-  status: text('status').default('pending'),
-});
-
-export const orderEvents = pgTable('order_events', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  orderId: uuid('order_id').references(() => orders.id).notNull(),
-  eventType: text('event_type').notNull(),
-  actorUserId: uuid('actor_user_id'),
-  payload: jsonb('payload'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const buyerContacts = pgTable('buyer_contacts', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  name: text('name').notNull(),
-  phone: text('phone').notNull(),
-  email: text('email'),
-  orderCount: integer('order_count').default(0),
-  totalSpent: decimal('total_spent', { precision: 12, scale: 2 }).default('0'),
-  lastOrderAt: timestamp('last_order_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const stockReservations = pgTable('stock_reservations', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  orderId: uuid('order_id').references(() => orders.id),
-  warehouseId: uuid('warehouse_id').references(() => warehouses.id).notNull(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  variantId: uuid('variant_id').references(() => productVariants.id),
-  reservedBase: decimal('reserved_base', { precision: 12, scale: 4 }).notNull(),
-  status: reservationStatusEnum('status').default('active'),
-  expiresAt: timestamp('expires_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// ─── Webhooks & Integrations ─────────────────────────────────────────────────
-export const webhooks = pgTable('webhooks', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  url: text('url').notNull(),
-  secret: text('secret'),
-  events: text('events').array().notNull().default(sql`'{}'::text[]`),
-  isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const webhookDeliveries = pgTable('webhook_deliveries', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  webhookId: uuid('webhook_id').references(() => webhooks.id).notNull(),
-  event: text('event').notNull(),
-  payload: jsonb('payload'),
-  statusCode: integer('status_code'),
-  success: boolean('success').default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const integrations = pgTable('integrations', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  type: integrationTypeEnum('type').notNull(),
-  name: text('name').notNull(),
-  config: jsonb('config').notNull().default({}),
-  isActive: boolean('is_active').default(true),
-  lastSyncAt: timestamp('last_sync_at'),
-  lastSyncStatus: text('last_sync_status'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const integrationLogs = pgTable('integration_logs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  integrationId: uuid('integration_id').references(() => integrations.id).notNull(),
-  level: text('level').default('info'),
-  message: text('message').notNull(),
-  details: jsonb('details'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// ─── Cross-cutting ───────────────────────────────────────────────────────────
-export const auditLogs = pgTable('audit_logs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  actorUserId: uuid('actor_user_id'),
-  action: text('action').notNull(),
-  entityType: text('entity_type').notNull(),
-  entityId: text('entity_id'),
-  changes: jsonb('changes'),
-  ipAddress: text('ip_address'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
+// ─── Notificaciones y auditoría ──────────────────────────────────────────────
 export const notifications = pgTable('notifications', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  channel: notificationChannelEnum('channel').notNull(),
-  recipient: text('recipient').notNull(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  clientId: uuid('client_id').references(() => clients.id),
+  channel: text('channel').default('email'),
   subject: text('subject'),
-  body: text('body').notNull(),
-  status: text('status').default('pending'),
-  referenceType: text('reference_type'),
-  referenceId: text('reference_id'),
+  body: text('body'),
   sentAt: timestamp('sent_at'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const idempotencyKeys = pgTable('idempotency_keys', {
+export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  key: text('key').notNull(),
-  response: jsonb('response'),
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-}, (t) => ({
-  sellerKeyIdx: uniqueIndex('idempotency_seller_key_idx').on(t.sellerId, t.key),
-}));
-
-export const jobRuns = pgTable('job_runs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id),
-  jobType: text('job_type').notNull(),
-  status: jobStatusEnum('status').default('pending'),
-  input: jsonb('input'),
-  output: jsonb('output'),
-  error: text('error'),
-  startedAt: timestamp('started_at'),
-  completedAt: timestamp('completed_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const aiChatSessions = pgTable('ai_chat_sessions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  userId: uuid('user_id'),
-  title: text('title').default('Nueva conversación'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-export const aiChatMessages = pgTable('ai_chat_messages', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  sessionId: uuid('session_id').references(() => aiChatSessions.id).notNull(),
-  role: text('role').notNull(),
-  content: text('content').notNull(),
-  toolCalls: jsonb('tool_calls'),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  actorType: text('actor_type'),
+  actorId: uuid('actor_id'),
+  action: text('action').notNull(),
+  entityType: text('entity_type'),
+  entityId: uuid('entity_id'),
+  metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
 // ─── Relations ───────────────────────────────────────────────────────────────
-export const sellersRelations = relations(sellers, ({ one, many }) => ({
-  branding: one(sellerBranding, { fields: [sellers.id], references: [sellerBranding.sellerId] }),
-  settings: one(sellerSettings, { fields: [sellers.id], references: [sellerSettings.sellerId] }),
-  users: many(sellerUsers),
-  apiKeys: many(sellerApiKeys),
+export const companiesRelations = relations(companies, ({ many }) => ({
+  staff: many(staffUsers),
+  clients: many(clients),
   products: many(products),
-  catalogs: many(catalogs),
-  orders: many(orders),
-  webhooks: many(webhooks),
-  integrations: many(integrations),
-  warehouses: many(warehouses),
-  priceLists: many(priceLists),
-  buyerContacts: many(buyerContacts),
 }));
 
-export const sellerUsersRelations = relations(sellerUsers, ({ one }) => ({
-  seller: one(sellers, { fields: [sellerUsers.sellerId], references: [sellers.id] }),
-}));
-
-export const sellerApiKeysRelations = relations(sellerApiKeys, ({ one }) => ({
-  seller: one(sellers, { fields: [sellerApiKeys.sellerId], references: [sellers.id] }),
-}));
-
-export const sellerBrandingRelations = relations(sellerBranding, ({ one }) => ({
-  seller: one(sellers, { fields: [sellerBranding.sellerId], references: [sellers.id] }),
-}));
-
-export const sellerSettingsRelations = relations(sellerSettings, ({ one }) => ({
-  seller: one(sellers, { fields: [sellerSettings.sellerId], references: [sellers.id] }),
+export const clientsRelations = relations(clients, ({ one, many }) => ({
+  company: one(companies, { fields: [clients.companyId], references: [companies.id] }),
+  invoices: many(invoices),
+  dispatches: many(dispatches),
+  allocations: many(clientAllocations),
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
-  seller: one(sellers, { fields: [products.sellerId], references: [sellers.id] }),
-  baseUom: one(uoms, { fields: [products.baseUomId], references: [uoms.id] }),
-  variants: many(productVariants),
-  barcodes: many(productBarcodes),
+  company: one(companies, { fields: [products.companyId], references: [companies.id] }),
+  category: one(productCategories, { fields: [products.categoryId], references: [productCategories.id] }),
   media: many(productMedia),
-  stockLevels: many(stockLevels),
-  catalogProducts: many(catalogProducts),
-  orderItems: many(orderItems),
 }));
 
-export const productVariantsRelations = relations(productVariants, ({ one }) => ({
-  product: one(products, { fields: [productVariants.productId], references: [products.id] }),
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  client: one(clients, { fields: [invoices.clientId], references: [clients.id] }),
+  items: many(invoiceItems),
+  payments: many(invoicePayments),
+  dispatches: many(dispatches),
 }));
 
-export const productBarcodesRelations = relations(productBarcodes, ({ one }) => ({
-  product: one(products, { fields: [productBarcodes.productId], references: [products.id] }),
-}));
-
-export const stockLevelsRelations = relations(stockLevels, ({ one }) => ({
-  product: one(products, { fields: [stockLevels.productId], references: [products.id] }),
-  warehouse: one(warehouses, { fields: [stockLevels.warehouseId], references: [warehouses.id] }),
-}));
-
-export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
-  product: one(products, { fields: [stockMovements.productId], references: [products.id] }),
-  warehouse: one(warehouses, { fields: [stockMovements.warehouseId], references: [warehouses.id] }),
-}));
-
-export const warehousesRelations = relations(warehouses, ({ one, many }) => ({
-  seller: one(sellers, { fields: [warehouses.sellerId], references: [sellers.id] }),
-  stockLevels: many(stockLevels),
-}));
-
-export const catalogsRelations = relations(catalogs, ({ one, many }) => ({
-  seller: one(sellers, { fields: [catalogs.sellerId], references: [sellers.id] }),
-  template: one(catalogTemplates, { fields: [catalogs.templateId], references: [catalogTemplates.id] }),
-  catalogProducts: many(catalogProducts),
-  publications: many(catalogPublications),
-}));
-
-export const catalogProductsRelations = relations(catalogProducts, ({ one }) => ({
-  catalog: one(catalogs, { fields: [catalogProducts.catalogId], references: [catalogs.id] }),
-  product: one(products, { fields: [catalogProducts.productId], references: [products.id] }),
-}));
-
-export const catalogPublicationsRelations = relations(catalogPublications, ({ one, many }) => ({
-  catalog: one(catalogs, { fields: [catalogPublications.catalogId], references: [catalogs.id] }),
-  assets: many(catalogPublicationAssets),
-}));
-
-export const ordersRelations = relations(orders, ({ one, many }) => ({
-  seller: one(sellers, { fields: [orders.sellerId], references: [sellers.id] }),
-  catalog: one(catalogs, { fields: [orders.catalogId], references: [catalogs.id] }),
-  items: many(orderItems),
-  events: many(orderEvents),
-  reservations: many(stockReservations),
-}));
-
-export const orderItemsRelations = relations(orderItems, ({ one, many }) => ({
-  order: one(orders, { fields: [orderItems.orderId], references: [orders.id] }),
-  product: one(products, { fields: [orderItems.productId], references: [products.id] }),
-  allocations: many(orderItemAllocations),
-}));
-
-export const orderEventsRelations = relations(orderEvents, ({ one }) => ({
-  order: one(orders, { fields: [orderEvents.orderId], references: [orders.id] }),
-}));
-
-export const webhooksRelations = relations(webhooks, ({ one, many }) => ({
-  seller: one(sellers, { fields: [webhooks.sellerId], references: [sellers.id] }),
-  deliveries: many(webhookDeliveries),
-}));
-
-export const integrationsRelations = relations(integrations, ({ one, many }) => ({
-  seller: one(sellers, { fields: [integrations.sellerId], references: [sellers.id] }),
-  logs: many(integrationLogs),
-}));
-
-export const priceListsRelations = relations(priceLists, ({ one, many }) => ({
-  seller: one(sellers, { fields: [priceLists.sellerId], references: [sellers.id] }),
-  items: many(priceListItems),
-}));
-
-export const buyerContactsRelations = relations(buyerContacts, ({ one }) => ({
-  seller: one(sellers, { fields: [buyerContacts.sellerId], references: [sellers.id] }),
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, { fields: [invoiceItems.invoiceId], references: [invoices.id] }),
+  product: one(products, { fields: [invoiceItems.productId], references: [products.id] }),
 }));

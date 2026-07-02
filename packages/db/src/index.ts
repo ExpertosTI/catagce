@@ -19,8 +19,8 @@ export function createClientFromEnv(): ReturnType<typeof drizzle> {
     client = postgres({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT ?? 5432),
-      database: process.env.DB_NAME ?? 'catagce_prod',
-      user: process.env.DB_USER ?? 'catagce_admin',
+      database: process.env.DB_NAME ?? 'ghome_prod',
+      user: process.env.DB_USER ?? 'ghome_admin',
       password: process.env.DB_PASSWORD ?? '',
     });
   } else {

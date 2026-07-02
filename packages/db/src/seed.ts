@@ -1,178 +1,238 @@
-import { createClient } from './index';
-import {
-  sellers, sellerUsers, sellerApiKeys, sellerBranding, sellerSettings,
-  products, productVariants, productBarcodes, stockLevels, stockMovements,
-  uoms, warehouses, catalogs, catalogProducts, catalogPublications,
-  catalogTemplates, priceLists, priceListItems, webhooks, buyerContacts,
-} from './schema';
+import 'dotenv/config';
 import * as bcrypt from 'bcryptjs';
-import * as dotenv from 'dotenv';
-dotenv.config();
-
-const DATABASE_URL = process.env.DATABASE_URL || 'postgres://catagce:catagce@localhost:5432/catagce';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@renace.tech';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CatagceAdmin2026!';
-const ADMIN_NAME = process.env.ADMIN_NAME || 'Admin Renace';
-const SELLER_NAME = process.env.SELLER_NAME || 'Renace Tech';
-const SELLER_SLUG = process.env.SELLER_SLUG || 'renace';
-const API_KEY = process.env.ADMIN_API_KEY || 'cat_renace_admin_2026';
+import { eq } from 'drizzle-orm';
+import { createClientFromEnv } from './index';
+import {
+  companies, staffUsers, warehouses, priceLists, clients, productCategories,
+  products, productMedia, importShipments, importItems, stockLevels, catalogs, catalogProducts,
+  invoices, invoiceItems, clientAllocations, dispatches, dispatchItems, invoicePayments,
+} from './schema';
 
 async function seed() {
-  console.log('🌱 Iniciando Seeding completo de Catagce...');
-  const db = createClient(DATABASE_URL);
+  const db = createClientFromEnv();
+  console.log('🌱 Seeding GHome demo data...');
 
-  // ─── Seller & Identity ───────────────────────────────────────────────────
-  console.log('🏢 Creando vendedor principal...');
-  const [demoSeller] = await db.insert(sellers).values({
-    name: SELLER_NAME,
-    slug: SELLER_SLUG,
-    email: ADMIN_EMAIL,
-    phone: '+18095551234',
+  const [company] = await db.insert(companies).values({
+    name: 'GHome Importaciones',
+    slug: 'generalhome',
+    taxId: '123456789',
+    email: 'admin@generalhome.tech',
+    phone: '+507 6000-0000',
+    address: 'Ciudad de Panamá, Zona Libre de Colón',
+    logoUrl: 'https://picsum.photos/seed/ghome-logo/200/200',
   }).returning();
 
-  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
-  const [demoUser] = await db.insert(sellerUsers).values({
-    sellerId: demoSeller.id,
-    email: ADMIN_EMAIL,
+  const passwordHash = await bcrypt.hash('demo1234', 12);
+
+  const [admin] = await db.insert(staffUsers).values({
+    companyId: company.id,
+    email: 'admin@generalhome.tech',
     passwordHash,
-    name: ADMIN_NAME,
+    name: 'Administrador GHome',
     role: 'owner',
   }).returning();
 
-  await db.insert(sellerApiKeys).values({ sellerId: demoSeller.id, key: API_KEY, name: 'Admin Key' });
-  await db.insert(sellerBranding).values({
-    sellerId: demoSeller.id,
-    primaryColor: '#00D1FF',
-    accentColor: '#FF8A00',
-    customDomain: 'catagce.renace.tech',
-    welcomeMessage: 'Bienvenido a Catagce — tu catálogo B2B de Renace Tech.',
-  });
-  await db.insert(sellerSettings).values({
-    sellerId: demoSeller.id,
-    currency: 'USD',
-    whatsappNumber: '+18095551234',
-    lowStockThreshold: '50',
-    onboardingCompleted: true,
-    onboardingStep: 6,
+  const [warehouse] = await db.insert(warehouses).values({
+    companyId: company.id,
+    name: 'Almacén Principal',
+    location: 'Zona Libre de Colón',
+    isDefault: true,
+  }).returning();
+
+  await db.insert(priceLists).values({
+    companyId: company.id,
+    name: 'Lista General',
+    isDefault: true,
   });
 
-  // ─── UOMs ────────────────────────────────────────────────────────────────
-  console.log('📏 Creando unidades de medida...');
-  const [unitUom] = await db.insert(uoms).values({
-    sellerId: demoSeller.id, name: 'Unidad', symbol: 'un', conversionFactor: '1.0000',
-  }).returning();
-  const [dozenUom] = await db.insert(uoms).values({
-    sellerId: demoSeller.id, name: 'Docena', symbol: 'dz', baseUomId: unitUom.id, conversionFactor: '12.0000',
-  }).returning();
-  await db.insert(uoms).values({
-    sellerId: demoSeller.id, name: 'Caja (12 docenas)', symbol: 'bx', baseUomId: unitUom.id, conversionFactor: '144.0000',
-  });
-
-  // ─── Warehouse ─────────────────────────────────────────────────────────────
-  console.log('📦 Creando almacén...');
-  const [mainWarehouse] = await db.insert(warehouses).values({
-    sellerId: demoSeller.id, name: 'Almacén Central', address: 'Santo Domingo, RD', isDefault: true,
+  const [client] = await db.insert(clients).values({
+    companyId: company.id,
+    code: 'CLI-001',
+    name: 'Distribuidora El Progreso',
+    email: 'cliente@demo.com',
+    passwordHash,
+    phone: '+507 6111-1111',
+    taxId: '987654321',
+    address: 'David, Chiriquí',
+    creditLimit: '50000.00',
+    creditDays: 30,
+    status: 'active',
   }).returning();
 
-  // ─── Price List ────────────────────────────────────────────────────────────
-  const [priceList] = await db.insert(priceLists).values({
-    sellerId: demoSeller.id, name: 'Lista Mayorista 2026', isDefault: true,
+  const [catElectro] = await db.insert(productCategories).values({
+    companyId: company.id,
+    name: 'Electrodomésticos',
+    slug: 'electrodomesticos',
   }).returning();
 
-  // ─── Catalog Template ──────────────────────────────────────────────────────
-  await db.insert(catalogTemplates).values({ name: 'Grid Moderno', layout: 'grid', isSystem: true });
-
-  // ─── Products ──────────────────────────────────────────────────────────────
-  console.log('👟 Creando productos...');
-  const productData = [
-    { name: 'Tenis Urbanos - Teal', sku: 'TEN-001', category: 'Calzado', basePrice: '99.99', b2bPrice: '89.99',
-      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=400', stock: '1200' },
-    { name: 'Sudadera Premium - Gris', sku: 'SUD-001', category: 'Ropa', basePrice: '149.50', b2bPrice: '129.00',
-      imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=400', stock: '550' },
-    { name: 'Gorra Snapback - Negro', sku: 'GOR-001', category: 'Accesorios', basePrice: '35.00', b2bPrice: '28.00',
-      imageUrl: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?q=80&w=400', stock: '800' },
-    { name: 'Mochila Urban Pro', sku: 'MOC-001', category: 'Accesorios', basePrice: '79.99', b2bPrice: '69.99',
-      imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=400', stock: '320' },
-    { name: 'Polo Básico - Blanco', sku: 'POL-001', category: 'Ropa', basePrice: '45.00', b2bPrice: '38.00',
-      imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=400', stock: '2000' },
-    { name: 'Jean Slim Fit - Azul', sku: 'JEA-001', category: 'Ropa', basePrice: '89.00', b2bPrice: '75.00',
-      imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?q=80&w=400', stock: '450' },
+  const demoProducts = [
+    { sku: 'GH-LAV-001', name: 'Lavadora 18kg Inverter', salePrice: '459.00', costPrice: '320.00' },
+    { sku: 'GH-REF-002', name: 'Refrigerador Side by Side', salePrice: '899.00', costPrice: '650.00' },
+    { sku: 'GH-MIC-003', name: 'Microondas Digital 1.1 cu ft', salePrice: '89.00', costPrice: '55.00' },
+    { sku: 'GH-AIR-004', name: 'Aire Acondicionado Split 12000 BTU', salePrice: '349.00', costPrice: '240.00' },
+    { sku: 'GH-TV-005', name: 'Smart TV 55" 4K UHD', salePrice: '429.00', costPrice: '310.00' },
   ];
 
-  const createdProducts = [];
-  for (const p of productData) {
-    const [product] = await db.insert(products).values({
-      sellerId: demoSeller.id, name: p.name, sku: p.sku, category: p.category,
-      basePrice: p.basePrice, b2bPrice: p.b2bPrice, baseUomId: unitUom.id, imageUrl: p.imageUrl,
-      views: Math.floor(Math.random() * 200) + 10,
+  const insertedProducts = [];
+  for (const p of demoProducts) {
+    const [prod] = await db.insert(products).values({
+      companyId: company.id,
+      categoryId: catElectro.id,
+      sku: p.sku,
+      name: p.name,
+      salePrice: p.salePrice,
+      costPrice: p.costPrice,
+      unit: 'un',
     }).returning();
+    insertedProducts.push(prod);
+
+    await db.insert(productMedia).values({
+      productId: prod.id,
+      url: `https://picsum.photos/seed/${p.sku}/600/600`,
+      isPrimary: true,
+      sortOrder: 0,
+    });
 
     await db.insert(stockLevels).values({
-      sellerId: demoSeller.id, warehouseId: mainWarehouse.id, productId: product.id,
-      onHandBase: `${p.stock}.0000`, minimumThresholdBase: '50.0000',
+      companyId: company.id,
+      productId: prod.id,
+      warehouseId: warehouse.id,
+      totalQty: 100,
+      reservedQty: 0,
+      dispatchedQty: 0,
     });
-
-    await db.insert(stockMovements).values({
-      sellerId: demoSeller.id, warehouseId: mainWarehouse.id, productId: product.id,
-      movementType: 'inbound', quantityBaseDelta: `${p.stock}.0000`,
-      reasonCode: 'initial_stock', actorUserId: demoUser.id,
-    });
-
-    await db.insert(priceListItems).values({
-      priceListId: priceList.id, productId: product.id, price: p.b2bPrice,
-    });
-
-    await db.insert(productBarcodes).values({
-      productId: product.id, barcode: `750${Math.random().toString().slice(2, 11)}`, type: 'ean13',
-    });
-
-    createdProducts.push(product);
   }
 
-  // Variant for first product
-  await db.insert(productVariants).values({
-    productId: createdProducts[0].id, name: 'Talla 42', sku: 'TEN-001-42', priceAdjustment: '0',
-  });
+  const [shipment] = await db.insert(importShipments).values({
+    companyId: company.id,
+    reference: 'IMP-2026-001',
+    containerNumber: 'MSCU1234567',
+    status: 'received',
+    receivedAt: new Date(),
+    notes: 'Contenedor de electrodomésticos - China',
+  }).returning();
 
-  // ─── Catalog ───────────────────────────────────────────────────────────────
-  console.log('📚 Creando catálogo...');
+  for (const prod of insertedProducts) {
+    await db.insert(importItems).values({
+      shipmentId: shipment.id,
+      productId: prod.id,
+      quantity: 100,
+      warehouseId: warehouse.id,
+    });
+  }
+
   const [catalog] = await db.insert(catalogs).values({
-    sellerId: demoSeller.id, name: 'Catálogo Renace 2026', slug: 'renace-2026',
-    description: 'Catálogo B2B oficial de Renace Tech',
+    companyId: company.id,
+    name: 'Preventa Marzo 2026',
+    slug: 'preventa-marzo-2026',
+    description: 'Catálogo de preventa - mercancía en tránsito',
+    isPresale: true,
+    isPublic: true,
+    coverImageUrl: 'https://picsum.photos/seed/ghome-catalog/1200/400',
   }).returning();
 
-  await db.insert(catalogProducts).values(
-    createdProducts.map((p, i) => ({ catalogId: catalog.id, productId: p.id, sortOrder: i })),
-  );
+  for (let i = 0; i < insertedProducts.length; i++) {
+    await db.insert(catalogProducts).values({
+      catalogId: catalog.id,
+      productId: insertedProducts[i].id,
+      displayPrice: demoProducts[i].salePrice,
+      sortOrder: i,
+    });
+  }
 
-  const [publication] = await db.insert(catalogPublications).values({
-    catalogId: catalog.id, token: 'cat_renace_share_2026',
+  // Demo factura a crédito con despacho parcial
+  const [invoice] = await db.insert(invoices).values({
+    companyId: company.id,
+    clientId: client.id,
+    reference: 'FAC-DEMO-001',
+    invoiceType: 'credit',
+    status: 'partially_paid',
+    subtotal: '1348.00',
+    totalAmount: '1348.00',
+    paidAmount: '500.00',
+    dueDate: new Date(Date.now() + 30 * 86400000),
+    issuedAt: new Date(Date.now() - 7 * 86400000),
+    createdById: admin.id,
+    notes: 'Factura demo - electrodomésticos',
   }).returning();
 
-  // ─── Buyer contacts ────────────────────────────────────────────────────────
-  await db.insert(buyerContacts).values([
-    { sellerId: demoSeller.id, name: 'Juan Pérez', phone: '+18095550001', orderCount: 5, totalSpent: '2500.00' },
-    { sellerId: demoSeller.id, name: 'María García', phone: '+18095550002', orderCount: 3, totalSpent: '1800.00' },
-  ]);
+  const invoiceLines = [
+    { product: insertedProducts[0], qty: 2, price: '459.00' },
+    { product: insertedProducts[3], qty: 1, price: '349.00' },
+    { product: insertedProducts[2], qty: 1, price: '89.00' },
+  ];
 
-  // ─── Webhook ───────────────────────────────────────────────────────────────
-  await db.insert(webhooks).values({
-    sellerId: demoSeller.id, url: 'https://webhook.site/demo-catagce',
-    secret: 'whsec_demo_secret',
-    events: ['order.created', 'catalog.published', 'integration.synced', 'product.created'],
+  const invItems = [];
+  for (const line of invoiceLines) {
+    const lineTotal = (parseFloat(line.price) * line.qty).toFixed(2);
+    const [invItem] = await db.insert(invoiceItems).values({
+      invoiceId: invoice.id,
+      productId: line.product.id,
+      quantity: line.qty,
+      unitPrice: line.price,
+      lineTotal,
+      dispatchedQty: line.qty === 2 ? 1 : 0,
+      warehouseId: warehouse.id,
+    }).returning();
+    invItems.push({ ...invItem, pending: line.qty === 2 ? 1 : line.qty });
+
+    await db.insert(clientAllocations).values({
+      companyId: company.id,
+      clientId: client.id,
+      invoiceItemId: invItem.id,
+      productId: line.product.id,
+      allocatedQty: line.qty,
+      dispatchedQty: line.qty === 2 ? 1 : 0,
+      pendingQty: line.qty === 2 ? 1 : line.qty,
+      status: line.qty === 2 ? 'partially_dispatched' : 'reserved',
+      warehouseId: warehouse.id,
+    });
+
+    await db.update(stockLevels).set({
+      reservedQty: line.qty,
+      dispatchedQty: line.qty === 2 ? 1 : 0,
+    }).where(eq(stockLevels.productId, line.product.id));
+  }
+
+  await db.insert(invoicePayments).values({
+    invoiceId: invoice.id,
+    amount: '500.00',
+    method: 'transfer',
+    reference: 'TRF-001',
+    recordedById: admin.id,
   });
 
-  console.log('\n✅ Seeding completado exitosamente.\n');
-  console.log('═══════════════════════════════════════');
-  console.log(`🚀 Seller ID:    ${demoSeller.id}`);
-  console.log(`🔑 API Key:      ${API_KEY}`);
-  console.log(`📧 Email:        ${ADMIN_EMAIL}`);
-  console.log(`🔒 Password:     ${ADMIN_PASSWORD}`);
-  console.log(`📎 Share Token:  ${publication.token}`);
-  console.log(`🌐 Catálogo:     /catalog/renace-2026`);
-  console.log(`🛒 Pedido:       /order/${publication.token}`);
-  console.log('═══════════════════════════════════════\n');
+  const [dispatch] = await db.insert(dispatches).values({
+    companyId: company.id,
+    clientId: client.id,
+    invoiceId: invoice.id,
+    reference: 'DES-DEMO-001',
+    status: 'completed',
+    dispatchedAt: new Date(Date.now() - 3 * 86400000),
+    notes: 'Primer despacho parcial - 1 lavadora',
+    createdById: admin.id,
+  }).returning();
+
+  await db.insert(dispatchItems).values({
+    dispatchId: dispatch.id,
+    invoiceItemId: invItems[0].id,
+    productId: insertedProducts[0].id,
+    quantity: 1,
+    warehouseId: warehouse.id,
+  });
+
+  console.log('✅ GHome seed complete');
+  console.log('');
+  console.log('  Admin panel:    admin@generalhome.tech / demo1234');
+  console.log('  Portal:         https://generalhome.tech');
+  console.log('  Admin:          https://admin.generalhome.tech');
+  console.log('  API:            https://api.generalhome.tech/api');
+  console.log(`  Factura demo:   ${invoice.reference} (crédito, despacho parcial)`);
+
   process.exit(0);
 }
 
-seed().catch((err) => { console.error('❌ Error:', err); process.exit(1); });
+seed().catch((err) => {
+  console.error('Seed failed:', err);
+  process.exit(1);
+});

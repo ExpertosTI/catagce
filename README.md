@@ -1,96 +1,82 @@
-# Catagce Platform
+# GHome — Plataforma de Importación y Facturación
 
-B2B Catalog Sales Operating System — SaaS multi-tenant completo para mayoristas.
+Sistema para empresas importadoras: facturar clientes, crédito, despachos parciales, preventas, catálogos y portal de clientes.
 
-## Características
+**Producción:** [generalhome.tech](https://generalhome.tech)  
+**Rama:** `ghome`
 
-### Core
-- **Multi-tenant** con aislamiento por vendedor
-- **Auth JWT** (email/password) + API keys para integraciones
-- **Registro self-service** con setup automático (UOMs, almacén, lista de precios)
-- **Productos completos**: CRUD, variantes, códigos de barras, categorías, media
-- **Inventario**: almacenes, movimientos, ajustes, entradas, stock bajo
-- **Reservas de stock** automáticas al crear pedidos
-- **Catálogos** compartibles con tokens y snapshots inmutables
-- **PDF** generado por worker BullMQ (Puppeteer)
-- **Pedidos B2B** con items, eventos, contactos de compradores
-- **Analítica** dashboard con ingresos, top productos, pedidos pendientes
+## URLs de producción
 
-### Superpower AI (Google Gemini)
-- **Asistente inteligente** con 18 herramientas que ejecutan acciones reales
-- Configura tu **Google AI API Key** por vendedor
-- Chat flotante en el dashboard
-- Gestiona productos, inventario, catálogos, pedidos, integraciones y más por lenguaje natural
+| Servicio | URL |
+|----------|-----|
+| Sitio público + portal clientes | https://generalhome.tech |
+| Panel administrador | https://admin.generalhome.tech |
+| API | https://api.generalhome.tech/api |
 
-### Integraciones
-- **Odoo** — JSON-RPC productos + stock
-- **Shopify** — Admin API productos
-- **WooCommerce** — REST API productos
-- **Webhooks** — HTTP POST firmados (HMAC-SHA256)
+## DNS requerido
 
-### Base de datos (30+ tablas)
-`sellers`, `seller_users`, `seller_api_keys`, `seller_branding`, `seller_settings`,
-`products`, `product_variants`, `product_barcodes`, `product_media`,
-`uoms`, `price_lists`, `price_list_items`,
-`warehouses`, `stock_levels`, `stock_movements`, `stock_reservations`,
-`catalogs`, `catalog_templates`, `catalog_products`, `catalog_publications`, `catalog_publication_assets`,
-`orders`, `order_items`, `order_item_allocations`, `order_events`, `buyer_contacts`,
-`webhooks`, `webhook_deliveries`, `integrations`, `integration_logs`,
-`audit_logs`, `notifications`, `idempotency_keys`, `job_runs`
+Apunte estos registros al servidor con Traefik:
 
-## Inicio rápido
+- `generalhome.tech` → portal
+- `www.generalhome.tech` → portal
+- `admin.generalhome.tech` → admin
+- `api.generalhome.tech` → API
+
+## Inicio rápido (local)
 
 ```bash
+git checkout ghome
 cp .env.example .env
 pnpm install
-pnpm --filter @catagce/db push
-pnpm --filter @catagce/db seed
-pnpm dev
+pnpm --filter @ghome/db push
+pnpm --filter @ghome/db seed
+
+pnpm --filter @ghome/api dev              # :3000
+pnpm --filter @ghome/client-portal dev    # :3001
+pnpm --filter @ghome/admin-web dev        # :3002
 ```
 
-### Credenciales demo
-| Campo | Valor |
-|-------|-------|
-| Email | `demo@renace.tech` |
-| Password | `demo1234` |
-| API Key | `cat_demo_renace_2026` |
-| Catálogo | `/catalog/mayorista-2026` |
-| Pedido | `/order/cat_demo_share_token_2026` |
+## Deploy producción (servidor Renace)
 
-## API Endpoints
-
-| Método | Ruta | Auth | Descripción |
-|--------|------|------|-------------|
-| POST | `/api/auth/register` | No | Registrar vendedor |
-| POST | `/api/auth/login` | No | Login JWT |
-| GET | `/api/products` | JWT/Key | Listar productos |
-| POST | `/api/products` | JWT/Key | Crear producto |
-| PATCH | `/api/products/:id` | JWT/Key | Actualizar producto |
-| GET | `/api/inventory/levels` | JWT/Key | Niveles de stock |
-| POST | `/api/inventory/inbound` | JWT/Key | Entrada de stock |
-| POST | `/api/inventory/adjust` | JWT/Key | Ajuste de stock |
-| GET | `/api/analytics/dashboard` | JWT/Key | Métricas |
-| POST | `/api/ai/chat` | JWT/Key | Chat con asistente AI |
-| PATCH | `/api/ai/config` | JWT/Key | Configurar Google API Key |
-| POST | `/api/integrations/:id/sync` | JWT/Key | Sincronizar ERP |
-| GET | `/api/public/catalog/:token` | No | Catálogo público |
-| POST | `/api/public/orders` | No | Crear pedido |
-
-Autenticación: `Authorization: Bearer <jwt>` o `x-api-key: cat_...`
-
-## Estructura
-
-```
-apps/api/          NestJS API
-apps/buyer-web/    Next.js panel + catálogo público
-packages/db/       Drizzle schema + seed
-workers/           media-processor, catalog-renderer, notifications
-```
-
-## Deploy
+**No cree una carpeta vacía.** Clone el repositorio:
 
 ```bash
-git clone <repo> /opt/catagce
-cd /opt/catagce && cp .env.example .env
-bash deploy.sh
+cd /opt
+git clone https://github.com/ExpertosTI/catagce.git ghome
+cd ghome
+git checkout ghome
+cp .env.example .env
+nano .env   # DB_PASSWORD, JWT_SECRET
+
+bash scripts/deploy-ghome.sh
+bash scripts/ghome-db-init.sh all
+```
+
+> No necesita `pnpm` en el servidor — la DB se inicializa con Docker.
+
+
+### Credenciales demo
+
+| Rol | Email | Password |
+|-----|-------|----------|
+| Admin | `admin@generalhome.tech` | `demo1234` |
+| Cliente | `cliente@demo.com` | `demo1234` |
+
+## Arquitectura
+
+```
+apps/api/            NestJS — facturas, despachos, clientes, productos
+apps/admin-web/      Next.js — panel del importador (admin.generalhome.tech)
+apps/client-portal/  Next.js — landing + e-commerce + portal (generalhome.tech)
+packages/db/         Drizzle schema + seed
+```
+
+## Variables de entorno
+
+```env
+NEXT_PUBLIC_SITE_URL=https://generalhome.tech
+NEXT_PUBLIC_ADMIN_URL=https://admin.generalhome.tech
+NEXT_PUBLIC_API_URL=https://api.generalhome.tech/api
+NEXT_PUBLIC_COMPANY_SLUG=generalhome
+CORS_ORIGINS=https://generalhome.tech,https://www.generalhome.tech,https://admin.generalhome.tech
 ```

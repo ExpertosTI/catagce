@@ -1,28 +1,24 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { PublicService } from './public.service';
 import { Public } from '../common/decorators/public.decorator';
 
-@Controller('public')
 @Public()
+@Controller('public')
 export class PublicController {
-  constructor(private readonly publicService: PublicService) {}
+  constructor(private publicService: PublicService) {}
 
-  @Get('catalog/:token')
-  async getCatalog(@Param('token') token: string) {
-    return this.publicService.getCatalogByToken(token);
+  @Get('company/:slug')
+  getCompany(@Param('slug') slug: string) {
+    return this.publicService.getCompany(slug);
   }
 
-  @Post('orders')
-  async createOrder(
-    @Body()
-    body: {
-      token: string;
-      buyerName: string;
-      buyerPhone: string;
-      items: Array<{ productId: string; quantity: number }>;
-      notes?: string;
-    },
-  ) {
-    return this.publicService.createOrder(body);
+  @Get('company/:slug/catalogs')
+  listCatalogs(@Param('slug') slug: string) {
+    return this.publicService.listCatalogs(slug);
+  }
+
+  @Get('company/:slug/catalog/:catalogSlug')
+  getCatalog(@Param('slug') slug: string, @Param('catalogSlug') catalogSlug: string) {
+    return this.publicService.getCatalog(slug, catalogSlug);
   }
 }

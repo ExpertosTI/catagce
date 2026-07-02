@@ -1,8 +1,8 @@
 {
-  "name": "catagce",
+  "name": "ghome",
   "version": "0.1.0",
   "private": true,
-  "description": "Catagce Platform - B2B Catalog Sales Operating System",
+  "description": "GHome - Plataforma de importación, facturación y despacho de mercancía",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

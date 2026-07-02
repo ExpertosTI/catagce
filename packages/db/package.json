@@ -1,5 +1,5 @@
 {
-  "name": "@catagce/db",
+  "name": "@ghome/db",
   "version": "0.1.0",
   "private": true,
   "files": [
@@ -21,7 +21,7 @@
     "postgres": "^3.4.0"
   },
   "devDependencies": {
-    "@catagce/typescript-config": "workspace:*",
+    "@ghome/typescript-config": "workspace:*",
     "@types/node": "^20.0.0",
     "drizzle-kit": "^0.31.4",
     "tsup": "^8.0.0",

@@ -1,33 +1,44 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { CatalogsService } from './catalogs.service';
-import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
+import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { CatalogsService, PresalesService } from './catalogs.service';
+import { StaffOnly } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/user.decorator';
+import { AuthUser } from '../auth/auth.service';
 import { Public } from '../common/decorators/public.decorator';
 
 @Controller('catalogs')
 export class CatalogsController {
-  constructor(private readonly catalogsService: CatalogsService) {}
+  constructor(
+    private catalogsService: CatalogsService,
+    private presalesService: PresalesService,
+  ) {}
 
+  @StaffOnly()
   @Get()
-  async findAll(@CurrentUser() user: UserPayload) {
-    return this.catalogsService.findAll(user.sellerId);
+  list(@CurrentUser() user: AuthUser) {
+    return this.catalogsService.list(user);
   }
 
+  @StaffOnly()
   @Post()
-  async create(
-    @CurrentUser() user: UserPayload,
-    @Body() body: { name: string; slug: string; description?: string; productIds?: string[] },
-  ) {
-    return this.catalogsService.create(user.sellerId, body);
+  create(@CurrentUser() user: AuthUser, @Body() body: any) {
+    return this.catalogsService.create(user, body);
   }
 
-  @Post(':id/publish')
-  async publish(@Param('id') id: string, @CurrentUser() user: UserPayload) {
-    return this.catalogsService.publish(id, user.sellerId);
-  }
-
-  @Get(':slug')
   @Public()
-  async findBySlug(@Param('slug') slug: string) {
-    return this.catalogsService.findBySlug(slug);
+  @Get('public/:slug')
+  getPublic(@Param('slug') slug: string) {
+    return this.catalogsService.getBySlug('', slug);
+  }
+
+  @StaffOnly()
+  @Get('presales')
+  listPresales(@CurrentUser() user: AuthUser) {
+    return this.presalesService.list(user);
+  }
+
+  @StaffOnly()
+  @Post('presales')
+  createPresale(@CurrentUser() user: AuthUser, @Body() body: any) {
+    return this.presalesService.create(user, body);
   }
 }

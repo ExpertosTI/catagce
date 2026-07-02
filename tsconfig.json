@@ -3,8 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@catagce/db": ["./packages/db/src"],
-      "@catagce/ui": ["./packages/ui/src"]
+      "@ghome/db": ["./packages/db/src"],
+      "@ghome/ui": ["./packages/ui/src"]
     }
   }
 }

@@ -1,13 +1,10 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
 import { CatalogsController } from './catalogs.controller';
-import { CatalogsService } from './catalogs.service';
-import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
+import { CatalogsService, PresalesService } from './catalogs.service';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: 'catalog-render' })],
   controllers: [CatalogsController],
-  providers: [CatalogsService, WebhookDispatcherService],
-  exports: [CatalogsService],
+  providers: [CatalogsService, PresalesService],
+  exports: [CatalogsService, PresalesService],
 })
 export class CatalogsModule {}

@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ghome-blue: #1d4ed8;
+  --ghome-blue-dark: #1e3a8a;
+  --ghome-blue-light: #3b82f6;
+  --ghome-bg: #f8fafc;
+  --ghome-surface: #ffffff;
+  --ghome-text: #0f172a;
+  --ghome-muted: #64748b;
+  --ghome-border: #e2e8f0;
+}
+
+body {
+  background: var(--ghome-bg);
+  color: var(--ghome-text);
+}
+
+.btn-primary {
+  @apply bg-blue-700 hover:bg-blue-800 text-white font-medium px-5 py-2.5 rounded-lg transition shadow-sm;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-slate-50 text-blue-700 font-medium px-5 py-2.5 rounded-lg border border-blue-200 transition;
+}
+
+.btn-outline {
+  @apply border border-slate-300 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-medium px-5 py-2.5 rounded-lg transition bg-white;
+}
+
+.card {
+  @apply bg-white border border-slate-200 rounded-xl shadow-sm;
+}
+
+.input {
+  @apply w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+}
+
+.badge-blue {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800;
+}
+
+.badge-green {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800;
+}
+
+.badge-amber {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800;
+}
+
+.section-title {
+  @apply text-3xl font-bold text-slate-900 tracking-tight;
+}
+
+.section-subtitle {
+  @apply text-slate-600 mt-2 text-lg;
+}
