@@ -1,16 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import PortalLayout from '../../../../components/PortalLayout';
+import DashboardLayout from '../../../../components/DashboardLayout';
 import { InvoiceDetailView } from '../../../../components/InvoiceDetailView';
 import { apiFetch } from '../../../../lib/api';
 import { InvoiceDetail } from '../../../../lib/invoice-utils';
 
-export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
+export default function AdminInvoiceDetailPage({ params }: { params: { id: string } }) {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
 
   useEffect(() => {
-    apiFetch<InvoiceDetail>(`/portal/invoices/${params.id}`)
+    apiFetch<InvoiceDetail>(`/invoices/${params.id}`)
       .then((data) => setInvoice({
         ...data,
         clientName: data.client?.name ?? data.clientName,
@@ -20,18 +20,18 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
   if (!invoice) {
     return (
-      <PortalLayout>
+      <DashboardLayout>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-slate-200 rounded w-48" />
           <div className="h-32 bg-slate-100 rounded-xl" />
         </div>
-      </PortalLayout>
+      </DashboardLayout>
     );
   }
 
   return (
-    <PortalLayout>
-      <InvoiceDetailView invoice={invoice} backHref="/portal/invoices" />
-    </PortalLayout>
+    <DashboardLayout>
+      <InvoiceDetailView invoice={invoice} backHref="/dashboard/invoices" />
+    </DashboardLayout>
   );
 }

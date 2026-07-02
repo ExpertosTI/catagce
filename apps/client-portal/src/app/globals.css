@@ -57,3 +57,56 @@ body {
 .section-subtitle {
   @apply text-slate-600 mt-2 text-lg;
 }
+
+.input-search {
+  @apply w-full bg-white border border-slate-200 rounded-full pl-11 pr-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition;
+}
+
+.invoice-card {
+  @apply bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-200/60 transition-all duration-200;
+}
+
+.invoice-summary-footer {
+  @apply bg-white border border-slate-200 rounded-2xl p-4 shadow-sm max-w-xl;
+}
+
+.summary-pill {
+  @apply block text-center text-xs text-slate-500 bg-slate-100 rounded-full py-1 px-3 mx-auto w-fit;
+}
+
+.btn-action {
+  @apply inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50;
+}
+
+.btn-action-primary {
+  @apply bg-teal-600 text-white hover:bg-teal-700 shadow-sm;
+}
+
+.btn-action-whatsapp {
+  @apply bg-[#25D366] text-white hover:bg-[#1fb855] shadow-sm;
+}
+
+.btn-action-secondary {
+  @apply bg-blue-50 text-blue-700 hover:bg-blue-100 ring-1 ring-blue-100;
+}
+
+.btn-action-ghost {
+  @apply bg-slate-100 text-slate-600 hover:bg-slate-200;
+}
+
+.stat-card {
+  @apply card p-4 transition-shadow hover:shadow-md;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out;
+}
+
+@media print {
+  .no-print { display: none !important; }
+}

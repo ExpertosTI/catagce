@@ -56,7 +56,14 @@ export class PortalService {
     const payments = await this.db.select().from(invoicePayments)
       .where(eq(invoicePayments.invoiceId, invoiceId));
 
-    return { ...invoice, items, payments };
+    const [client] = await this.db.select({
+      name: clients.name,
+      phone: clients.phone,
+      email: clients.email,
+      code: clients.code,
+    }).from(clients).where(eq(clients.id, invoice.clientId)).limit(1);
+
+    return { ...invoice, client, clientName: client?.name, items, payments };
   }
 
   async myPendingMerchandise(user: AuthUser) {

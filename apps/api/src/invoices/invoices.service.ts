@@ -56,7 +56,7 @@ export class InvoicesService {
 
     const [client] = await this.db.select().from(clients).where(eq(clients.id, invoice.clientId)).limit(1);
 
-    return { ...invoice, client, items, payments };
+    return { ...invoice, client, clientName: client?.name, items, payments };
   }
 
   async create(user: AuthUser, data: {
