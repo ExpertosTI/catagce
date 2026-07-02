@@ -9,16 +9,18 @@ import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
 import { apiFetch } from '../../../../lib/api';
 import { PAGE } from '../../../../lib/page-titles';
+import { useAppDialog } from '../../../../components/AppDialogProvider';
 
 export default function NewProductPage() {
   const router = useRouter();
+  const { alert } = useAppDialog();
   const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', stockQty: 0, minStock: 0 });
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   async function generateDescription() {
     if (!form.name.trim()) {
-      alert('Escriba primero el nombre del producto');
+      await alert({ title: 'Nombre requerido', message: 'Escriba primero el nombre del producto', variant: 'info' });
       return;
     }
     setGenerating(true);
@@ -29,7 +31,7 @@ export default function NewProductPage() {
       });
       setForm((f) => ({ ...f, description: res.description }));
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo generar la descripción');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo generar la descripción', variant: 'error' });
     } finally {
       setGenerating(false);
     }
@@ -54,7 +56,7 @@ export default function NewProductPage() {
       });
       router.push('/dashboard/products');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al crear producto');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'Error al crear producto', variant: 'error' });
     } finally {
       setLoading(false);
     }

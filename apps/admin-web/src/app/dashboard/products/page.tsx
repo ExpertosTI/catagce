@@ -6,6 +6,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
 import { PAGE } from '../../../lib/page-titles';
+import { useAppDialog } from '../../../components/AppDialogProvider';
 import { formatCurrency } from '../../../lib/currency';
 
 type Product = {
@@ -19,6 +20,7 @@ type Product = {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const { confirm, alert } = useAppDialog();
 
   function load() {
     setLoading(true);
@@ -28,12 +30,19 @@ export default function ProductsPage() {
   useEffect(() => { load(); }, []);
 
   async function remove(id: string, name: string) {
-    if (!confirm(`¿Eliminar "${name}"? El producto se ocultará del catálogo.`)) return;
+    const ok = await confirm({
+      title: 'Eliminar producto',
+      message: `¿Eliminar "${name}"?\nEl producto se ocultará del catálogo.`,
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Cancelar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await apiFetch(`/products/${id}`, { method: 'DELETE' });
       load();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo eliminar');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo eliminar', variant: 'error' });
     }
   }
 

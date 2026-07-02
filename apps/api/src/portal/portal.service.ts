@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm';
 import {
   invoices, clientAllocations, products, importShipments, stockLevels, clients,
   dispatches, dispatchItems, invoiceItems, invoicePayments, catalogs,
@@ -151,37 +151,130 @@ export class DashboardService {
   constructor(@Inject(DRIZZLE) private db: any) {}
 
   async summary(user: AuthUser) {
+    const companyId = user.companyId;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+
     const [invoiceStats] = await this.db.select({
       total: sql<number>`COUNT(*)::int`,
-      creditPending: sql<string>`COALESCE(SUM(CASE WHEN ${invoices.invoiceType} = 'credit' AND ${invoices.status} != 'paid' THEN ${invoices.totalAmount}::numeric - ${invoices.paidAmount}::numeric ELSE 0 END), 0)`,
-    }).from(invoices).where(eq(invoices.companyId, user.companyId));
+      creditPending: sql<string>`COALESCE(SUM(CASE WHEN ${invoices.invoiceType} = 'credit' AND ${invoices.status} != 'paid' AND ${invoices.status} != 'cancelled' THEN ${invoices.totalAmount}::numeric - ${invoices.paidAmount}::numeric ELSE 0 END), 0)`,
+      paidCount: sql<number>`COUNT(CASE WHEN ${invoices.status} = 'paid' THEN 1 END)::int`,
+      openCount: sql<number>`COUNT(CASE WHEN ${invoices.status} IN ('issued', 'partially_paid', 'overdue') THEN 1 END)::int`,
+    }).from(invoices).where(eq(invoices.companyId, companyId));
 
     const [pendingDispatch] = await this.db.select({
       count: sql<number>`COUNT(*)::int`,
       units: sql<number>`COALESCE(SUM(${clientAllocations.pendingQty}), 0)::int`,
     }).from(clientAllocations)
-      .where(and(eq(clientAllocations.companyId, user.companyId), sql`${clientAllocations.pendingQty} > 0`));
+      .where(and(eq(clientAllocations.companyId, companyId), sql`${clientAllocations.pendingQty} > 0`));
 
     const [stockSummary] = await this.db.select({
       totalUnits: sql<number>`COALESCE(SUM(${stockLevels.totalQty}), 0)::int`,
       inWarehouse: sql<number>`COALESCE(SUM(${stockLevels.totalQty} - ${stockLevels.reservedQty} - ${stockLevels.dispatchedQty}), 0)::int`,
       reserved: sql<number>`COALESCE(SUM(${stockLevels.reservedQty}), 0)::int`,
-    }).from(stockLevels).where(eq(stockLevels.companyId, user.companyId));
+    }).from(stockLevels).where(eq(stockLevels.companyId, companyId));
 
     const [activeClients] = await this.db.select({
       count: sql<number>`COUNT(*)::int`,
-    }).from(clients).where(and(eq(clients.companyId, user.companyId), eq(clients.status, 'active')));
+    }).from(clients).where(and(eq(clients.companyId, companyId), eq(clients.status, 'active')));
+
+    const [paymentsToday] = await this.db.select({
+      count: sql<number>`COUNT(*)::int`,
+      total: sql<string>`COALESCE(SUM(${invoicePayments.amount}), 0)`,
+    })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .where(and(eq(invoices.companyId, companyId), gte(invoicePayments.paidAt, todayStart)));
+
+    const [salesMonth] = await this.db.select({
+      total: sql<string>`COALESCE(SUM(${invoices.totalAmount}), 0)`,
+      count: sql<number>`COUNT(*)::int`,
+    })
+      .from(invoices)
+      .where(and(
+        eq(invoices.companyId, companyId),
+        gte(invoices.issuedAt, monthStart),
+        inArray(invoices.status, ['issued', 'paid', 'partially_paid', 'overdue']),
+      ));
+
+    const [overdue] = await this.db.select({
+      count: sql<number>`COUNT(*)::int`,
+      total: sql<string>`COALESCE(SUM(${invoices.totalAmount}::numeric - ${invoices.paidAmount}::numeric), 0)`,
+    })
+      .from(invoices)
+      .where(and(eq(invoices.companyId, companyId), eq(invoices.status, 'overdue')));
+
+    const recentPayments = await this.db.select({
+      id: invoicePayments.id,
+      amount: invoicePayments.amount,
+      method: invoicePayments.method,
+      paidAt: invoicePayments.paidAt,
+      invoiceReference: invoices.reference,
+      clientName: clients.name,
+    })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .innerJoin(clients, eq(invoices.clientId, clients.id))
+      .where(eq(invoices.companyId, companyId))
+      .orderBy(desc(invoicePayments.paidAt))
+      .limit(6);
+
+    const recentInvoices = await this.db.select({
+      id: invoices.id,
+      reference: invoices.reference,
+      ncf: invoices.ncf,
+      status: invoices.status,
+      totalAmount: invoices.totalAmount,
+      clientName: clients.name,
+      issuedAt: invoices.issuedAt,
+    })
+      .from(invoices)
+      .innerJoin(clients, eq(invoices.clientId, clients.id))
+      .where(eq(invoices.companyId, companyId))
+      .orderBy(desc(invoices.issuedAt))
+      .limit(6);
 
     const imports = await this.db.select().from(importShipments)
-      .where(eq(importShipments.companyId, user.companyId))
+      .where(eq(importShipments.companyId, companyId))
       .orderBy(desc(importShipments.createdAt)).limit(5);
+
+    const insights: Array<{ type: 'success' | 'warning' | 'info' | 'ai'; text: string }> = [];
+
+    const creditPending = parseFloat(invoiceStats?.creditPending ?? '0');
+    if (creditPending > 0) {
+      insights.push({ type: 'warning', text: `Hay RD$ ${creditPending.toLocaleString('es-DO', { minimumFractionDigits: 2 })} por cobrar en cuentas de crédito.` });
+    }
+    if ((overdue?.count ?? 0) > 0) {
+      insights.push({ type: 'warning', text: `${overdue.count} factura(s) vencida(s) requieren seguimiento de cobro.` });
+    }
+    if ((pendingDispatch?.count ?? 0) > 0) {
+      insights.push({ type: 'info', text: `${pendingDispatch.count} despachos pendientes (${pendingDispatch.units} unidades por entregar).` });
+    }
+    const paidToday = parseFloat(paymentsToday?.total ?? '0');
+    if (paidToday > 0) {
+      insights.push({ type: 'success', text: `Hoy se han cobrado RD$ ${paidToday.toLocaleString('es-DO', { minimumFractionDigits: 2 })} en ${paymentsToday?.count ?? 0} pago(s).` });
+    }
+    if ((stockSummary?.inWarehouse ?? 0) < 50 && (stockSummary?.inWarehouse ?? 0) > 0) {
+      insights.push({ type: 'warning', text: `Inventario bajo: solo ${stockSummary.inWarehouse} unidades disponibles en almacén.` });
+    }
+    if (!insights.length) {
+      insights.push({ type: 'success', text: 'Operaciones al día. No hay alertas críticas en este momento.' });
+    }
 
     return {
       invoices: invoiceStats,
       pendingDispatch,
       stock: stockSummary,
       activeClients: activeClients?.count ?? 0,
+      paymentsToday,
+      salesMonth,
+      overdue,
+      recentPayments,
+      recentInvoices,
       recentImports: imports,
+      insights,
+      updatedAt: new Date().toISOString(),
     };
   }
 }

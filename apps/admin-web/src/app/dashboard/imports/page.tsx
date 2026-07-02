@@ -6,6 +6,7 @@ import DashboardLayout, { PageHeader, ActionButton } from '../../../components/D
 import { apiFetch } from '../../../lib/api';
 import { importStatusLabel } from '../../../lib/labels';
 import { PAGE } from '../../../lib/page-titles';
+import { useAppDialog } from '../../../components/AppDialogProvider';
 
 type ImportShipment = {
   id: string;
@@ -25,6 +26,7 @@ function formatDate(value?: string) {
 export default function ImportsPage() {
   const [imports, setImports] = useState<ImportShipment[]>([]);
   const [loading, setLoading] = useState(true);
+  const { confirm } = useAppDialog();
 
   function load() {
     setLoading(true);
@@ -34,7 +36,12 @@ export default function ImportsPage() {
   useEffect(() => { load(); }, []);
 
   async function receive(id: string) {
-    if (!confirm('¿Confirmar recepción en almacén? Esto sumará las cantidades al inventario.')) return;
+    const ok = await confirm({
+      title: 'Recibir en almacén',
+      message: '¿Confirmar recepción en almacén? Esto sumará las cantidades al inventario.',
+      confirmLabel: 'Confirmar',
+    });
+    if (!ok) return;
     await apiFetch(`/imports/${id}/receive`, { method: 'PATCH' });
     load();
   }

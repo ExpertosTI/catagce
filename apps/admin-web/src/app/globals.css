@@ -231,6 +231,36 @@ body {
 .notif-icon-warn { @apply bg-amber-100 text-amber-600; }
 .notif-icon-info { @apply bg-blue-100 text-blue-600; }
 
+/* ─── Dashboard super app ───────────────────────────────────────────── */
+.dashboard-hero-card {
+  @apply rounded-2xl p-4 sm:p-5 shadow-lg transition-transform hover:scale-[1.02] duration-200;
+}
+
+.dashboard-ai-panel {
+  @apply bg-white border border-violet-200/60 rounded-2xl p-4 sm:p-5 shadow-sm bg-gradient-to-br from-white to-violet-50/40;
+}
+
+.dashboard-insight {
+  @apply flex items-start gap-2 text-sm text-slate-700 bg-white/80 rounded-xl px-3 py-2 border border-slate-100;
+}
+
+.dashboard-insight-ai { @apply border-violet-200 bg-violet-50/50; }
+.dashboard-insight-warning { @apply border-amber-200 bg-amber-50/50; }
+.dashboard-insight-success { @apply border-emerald-200 bg-emerald-50/50; }
+.dashboard-insight-info { @apply border-blue-200 bg-blue-50/50; }
+
+.dashboard-quick-action {
+  @apply flex items-center gap-2 text-white rounded-xl px-3 py-3 shadow-md hover:shadow-lg hover:scale-[1.02] transition-all duration-200;
+}
+
+.dashboard-stat-tile {
+  @apply bg-white border border-slate-200/80 rounded-xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.dashboard-feed-card {
+  @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden;
+}
+
 /* ─── Asistente IA ──────────────────────────────────────────────────── */
 .ai-chat-fab {
   @apply fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform;

@@ -10,6 +10,7 @@ import { paymentMethodLabel } from '../../../lib/labels';
 import { printPaymentReceipt, sharePaymentReceiptWhatsApp } from '../../../lib/invoice-utils';
 import { useCompany } from '../../../lib/useCompany';
 import { PAGE } from '../../../lib/page-titles';
+import { useAppDialog } from '../../../components/AppDialogProvider';
 
 type Payment = {
   id: string;
@@ -27,6 +28,7 @@ type Payment = {
 
 export default function PaymentsPage() {
   const company = useCompany();
+  const { confirm, alert } = useAppDialog();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,13 +62,19 @@ export default function PaymentsPage() {
   const total = filtered.reduce((s, p) => s + parseFloat(p.amount), 0);
 
   async function voidPayment(p: Payment) {
-    if (!confirm(`¿Anular el abono de ${formatCurrency(p.amount)} de ${p.clientName}?`)) return;
+    const ok = await confirm({
+      title: 'Anular pago',
+      message: `¿Anular el abono de ${formatCurrency(p.amount)} de ${p.clientName}?`,
+      confirmLabel: 'Anular',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setVoidingId(p.id);
     try {
       await apiFetch(`/invoices/${p.invoiceId}/payments/${p.id}`, { method: 'DELETE' });
       setPayments((prev) => prev.filter((x) => x.id !== p.id));
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo anular el abono');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo anular el abono', variant: 'error' });
     } finally {
       setVoidingId(null);
     }

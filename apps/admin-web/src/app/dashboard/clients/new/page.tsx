@@ -6,9 +6,11 @@ import DashboardLayout, { PageHeader } from '../../../../components/DashboardLay
 import { FormField } from '../../../../components/FormField';
 import { apiFetch } from '../../../../lib/api';
 import { PAGE } from '../../../../lib/page-titles';
+import { useAppDialog } from '../../../../components/AppDialogProvider';
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { alert } = useAppDialog();
   const [form, setForm] = useState({ name: '', email: '', phone: '', taxId: '', address: '', creditLimit: 50000, creditDays: 30 });
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +21,7 @@ export default function NewClientPage() {
       await apiFetch('/clients', { method: 'POST', body: JSON.stringify(form) });
       router.push('/dashboard/clients');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al crear cliente');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'Error al crear cliente', variant: 'error' });
     } finally {
       setLoading(false);
     }

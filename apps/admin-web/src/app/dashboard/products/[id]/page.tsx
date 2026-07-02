@@ -10,6 +10,7 @@ import { QuantityStepper } from '../../../../components/QuantityStepper';
 import { SegmentedControl } from '../../../../components/SegmentedControl';
 import { apiFetch } from '../../../../lib/api';
 import { PAGE } from '../../../../lib/page-titles';
+import { useAppDialog } from '../../../../components/AppDialogProvider';
 
 type Movement = {
   id: string;
@@ -27,6 +28,7 @@ const MOVEMENT_TYPE_LABEL: Record<string, string> = {
 
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { confirm, alert } = useAppDialog();
   const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', minStock: 0 });
   const [availableQty, setAvailableQty] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -74,7 +76,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       });
       setForm((f) => ({ ...f, description: res.description }));
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo generar la descripción');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo generar la descripción', variant: 'error' });
     } finally {
       setGenerating(false);
     }
@@ -98,19 +100,25 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       });
       router.push('/dashboard/products');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al guardar');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'Error al guardar', variant: 'error' });
     } finally {
       setLoading(false);
     }
   }
 
   async function remove() {
-    if (!confirm('¿Eliminar este producto del catálogo?')) return;
+    const ok = await confirm({
+      title: 'Eliminar producto',
+      message: '¿Eliminar este producto del catálogo?',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await apiFetch(`/products/${params.id}`, { method: 'DELETE' });
       router.push('/dashboard/products');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo eliminar');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo eliminar', variant: 'error' });
     }
   }
 

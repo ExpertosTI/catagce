@@ -8,6 +8,7 @@ import DashboardLayout, { PageHeader, SectionTitle, ActionButton } from '../../.
 import { InvoiceCard } from '../../../../components/InvoiceCard';
 import { FormField } from '../../../../components/FormField';
 import { apiFetch } from '../../../../lib/api';
+import { useAppDialog } from '../../../../components/AppDialogProvider';
 import { clientStatusLabel, formatMoney } from '../../../../lib/labels';
 import { PAGE } from '../../../../lib/page-titles';
 import { InvoiceListItem, invoiceBalance, formatUsd } from '../../../../lib/invoice-utils';
@@ -36,6 +37,7 @@ const fields: Array<{ key: keyof typeof defaultForm; label: string; type?: strin
 const defaultForm = { name: '', email: '', phone: '', taxId: '', address: '', creditLimit: 0, creditDays: 30 };
 
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
+  const { alert } = useAppDialog();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'edit' ? 'edit' : 'invoices';
@@ -80,7 +82,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       load();
       setTab('invoices');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al guardar');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'Error al guardar', variant: 'error' });
     } finally {
       setSaving(false);
     }

@@ -12,6 +12,7 @@ import { invoiceStatusText, paymentMethodLabel } from '../lib/labels';
 import { unitLabelText } from '../lib/units';
 import { useCompany } from '../lib/useCompany';
 import { apiFetch } from '../lib/api';
+import { useAppDialog } from './AppDialogProvider';
 
 type Props = {
   invoice: InvoiceDetail;
@@ -35,6 +36,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
   const [copied, setCopied] = useState(false);
   const balance = invoiceBalance(invoice);
   const company = useCompany();
+  const { confirm, alert } = useAppDialog();
   const resolvedName = companyName ?? company?.name ?? 'General Home';
   const autoReceipt = company?.settings?.autoReceiptOnPayment !== false;
   const [showPaymentForm, setShowPaymentForm] = useState(initialShowPayment ?? false);
@@ -45,6 +47,8 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [voidingId, setVoidingId] = useState<string | null>(null);
+  const [creditNoteReason, setCreditNoteReason] = useState('');
+  const [showCreditNoteForm, setShowCreditNoteForm] = useState(false);
   const [creditNoteSaving, setCreditNoteSaving] = useState(false);
   const [receivedBy, setReceivedBy] = useState(invoice.receivedBy ?? '');
   const [dispatchedBy, setDispatchedBy] = useState(invoice.dispatchedBy ?? '');
@@ -135,39 +139,54 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       });
       onInvoiceUpdated?.({ ...updated, clientName: updated.client?.name ?? updated.clientName });
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudieron guardar los datos');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudieron guardar los datos', variant: 'error' });
     } finally {
       setMetaSaving(false);
     }
   }
 
   async function voidPayment(paymentId: string) {
-    if (!confirm('¿Anular este abono? Esta acción no se puede deshacer.')) return;
+    const ok = await confirm({
+      title: 'Anular pago',
+      message: '¿Anular este pago? Esta acción no se puede deshacer.',
+      confirmLabel: 'Anular',
+      variant: 'danger',
+    });
+    if (!ok) return;
     setVoidingId(paymentId);
     try {
       const updated = await apiFetch<InvoiceDetail>(`/invoices/${invoice.id}/payments/${paymentId}`, { method: 'DELETE' });
       onInvoiceUpdated?.({ ...updated, clientName: updated.client?.name ?? updated.clientName });
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo anular el abono');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo anular el pago', variant: 'error' });
     } finally {
       setVoidingId(null);
     }
   }
 
   async function issueCreditNote() {
-    const reason = prompt('Motivo de la nota de crédito (devolución, error, descuento, etc.):');
-    if (!reason?.trim()) return;
-    if (!confirm('¿Emitir nota de crédito (B04) por el total de esta factura?')) return;
+    if (!creditNoteReason.trim()) {
+      setShowCreditNoteForm(true);
+      return;
+    }
+    const ok = await confirm({
+      title: 'Nota de crédito',
+      message: '¿Emitir nota de crédito (B04) por el total de esta factura?',
+      confirmLabel: 'Emitir',
+    });
+    if (!ok) return;
     setCreditNoteSaving(true);
     try {
       const note = await apiFetch<InvoiceDetail>(`/invoices/${invoice.id}/credit-note`, {
         method: 'POST',
-        body: JSON.stringify({ modificationReason: reason.trim() }),
+        body: JSON.stringify({ modificationReason: creditNoteReason.trim() }),
       });
-      alert(`Nota de crédito emitida: ${note.ncf ?? note.reference}`);
+      await alert({ title: 'Nota emitida', message: `Nota de crédito emitida: ${note.ncf ?? note.reference}`, variant: 'success' });
+      setShowCreditNoteForm(false);
+      setCreditNoteReason('');
       onInvoiceUpdated?.(invoice);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo emitir la nota de crédito');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo emitir la nota de crédito', variant: 'error' });
     } finally {
       setCreditNoteSaving(false);
     }
@@ -223,11 +242,37 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
           {copied ? 'Copiado' : 'Copiar'}
         </button>
         {canIssueCreditNote && (
-          <button type="button" onClick={issueCreditNote} disabled={creditNoteSaving} className="btn-subtle ml-auto disabled:opacity-50">
+          <button type="button" onClick={() => setShowCreditNoteForm(true)} disabled={creditNoteSaving} className="btn-subtle ml-auto disabled:opacity-50">
             <FileMinus size={15} /> {creditNoteSaving ? 'Emitiendo...' : 'Nota de crédito'}
           </button>
         )}
       </div>
+
+      {showCreditNoteForm && (
+        <form
+          onSubmit={(e) => { e.preventDefault(); issueCreditNote(); }}
+          className="card p-4 mt-4 space-y-3 max-w-md"
+        >
+          <p className="font-semibold text-slate-800">Nota de crédito (B04)</p>
+          <div>
+            <label className="form-label">Motivo</label>
+            <input
+              value={creditNoteReason}
+              onChange={(e) => setCreditNoteReason(e.target.value)}
+              className="input"
+              placeholder="Devolución, error, descuento..."
+              required
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setShowCreditNoteForm(false)} className="btn-secondary flex-1">Cancelar</button>
+            <button type="submit" disabled={creditNoteSaving} className="btn-primary flex-1 disabled:opacity-50">
+              {creditNoteSaving ? 'Emitiendo...' : 'Continuar'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {canManagePayments && balance > 0 && !showPaymentForm && (
         <div className="mt-4 p-4 rounded-xl bg-emerald-50/80 border border-emerald-200/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

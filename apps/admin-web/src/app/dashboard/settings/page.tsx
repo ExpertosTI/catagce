@@ -9,6 +9,7 @@ import { SITE_URL, ADMIN_URL } from '../../../lib/site';
 import { comprobanteTypeLabel } from '../../../lib/labels';
 import { LoadingState } from '../../../components/LoadingState';
 import { PAGE } from '../../../lib/page-titles';
+import { useAppDialog } from '../../../components/AppDialogProvider';
 
 type FiscalSequence = {
   id: string;
@@ -22,6 +23,7 @@ type FiscalSequence = {
 
 function FiscalSequencesPanel() {
   const [sequences, setSequences] = useState<FiscalSequence[]>([]);
+  const { alert } = useAppDialog();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     comprobanteType: 'B01', rangeFrom: 1, rangeTo: 10000, currentNumber: 1, authorizedUntil: '',
@@ -48,7 +50,7 @@ function FiscalSequencesPanel() {
       });
       load();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo guardar la secuencia');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo guardar la secuencia', variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -132,6 +134,7 @@ type Company = {
 };
 
 export default function SettingsPage() {
+  const { alert } = useAppDialog();
   const [form, setForm] = useState<Company>({ name: '', slug: '' });
   const [autoReceipt, setAutoReceipt] = useState(true);
   const [ready, setReady] = useState(false);
@@ -166,7 +169,7 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'No se pudo guardar');
+      await alert({ title: 'Error', message: err instanceof Error ? err.message : 'No se pudo guardar', variant: 'error' });
     } finally {
       setLoading(false);
     }

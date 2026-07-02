@@ -1,6 +1,6 @@
 /** Títulos con emoji para navegación y encabezados de página */
 export const PAGE = {
-  dashboard: { emoji: '🏠', title: 'Panel', subtitle: 'Resumen operativo de importación' },
+  dashboard: { emoji: '🏠', title: 'Centro de operaciones', subtitle: 'Estadísticas en tiempo real guiadas por Super AI' },
   clients: { emoji: '👥', title: 'Clientes', subtitle: 'Gestión y aprobación de registros' },
   clientsNew: { emoji: '✨', title: 'Nuevo cliente', subtitle: 'Registre un cliente activo' },
   clientsEdit: { emoji: '✏️', title: 'Editar cliente', subtitle: 'Actualice los datos del cliente' },
