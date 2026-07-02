@@ -4,6 +4,27 @@ import { companies } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 
+function maskGeminiKey(key: string): string {
+  const k = key.trim();
+  if (!k) return '';
+  if (k.length <= 8) return '••••••••';
+  return '••••••••' + k.slice(-4);
+}
+
+function sanitizeCompanyForClient(company: Record<string, unknown>) {
+  const settings = (company.settings ?? {}) as Record<string, unknown>;
+  const rawKey = settings.geminiApiKey;
+  const hasGeminiKey = typeof rawKey === 'string' && rawKey.length > 0;
+  return {
+    ...company,
+    settings: {
+      ...settings,
+      geminiApiKey: hasGeminiKey ? maskGeminiKey(String(rawKey)) : '',
+      hasGeminiKey,
+    },
+  };
+}
+
 @Injectable()
 export class CompaniesService {
   constructor(@Inject(DRIZZLE) private db: any) {}
@@ -12,7 +33,7 @@ export class CompaniesService {
     const [company] = await this.db.select().from(companies)
       .where(eq(companies.id, user.companyId)).limit(1);
     if (!company) throw new NotFoundException('Empresa no encontrada');
-    return company;
+    return sanitizeCompanyForClient(company);
   }
 
   async update(user: AuthUser, data: {
@@ -32,11 +53,23 @@ export class CompaniesService {
     if (data.address !== undefined) updates.address = data.address;
     if (data.logoUrl !== undefined) updates.logoUrl = data.logoUrl;
     if (data.settings !== undefined) {
-      updates.settings = { ...(current.settings as object ?? {}), ...data.settings };
+      const currentSettings = (current.settings as Record<string, unknown>) ?? {};
+      const merged = { ...currentSettings, ...data.settings };
+      if (data.settings.geminiApiKey !== undefined) {
+        const incoming = String(data.settings.geminiApiKey ?? '');
+        if (incoming.includes('•')) {
+          merged.geminiApiKey = currentSettings.geminiApiKey;
+        } else if (!incoming.trim()) {
+          delete merged.geminiApiKey;
+        } else {
+          merged.geminiApiKey = incoming.trim();
+        }
+      }
+      updates.settings = merged;
     }
 
     const [updated] = await this.db.update(companies).set(updates)
       .where(eq(companies.id, user.companyId)).returning();
-    return updated;
+    return sanitizeCompanyForClient(updated);
   }
 }

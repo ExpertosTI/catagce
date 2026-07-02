@@ -4,6 +4,7 @@ import { products, productMedia, productCategories, stockLevels, warehouses, sto
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { generateWithGemini } from '../ai/gemini.util';
+import { getCompanyGeminiKey } from '../ai/company-ai.util';
 
 @Injectable()
 export class ProductsService {
@@ -196,9 +197,10 @@ export class ProductsService {
       .limit(30);
   }
 
-  async generateDescription(name: string, category?: string) {
+  async generateDescription(user: AuthUser, name: string, category?: string) {
     const prompt = `Escribe una descripción de venta corta (máximo 40 palabras), en español, persuasiva y profesional para este producto de electrodomésticos/hogar: "${name}"${category ? ` (categoría: ${category})` : ''}. No uses emojis ni comillas.`;
-    const text = await generateWithGemini(prompt);
+    const geminiKey = await getCompanyGeminiKey(this.db, user.companyId);
+    const text = await generateWithGemini(prompt, undefined, geminiKey);
     if (text) return { description: text, source: 'ai' };
     return {
       description: `${name} de excelente calidad, ideal para el hogar. Producto importado con garantía, listo para entrega inmediata en Santo Domingo.`,

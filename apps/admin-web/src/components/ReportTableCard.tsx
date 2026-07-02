@@ -10,17 +10,17 @@ type Props = {
 
 export function ReportTableCard({ title, emoji, subtitle, actions, children }: Props) {
   return (
-    <div className="executive-card overflow-hidden !p-0">
-      <div className="px-4 py-3 border-b bg-slate-50/80 flex items-center justify-between flex-wrap gap-2">
+    <div className="executive-card overflow-hidden !p-0 shadow-md shadow-slate-200/50">
+      <div className="px-4 py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white flex items-center justify-between flex-wrap gap-2">
         <div>
-          <p className="font-semibold text-sm flex items-center gap-1.5">
-            {emoji && <span aria-hidden>{emoji}</span>} {title}
+          <p className="font-bold text-sm flex items-center gap-2 text-slate-900">
+            {emoji && <span className="text-base" aria-hidden>{emoji}</span>} {title}
           </p>
-          {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-slate-500 mt-0.5 font-medium">{subtitle}</p>}
         </div>
-        {actions && <div className="action-bar !p-1.5 !bg-transparent !border-0">{actions}</div>}
+        {actions && <div className="flex flex-wrap gap-1.5">{actions}</div>}
       </div>
-      <div className="overflow-x-auto">{children}</div>
+      <div className="overflow-x-auto report-table">{children}</div>
     </div>
   );
 }

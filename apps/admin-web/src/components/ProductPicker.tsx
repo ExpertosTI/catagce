@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Search, Trash2, Copy } from 'lucide-react';
 import { QuantityStepper } from './QuantityStepper';
-import { formatCurrency } from '../lib/currency';
+import { formatCurrency, formatAmountInput, parseAmount, formatAmount } from '../lib/currency';
 import { UNIT_OPTIONS } from '../lib/units';
 
 export type PickerProduct = { id: string; name: string; sku?: string; salePrice: string; imageUrl?: string; unit?: string };
@@ -43,6 +43,7 @@ export function ProductPicker({
 }: Props) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -183,12 +184,20 @@ export function ProductPicker({
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400">Precio</span>
                   <input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    value={line.unitPrice}
-                    onChange={(e) => updateLine(line.lineId, { unitPrice: Number(e.target.value) || 0 })}
-                    className="input !w-28 !py-1.5 text-sm"
+                    type="text"
+                    inputMode="decimal"
+                    value={priceDraft[line.lineId] ?? formatAmount(line.unitPrice)}
+                    onChange={(e) => {
+                      const display = formatAmountInput(e.target.value);
+                      setPriceDraft((d) => ({ ...d, [line.lineId]: display }));
+                      updateLine(line.lineId, { unitPrice: parseAmount(display) });
+                    }}
+                    onBlur={() => setPriceDraft((d) => {
+                      const next = { ...d };
+                      delete next[line.lineId];
+                      return next;
+                    })}
+                    className="input !w-28 !py-1.5 text-sm tabular-nums"
                   />
                 </div>
                 <span className="font-bold text-blue-700 ml-auto">{formatCurrency(lineTotal)}</span>

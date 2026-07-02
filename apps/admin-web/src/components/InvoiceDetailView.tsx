@@ -12,6 +12,8 @@ import { invoiceStatusText, paymentMethodLabel } from '../lib/labels';
 import { unitLabelText } from '../lib/units';
 import { useCompany } from '../lib/useCompany';
 import { apiFetch } from '../lib/api';
+import { formatAmount } from '../lib/currency';
+import { CurrencyInput } from './CurrencyInput';
 import { useAppDialog } from './AppDialogProvider';
 
 type Props = {
@@ -41,6 +43,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
   const autoReceipt = company?.settings?.autoReceiptOnPayment !== false;
   const [showPaymentForm, setShowPaymentForm] = useState(initialShowPayment ?? false);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNumeric, setPaymentNumeric] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('transfer');
   const [paymentRef, setPaymentRef] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
@@ -60,6 +63,13 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
     setReceivedBy(invoice.receivedBy ?? '');
     setDispatchedBy(invoice.dispatchedBy ?? '');
   }, [invoice.id, invoice.receivedBy, invoice.dispatchedBy]);
+
+  useEffect(() => {
+    if (initialShowPayment && balance > 0) {
+      setPaymentAmount(formatAmount(balance));
+      setPaymentNumeric(balance);
+    }
+  }, [initialShowPayment, balance, invoice.id]);
 
   useEffect(() => {
     if (!initialPrintReceipt || !autoReceipt) return;
@@ -102,9 +112,15 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
     }, resolvedName, company?.logoUrl);
   }
 
+  function openPaymentForm() {
+    setPaymentAmount(formatAmount(balance));
+    setPaymentNumeric(balance);
+    setShowPaymentForm(true);
+  }
+
   async function submitPayment(e: React.FormEvent) {
     e.preventDefault();
-    const amount = parseFloat(paymentAmount);
+    const amount = paymentNumeric;
     if (!amount || amount <= 0) {
       setPaymentError('Ingrese un monto válido');
       return;
@@ -121,6 +137,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       maybePrintReceipt(normalized, amount);
       setShowPaymentForm(false);
       setPaymentAmount('');
+      setPaymentNumeric(0);
       setPaymentRef('');
       setPaymentNotes('');
     } catch (err: unknown) {
@@ -224,26 +241,27 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
 
       <div className="action-bar mt-4">
         {canManagePayments && balance > 0 && (
-          <button type="button" onClick={() => setShowPaymentForm((v) => !v)} className="btn-subtle btn-subtle-success">
-            {showPaymentForm ? <X size={15} /> : <Wallet size={15} />} {showPaymentForm ? 'Cerrar' : 'Pagar'}
+          <button type="button" onClick={() => showPaymentForm ? setShowPaymentForm(false) : openPaymentForm()} className="action-chip action-chip-success">
+            {showPaymentForm ? <X size={16} /> : <Wallet size={16} />}
+            <span>{showPaymentForm ? 'Cerrar' : 'Pagar'}</span>
           </button>
         )}
-        <button type="button" onClick={() => shareInvoiceWhatsApp(invoice, invoice.client?.phone)} className="btn-subtle">
-          <MessageCircle size={15} /> WhatsApp
+        <button type="button" onClick={() => shareInvoiceWhatsApp(invoice, invoice.client?.phone)} className="action-chip action-chip-whatsapp">
+          <MessageCircle size={16} /> <span>WhatsApp</span>
         </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-subtle">
-          <FileDown size={15} /> PDF
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="action-chip">
+          <FileDown size={16} /> <span>PDF</span>
         </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-subtle">
-          <Printer size={15} /> Imprimir
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="action-chip">
+          <Printer size={16} /> <span>Imprimir</span>
         </button>
-        <button type="button" onClick={handleCopy} className="btn-subtle">
-          {copied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
-          {copied ? 'Copiado' : 'Copiar'}
+        <button type="button" onClick={handleCopy} className="action-chip">
+          {copied ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+          <span>{copied ? 'Copiado' : 'Copiar'}</span>
         </button>
         {canIssueCreditNote && (
-          <button type="button" onClick={() => setShowCreditNoteForm(true)} disabled={creditNoteSaving} className="btn-subtle ml-auto disabled:opacity-50">
-            <FileMinus size={15} /> {creditNoteSaving ? 'Emitiendo...' : 'Nota de crédito'}
+          <button type="button" onClick={() => setShowCreditNoteForm(true)} disabled={creditNoteSaving} className="action-chip ml-auto disabled:opacity-50">
+            <FileMinus size={16} /> <span>{creditNoteSaving ? 'Emitiendo...' : 'Nota de crédito'}</span>
           </button>
         )}
       </div>
@@ -280,23 +298,23 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
             <p className="text-sm font-semibold text-emerald-800">Saldo pendiente: {formatUsd(balance)}</p>
             <p className="text-xs text-emerald-700/80 mt-0.5">Registre el pago para actualizar el estado de la factura</p>
           </div>
-          <button type="button" onClick={() => setShowPaymentForm(true)} className="btn-primary text-sm shrink-0">
+          <button type="button" onClick={openPaymentForm} className="btn-primary text-sm shrink-0">
             <Wallet size={15} /> Pagar
           </button>
         </div>
       )}
 
       {showPaymentForm && (
-        <form onSubmit={submitPayment} className="card p-4 mt-4 space-y-3 max-w-md">
+        <form onSubmit={submitPayment} className="form-card p-4 mt-4 space-y-3 max-w-md">
           <p className="font-semibold text-slate-800 flex items-center gap-2"><Wallet size={16} /> Registrar pago</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Monto</label>
-              <input
-                type="number" step="0.01" min="0" max={balance}
+              <CurrencyInput
                 value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                className="input" placeholder={balance.toFixed(2)} autoFocus required
+                onChange={(num, display) => { setPaymentNumeric(num); setPaymentAmount(display); }}
+                placeholder={formatAmount(balance)}
+                autoFocus
               />
             </div>
             <div>
@@ -439,8 +457,8 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       )}
 
       {canManagePayments && balance > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 border-t border-slate-200 backdrop-blur-sm sm:hidden z-40">
-          <button type="button" onClick={() => setShowPaymentForm(true)} className="btn-primary w-full text-base py-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 border-t border-slate-200/80 backdrop-blur-xl sm:hidden z-40 shadow-[0_-8px_30px_rgba(15,23,42,0.08)]">
+          <button type="button" onClick={openPaymentForm} className="btn-primary w-full text-base py-3.5 shadow-lg shadow-blue-700/25">
             <Wallet size={18} /> Pagar {formatUsd(balance)}
           </button>
         </div>

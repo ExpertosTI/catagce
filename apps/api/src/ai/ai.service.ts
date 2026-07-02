@@ -4,6 +4,7 @@ import { invoices, clients, clientAllocations, stockLevels, companies, invoicePa
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { generateWithGemini, isAiConfigured } from './gemini.util';
+import { getCompanyGeminiKey } from './company-ai.util';
 import { formatCurrency } from '../common/format-currency';
 import { formatDate } from '../common/format-date';
 
@@ -21,7 +22,8 @@ export class AiService {
       context.clienteConsultado = await this.buildClientStatement(user, mentionedClient.id, mentionedClient.name);
     }
 
-    if (!isAiConfigured()) {
+    const geminiKey = await getCompanyGeminiKey(this.db, user.companyId);
+    if (!isAiConfigured(geminiKey)) {
       return {
         reply: this.staffFallbackReply(message, context),
         aiEnabled: false,
@@ -33,7 +35,7 @@ export class AiService {
     const historyText = history.slice(-6).map((h) => `${h.role === 'user' ? 'Usuario' : 'Asistente'}: ${h.content}`).join('\n');
     const prompt = `${historyText ? `${historyText}\n` : ''}Usuario: ${message}\nAsistente:`;
 
-    const reply = await generateWithGemini(prompt, systemInstruction);
+    const reply = await generateWithGemini(prompt, systemInstruction, geminiKey);
     return {
       reply: reply ?? this.staffFallbackReply(message, context),
       aiEnabled: Boolean(reply),
@@ -43,7 +45,8 @@ export class AiService {
   async clientChat(user: AuthUser, message: string, history: ChatMessage[] = [], clientContext?: Record<string, unknown>) {
     const context = clientContext ?? await this.buildClientContext(user);
 
-    if (!isAiConfigured()) {
+    const geminiKey = await getCompanyGeminiKey(this.db, user.companyId);
+    if (!isAiConfigured(geminiKey)) {
       return {
         reply: this.clientFallbackReply(message, context),
         aiEnabled: false,
@@ -55,7 +58,7 @@ export class AiService {
     const historyText = history.slice(-6).map((h) => `${h.role === 'user' ? 'Cliente' : 'Asistente'}: ${h.content}`).join('\n');
     const prompt = `${historyText ? `${historyText}\n` : ''}Cliente: ${message}\nAsistente:`;
 
-    const reply = await generateWithGemini(prompt, systemInstruction);
+    const reply = await generateWithGemini(prompt, systemInstruction, geminiKey);
     return {
       reply: reply ?? this.clientFallbackReply(message, context),
       aiEnabled: Boolean(reply),
@@ -311,7 +314,7 @@ export class AiService {
     if (q.includes('vencid') || q.includes('atras')) {
       if (!context.overdueInvoices.length) return 'No hay facturas vencidas en este momento. ¡Buen trabajo!';
       const list = context.overdueInvoices.map((i: any) => `• ${i.reference} — ${i.cliente} — ${i.saldo}`).join('\n');
-      return `Facturas vencidas:\n${list}\n\n(Nota: para respuestas más completas active GEMINI_API_KEY en el servidor)`;
+      return `Facturas vencidas:\n${list}\n\n(Nota: para respuestas más naturales configure su API de Google en Ajustes → Super AI)`;
     }
     if (q.includes('por vencer') || q.includes('vence')) {
       if (!context.facturasPorVencer.length) return 'No hay facturas por vencer próximamente.';
@@ -321,7 +324,7 @@ export class AiService {
     if (q.includes('despacho') || q.includes('pendiente')) {
       return `Despachos pendientes: ${context.despachosPendientes?.count ?? 0} (${context.despachosPendientes?.units ?? 0} unidades). Unidades disponibles en almacén: ${context.unidadesDisponiblesEnAlmacen}.`;
     }
-    return 'Puedo ayudarle con facturas vencidas o por vencer, pagos recientes, principales deudores, despachos pendientes, inventario, y el estado de cuenta de un cliente si menciona su nombre. Para respuestas más naturales, configure GEMINI_API_KEY en el servidor.';
+    return 'Puedo ayudarle con facturas vencidas o por vencer, pagos recientes, principales deudores, despachos pendientes, inventario, y el estado de cuenta de un cliente si menciona su nombre. Para respuestas más naturales, agregue su API de Google en Ajustes → Super AI.';
   }
 
   private clientFallbackReply(message: string, context: any) {

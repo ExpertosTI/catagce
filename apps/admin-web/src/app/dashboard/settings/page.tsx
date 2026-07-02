@@ -10,6 +10,7 @@ import { comprobanteTypeLabel } from '../../../lib/labels';
 import { LoadingState } from '../../../components/LoadingState';
 import { PAGE } from '../../../lib/page-titles';
 import { useAppDialog } from '../../../components/AppDialogProvider';
+import { clearCompanyCache } from '../../../lib/useCompany';
 
 type FiscalSequence = {
   id: string;
@@ -130,13 +131,15 @@ type Company = {
   phone?: string;
   address?: string;
   logoUrl?: string;
-  settings?: { autoReceiptOnPayment?: boolean };
+  settings?: { autoReceiptOnPayment?: boolean; geminiApiKey?: string; hasGeminiKey?: boolean };
 };
 
 export default function SettingsPage() {
   const { alert } = useAppDialog();
   const [form, setForm] = useState<Company>({ name: '', slug: '' });
   const [autoReceipt, setAutoReceipt] = useState(true);
+  const [geminiKey, setGeminiKey] = useState('');
+  const [hasGeminiKey, setHasGeminiKey] = useState(false);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -145,6 +148,8 @@ export default function SettingsPage() {
     apiFetch<Company>('/companies/me').then((c) => {
       setForm(c);
       setAutoReceipt(c.settings?.autoReceiptOnPayment !== false);
+      setGeminiKey(c.settings?.geminiApiKey ?? '');
+      setHasGeminiKey(Boolean(c.settings?.hasGeminiKey));
       setReady(true);
     }).catch(console.error);
   }, []);
@@ -163,9 +168,17 @@ export default function SettingsPage() {
           phone: form.phone,
           address: form.address,
           logoUrl: form.logoUrl,
-          settings: { autoReceiptOnPayment: autoReceipt },
+          settings: {
+            autoReceiptOnPayment: autoReceipt,
+            ...(!geminiKey.includes('•') ? { geminiApiKey: geminiKey.trim() } : {}),
+          },
         }),
       });
+      clearCompanyCache();
+      const refreshed = await apiFetch<Company>('/companies/me');
+      setForm(refreshed);
+      setGeminiKey(refreshed.settings?.geminiApiKey ?? '');
+      setHasGeminiKey(Boolean(refreshed.settings?.hasGeminiKey));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err: unknown) {
@@ -213,6 +226,30 @@ export default function SettingsPage() {
         <FormField label="Dirección">
           <input value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" />
         </FormField>
+
+        <div className="pt-2 border-t border-slate-100">
+          <p className="text-sm font-semibold text-slate-800 mb-1 flex items-center gap-2">✨ Super AI (Google Gemini)</p>
+          <p className="text-xs text-slate-500 mb-3">
+            Conecte su API de Google para análisis inteligente, descripciones de productos y recordatorios más naturales.
+          </p>
+          <FormField label="API Key de Google Gemini">
+            <input
+              type="password"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              className="input font-mono text-sm"
+              placeholder={hasGeminiKey ? 'Dejar en blanco para mantener la clave actual' : 'AIza...'}
+              autoComplete="off"
+            />
+            <p className="form-hint">
+              Obtenga su clave en{' '}
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">
+                Google AI Studio
+              </a>
+              . {hasGeminiKey && <span className="text-emerald-600 font-medium">✓ Clave configurada</span>}
+            </p>
+          </FormField>
+        </div>
 
         <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
           <input

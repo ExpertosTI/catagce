@@ -4,6 +4,7 @@ import { invoices, clients, companies } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { NotificationsService } from './notifications.service';
 import { generateWithGemini } from '../ai/gemini.util';
+import { getCompanyGeminiKey } from '../ai/company-ai.util';
 import { formatCurrency } from '../common/format-currency';
 
 const CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
@@ -69,6 +70,7 @@ export class InvoiceReminderService implements OnModuleInit {
       }
 
       const { staffMessage, clientMessage, title } = await this.buildMessages({
+        companyId: inv.companyId,
         reference: inv.reference,
         clientName: inv.clientName,
         companyName: inv.companyName,
@@ -104,6 +106,7 @@ export class InvoiceReminderService implements OnModuleInit {
   }
 
   private async buildMessages(opts: {
+    companyId: string;
     reference: string; clientName: string; companyName: string;
     balance: number; daysDiff: number; overdue: boolean;
   }) {
@@ -121,7 +124,8 @@ Datos: factura ${opts.reference}, cliente ${opts.clientName}, saldo pendiente ${
 
 Responde SOLO con JSON válido de la forma: {"staffMessage": "...", "clientMessage": "..."}`;
 
-    const raw = await generateWithGemini(prompt);
+    const geminiKey = await getCompanyGeminiKey(this.db, opts.companyId);
+    const raw = await generateWithGemini(prompt, undefined, geminiKey);
     if (raw) {
       try {
         const cleaned = raw.replace(/```json|```/g, '').trim();

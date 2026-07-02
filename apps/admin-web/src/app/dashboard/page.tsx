@@ -12,6 +12,7 @@ import { apiFetch } from '../../lib/api';
 import { formatCurrency } from '../../lib/currency';
 import { invoiceStatusText, importStatusLabel } from '../../lib/labels';
 import { PAGE } from '../../lib/page-titles';
+import { useCompany } from '../../lib/useCompany';
 import type { DashboardSummary } from '../../lib/dashboard-types';
 
 const POLL_MS = 30_000;
@@ -43,7 +44,7 @@ function KpiHero({ label, value, sub, icon: Icon, gradient }: {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider opacity-90">{label}</p>
-          <p className="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight">{value}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight tabular-nums">{value}</p>
           {sub && <p className="text-xs opacity-80 mt-1">{sub}</p>}
         </div>
         <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
@@ -55,6 +56,7 @@ function KpiHero({ label, value, sub, icon: Icon, gradient }: {
 }
 
 export default function DashboardPage() {
+  const company = useCompany();
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [aiBrief, setAiBrief] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -168,6 +170,11 @@ export default function DashboardPage() {
                     <span>{ins.text}</span>
                   </div>
                 ))}
+                {!company?.settings?.hasGeminiKey && !aiLoading && (
+                  <Link href="/dashboard/settings" className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-700 bg-violet-50 px-3 py-2 rounded-xl hover:bg-violet-100 transition mt-1">
+                    <Sparkles size={13} /> Configurar API de Google en Ajustes
+                  </Link>
+                )}
               </div>
             )}
           </div>

@@ -80,7 +80,7 @@ export default function ReportsPage() {
 
   function exportBtn(onClick: () => void) {
     return (
-      <button type="button" onClick={onClick} className="btn-subtle text-xs">
+      <button type="button" onClick={onClick} className="report-toolbar-btn">
         <FileDown size={14} /> CSV
       </button>
     );
@@ -88,7 +88,7 @@ export default function ReportsPage() {
 
   function printBtn(onClick: () => void) {
     return (
-      <button type="button" onClick={onClick} className="btn-subtle text-xs">
+      <button type="button" onClick={onClick} className="report-toolbar-btn">
         <Printer size={14} /> Imprimir
       </button>
     );
@@ -98,15 +98,13 @@ export default function ReportsPage() {
     <DashboardLayout>
       <PageHeader emoji={PAGE.reports.emoji} title={PAGE.reports.title} subtitle={PAGE.reports.subtitle} />
 
-      <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto">
+      <div className="report-tabs">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition ${
-              tab === t.id ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
+            className={`report-tab ${tab === t.id ? 'report-tab-active' : 'hover:text-slate-700'}`}
           >
             {t.emoji} {t.label}
           </button>
@@ -122,11 +120,11 @@ export default function ReportsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {AR_BUCKETS.map((b) => (
-              <div key={b.key} className="stat-card">
-                <p className="text-xs text-slate-500 flex items-center gap-1">
+              <div key={b.key} className="report-kpi">
+                <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                   <span aria-hidden>{b.emoji}</span> {b.label}
                 </p>
-                <p className={`text-base font-bold mt-1 ${b.cls}`}>{formatCurrency(ar.buckets[b.key])}</p>
+                <p className={`report-kpi-value ${b.cls}`}>{formatCurrency(ar.buckets[b.key])}</p>
               </div>
             ))}
           </div>
@@ -149,7 +147,7 @@ export default function ReportsPage() {
             )}
           >
             <table className="w-full text-sm min-w-[480px]">
-              <thead className="bg-slate-50 text-slate-500 border-b">
+              <thead className="border-b">
                 <tr>
                   <th className="text-left p-3">Cliente</th>
                   <th className="text-right p-3">Facturas</th>
@@ -159,7 +157,7 @@ export default function ReportsPage() {
               </thead>
               <tbody>
                 {ar.clients.map((c) => (
-                  <tr key={c.clientId} className="border-b border-slate-100 hover:bg-slate-50/60">
+                  <tr key={c.clientId} className="border-b border-slate-100">
                     <td className="p-3">
                       <Link href={`/dashboard/clients/${c.clientId}`} className="font-medium text-blue-700 hover:underline">
                         {c.clientName}
@@ -203,11 +201,11 @@ export default function ReportsPage() {
               { emoji: '💳', label: 'Saldo pendiente', value: sales.totalPendiente, cls: 'text-red-600' },
               { emoji: '🧾', label: `Facturas (${sales.cantidadFacturas})`, value: sales.totalCredito + sales.totalContado, cls: 'text-slate-700' },
             ].map((s) => (
-              <div key={s.label} className="stat-card">
-                <p className="text-xs text-slate-500 flex items-center gap-1">
+              <div key={s.label} className="report-kpi">
+                <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                   <span aria-hidden>{s.emoji}</span> {s.label}
                 </p>
-                <p className={`text-lg font-bold mt-1 ${s.cls}`}>{formatCurrency(s.value)}</p>
+                <p className={`report-kpi-value ${s.cls}`}>{formatCurrency(s.value)}</p>
               </div>
             ))}
           </div>
@@ -252,17 +250,17 @@ export default function ReportsPage() {
       {!loading && !error && tab === 'inventory' && inventory && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="stat-card">
-              <p className="text-xs text-slate-500">💵 Valorización (costo)</p>
-              <p className="text-lg font-bold mt-1 text-blue-700">{formatCurrency(inventory.totalValuacionCosto)}</p>
+            <div className="report-kpi">
+              <p className="text-xs text-slate-500 font-medium">💵 Valorización (costo)</p>
+              <p className="report-kpi-value text-blue-700">{formatCurrency(inventory.totalValuacionCosto)}</p>
             </div>
-            <div className="stat-card">
-              <p className="text-xs text-slate-500">💰 Valorización (venta)</p>
-              <p className="text-lg font-bold mt-1 text-emerald-700">{formatCurrency(inventory.totalValuacionVenta)}</p>
+            <div className="report-kpi">
+              <p className="text-xs text-slate-500 font-medium">💰 Valorización (venta)</p>
+              <p className="report-kpi-value text-emerald-700">{formatCurrency(inventory.totalValuacionVenta)}</p>
             </div>
-            <div className="stat-card">
-              <p className="text-xs text-slate-500">⚠️ Bajo stock mínimo</p>
-              <p className="text-lg font-bold mt-1 text-amber-600 flex items-center gap-1.5">
+            <div className="report-kpi">
+              <p className="text-xs text-slate-500 font-medium">⚠️ Bajo stock mínimo</p>
+              <p className="report-kpi-value text-amber-600 flex items-center gap-1.5">
                 {inventory.lowStockCount > 0 && <AlertTriangle size={16} />} {inventory.lowStockCount}
               </p>
             </div>
@@ -286,7 +284,7 @@ export default function ReportsPage() {
             )}
           >
             <table className="w-full text-sm min-w-[480px]">
-              <thead className="bg-slate-50 text-slate-500 border-b">
+              <thead className="border-b">
                 <tr>
                   <th className="text-left p-3">Producto</th>
                   <th className="text-right p-3">Disponible</th>

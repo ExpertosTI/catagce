@@ -11,21 +11,26 @@
 }
 
 body {
-  background: var(--ghome-bg);
+  background: linear-gradient(160deg, #f8fafc 0%, #eef2ff 45%, #f1f5f9 100%);
+  background-attachment: fixed;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
 }
 
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
 .btn-primary {
-  @apply bg-blue-700 hover:bg-blue-800 active:scale-[0.98] text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200 shadow-sm shadow-blue-700/20;
+  @apply inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-[0.98] text-white font-semibold px-5 py-2.5 rounded-2xl transition-all duration-200 shadow-md shadow-blue-600/25;
 }
 
 .btn-secondary {
-  @apply bg-white hover:bg-slate-50 active:scale-[0.98] text-blue-700 font-medium px-5 py-2.5 rounded-xl border border-blue-200 transition-all duration-200;
+  @apply inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-50 active:scale-[0.98] text-blue-700 font-semibold px-5 py-2.5 rounded-2xl border border-slate-200 transition-all duration-200 shadow-sm;
 }
 
 .card {
-  @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm;
+  @apply bg-white/90 backdrop-blur-sm border border-slate-200/70 rounded-2xl shadow-sm shadow-slate-200/50;
 }
 
 .stat-card {
@@ -33,7 +38,7 @@ body {
 }
 
 .input {
-  @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition;
+  @apply w-full bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition shadow-sm;
 }
 
 .input-search {
@@ -84,9 +89,25 @@ body {
   @apply bg-slate-100 text-slate-600 hover:bg-slate-200;
 }
 
-/* Botones ejecutivos sutiles */
+/* Botones de acción modernos */
+.action-chip {
+  @apply inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 hover:-translate-y-px transition-all duration-200 active:scale-[0.98];
+}
+
+.action-chip span {
+  @apply hidden sm:inline;
+}
+
+.action-chip-success {
+  @apply text-emerald-800 border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white hover:border-emerald-300;
+}
+
+.action-chip-whatsapp {
+  @apply text-[#128C7E] border-[#25D366]/30 bg-gradient-to-br from-[#25D366]/10 to-white hover:border-[#25D366]/50;
+}
+
 .btn-subtle {
-  @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 bg-white border border-slate-200/90 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 active:scale-[0.98];
+  @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold text-slate-600 bg-white/90 border border-slate-200/90 hover:bg-white hover:border-slate-300 hover:shadow-sm transition-all duration-200 active:scale-[0.98];
 }
 
 .btn-subtle-primary {
@@ -106,7 +127,7 @@ body {
 }
 
 .action-bar {
-  @apply flex flex-wrap gap-2 p-3 bg-slate-50/80 border border-slate-200/80 rounded-xl;
+  @apply grid grid-cols-3 sm:flex sm:flex-wrap gap-2 p-3 bg-white/70 backdrop-blur-md border border-slate-200/70 rounded-2xl shadow-sm;
 }
 
 .executive-card {
@@ -204,27 +225,31 @@ body {
 
 /* ─── Notificaciones ────────────────────────────────────────────────── */
 .notif-bell-btn {
-  @apply relative p-2 rounded-lg text-white/90 hover:bg-white/10 transition-colors;
+  @apply relative p-2.5 rounded-xl text-white/95 hover:bg-white/15 transition-all duration-200;
 }
 
 .notif-bell-badge {
-  @apply absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1;
+  @apply absolute -top-1 -right-1 bg-gradient-to-br from-rose-500 to-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-md ring-2 ring-white/30;
 }
 
 .notif-dropdown {
-  @apply absolute right-0 mt-2 w-[340px] max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden;
+  @apply absolute right-0 mt-3 w-[min(380px,92vw)] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-slate-900/10 border border-slate-200/80 z-50 overflow-hidden animate-fade-in;
+}
+
+.notif-header {
+  @apply flex items-center justify-between px-4 py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white;
 }
 
 .notif-item {
-  @apply w-full flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 text-left;
+  @apply w-full flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50/80 transition-colors border-b border-slate-100/80 last:border-0 text-left;
 }
 
 .notif-item-unread {
-  @apply bg-blue-50/50;
+  @apply bg-blue-50/60;
 }
 
 .notif-icon {
-  @apply w-8 h-8 rounded-full flex items-center justify-center shrink-0;
+  @apply w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm;
 }
 
 .notif-icon-danger { @apply bg-red-100 text-red-600; }
@@ -233,11 +258,11 @@ body {
 
 /* ─── Dashboard super app ───────────────────────────────────────────── */
 .dashboard-hero-card {
-  @apply rounded-2xl p-4 sm:p-5 shadow-lg transition-transform hover:scale-[1.02] duration-200;
+  @apply rounded-2xl p-4 sm:p-5 shadow-xl shadow-slate-900/10 transition-transform hover:scale-[1.01] duration-200;
 }
 
 .dashboard-ai-panel {
-  @apply bg-white border border-violet-200/60 rounded-2xl p-4 sm:p-5 shadow-sm bg-gradient-to-br from-white to-violet-50/40;
+  @apply bg-white/90 backdrop-blur-md border border-violet-200/50 rounded-2xl p-4 sm:p-5 shadow-lg shadow-violet-500/5 bg-gradient-to-br from-white via-violet-50/30 to-indigo-50/40;
 }
 
 .dashboard-insight {
@@ -258,7 +283,44 @@ body {
 }
 
 .dashboard-feed-card {
-  @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden;
+  @apply bg-white/90 backdrop-blur-sm border border-slate-200/70 rounded-2xl shadow-md shadow-slate-200/40 overflow-hidden;
+}
+
+/* ─── Reportes ─────────────────────────────────────────────────────── */
+.report-tabs {
+  @apply inline-flex gap-1 p-1 bg-slate-100/80 rounded-2xl mb-6 overflow-x-auto;
+}
+
+.report-tab {
+  @apply px-4 py-2.5 text-sm font-semibold whitespace-nowrap rounded-xl text-slate-500 transition-all duration-200;
+}
+
+.report-tab-active {
+  @apply bg-white text-blue-700 shadow-sm shadow-slate-200/60;
+}
+
+.report-kpi {
+  @apply relative overflow-hidden rounded-2xl p-4 border border-slate-200/70 bg-white/90 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.report-kpi-value {
+  @apply text-xl sm:text-2xl font-extrabold mt-1 tabular-nums tracking-tight;
+}
+
+.report-table thead {
+  @apply bg-slate-50/90 text-slate-500 text-xs uppercase tracking-wide;
+}
+
+.report-table tbody tr {
+  @apply border-b border-slate-100/80 hover:bg-blue-50/30 transition-colors;
+}
+
+.report-table td, .report-table th {
+  @apply p-3;
+}
+
+.report-toolbar-btn {
+  @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-700 hover:shadow-sm transition-all;
 }
 
 /* ─── Asistente IA ──────────────────────────────────────────────────── */

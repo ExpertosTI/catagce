@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Check, AlertTriangle, Clock } from 'lucide-react';
+import { Bell, Check, AlertTriangle, Clock, BellRing } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 type Notification = {
@@ -77,23 +77,33 @@ export function NotificationBell() {
         className="notif-bell-btn"
         aria-label="Notificaciones"
       >
-        <Bell size={19} />
+        <Bell size={20} strokeWidth={2} />
         {unread > 0 && <span className="notif-bell-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
       {open && (
-        <div className="notif-dropdown animate-fade-in">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <p className="font-semibold text-sm text-slate-900">Notificaciones</p>
+        <div className="notif-dropdown">
+          <div className="notif-header">
+            <p className="font-bold text-sm text-slate-900 flex items-center gap-2">
+              <BellRing size={16} className="text-blue-600" />
+              Notificaciones
+              {unread > 0 && <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{unread} nuevas</span>}
+            </p>
             {unread > 0 && (
-              <button type="button" onClick={markAllRead} className="text-xs text-blue-700 font-medium hover:underline">
+              <button type="button" onClick={markAllRead} className="text-xs text-blue-700 font-semibold hover:underline">
                 Marcar todo leído
               </button>
             )}
           </div>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[min(420px,70vh)] overflow-y-auto">
             {notifications.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-10">Sin notificaciones</p>
+              <div className="text-center py-12 px-6">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                  <Bell size={22} className="text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-500">Sin notificaciones</p>
+                <p className="text-xs text-slate-400 mt-1">Le avisaremos sobre vencimientos y cobros</p>
+              </div>
             )}
             {notifications.map((n) => (
               <button
@@ -103,15 +113,18 @@ export function NotificationBell() {
                 className={`notif-item ${!n.isRead ? 'notif-item-unread' : ''}`}
               >
                 <div className={`notif-icon ${n.type.includes('overdue') ? 'notif-icon-danger' : n.type.includes('due_soon') ? 'notif-icon-warn' : 'notif-icon-info'}`}>
-                  {n.type.includes('overdue') ? <AlertTriangle size={15} /> : <Clock size={15} />}
+                  {n.type.includes('overdue') ? <AlertTriangle size={16} /> : <Clock size={16} />}
                 </div>
                 <div className="min-w-0 flex-1 text-left">
-                  <p className="text-sm font-semibold text-slate-900 truncate">{n.subject}</p>
-                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>
-                  <p className="text-[11px] text-slate-400 mt-1">{timeAgo(n.createdAt)}</p>
+                  <p className="text-sm font-semibold text-slate-900 leading-snug">{n.subject}</p>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{n.body}</p>
+                  <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{timeAgo(n.createdAt)}</p>
                 </div>
-                {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />}
-                {n.isRead && <Check size={14} className="text-slate-300 shrink-0 mt-1" />}
+                {!n.isRead ? (
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0 mt-1 shadow-sm" />
+                ) : (
+                  <Check size={14} className="text-emerald-400 shrink-0 mt-1" />
+                )}
               </button>
             ))}
           </div>

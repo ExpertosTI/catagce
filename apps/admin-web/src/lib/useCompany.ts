@@ -7,11 +7,20 @@ export type CompanyInfo = {
   name: string;
   logoUrl?: string;
   taxId?: string;
-  settings?: { autoReceiptOnPayment?: boolean };
+  settings?: {
+    autoReceiptOnPayment?: boolean;
+    geminiApiKey?: string;
+    hasGeminiKey?: boolean;
+  };
 };
 
 let cache: CompanyInfo | null = null;
 let inflight: Promise<CompanyInfo> | null = null;
+
+export function clearCompanyCache() {
+  cache = null;
+  inflight = null;
+}
 
 export function useCompany() {
   const [company, setCompany] = useState<CompanyInfo | null>(cache);
