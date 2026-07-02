@@ -66,6 +66,18 @@ body {
   @apply bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-200/60 transition-all duration-200;
 }
 
+.executive-card {
+  @apply bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.btn-subtle {
+  @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 bg-white border border-slate-200/90 hover:bg-slate-50 transition;
+}
+
+.btn-subtle-primary {
+  @apply text-blue-700 border-blue-200/80 bg-blue-50/40 hover:bg-blue-50;
+}
+
 .invoice-summary-footer {
   @apply bg-white border border-slate-200 rounded-2xl p-4 shadow-sm max-w-xl;
 }

@@ -79,7 +79,7 @@ export default function NewProductPage() {
               type="button"
               onClick={generateDescription}
               disabled={generating}
-              className="btn-action btn-action-secondary text-xs disabled:opacity-50"
+              className="btn-subtle btn-subtle-primary text-xs disabled:opacity-50"
             >
               {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
               {generating ? 'Generando...' : 'Generar con IA'}

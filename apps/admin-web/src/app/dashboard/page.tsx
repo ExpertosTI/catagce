@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import DashboardLayout, { PageHeader } from '../../components/DashboardLayout';
+import { LoadingState } from '../../components/LoadingState';
 import { apiFetch } from '../../lib/api';
 import { formatCurrency } from '../../lib/currency';
 import { DASHBOARD_STATS, PAGE } from '../../lib/page-titles';
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch('/dashboard/summary').then(setData).catch(() => window.location.href = '/login');
+    apiFetch('/dashboard/summary')
+      .then(setData)
+      .catch(() => { window.location.href = '/login'; })
+      .finally(() => setLoading(false));
   }, []);
 
   const values: Record<string, { value: string; color: string }> = {
@@ -25,6 +30,9 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <PageHeader emoji={PAGE.dashboard.emoji} title={PAGE.dashboard.title} subtitle={PAGE.dashboard.subtitle} />
+      {loading ? (
+        <LoadingState emoji="🏠" message="Cargando resumen..." />
+      ) : (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {DASHBOARD_STATS.map((card) => (
           <div key={card.key} className="stat-card group">
@@ -35,6 +43,7 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+      )}
     </DashboardLayout>
   );
 }

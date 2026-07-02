@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Pencil, CheckCircle, UserPlus, FileText, ChevronRight } from 'lucide-react';
+import { Pencil, CheckCircle, FileText, ChevronRight } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
+import { EmptyState } from '../../../components/EmptyState';
+import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { clientStatusLabel, formatMoney } from '../../../lib/labels';
 import { PAGE } from '../../../lib/page-titles';
@@ -63,17 +65,15 @@ export default function ClientsPage() {
         />
       </div>
 
-      {loading && <p className="text-center text-slate-400 py-12">👥 Cargando clientes...</p>}
+      {loading && <LoadingState emoji="👥" message="Cargando clientes..." />}
 
       {!loading && filtered.length === 0 && (
-        <div className="text-center py-16 text-slate-500">
-          <p className="text-4xl mb-3" aria-hidden>👥</p>
-          <p className="font-medium">Sin clientes</p>
-          <p className="text-sm mt-1">Cree un cliente para comenzar</p>
-          <Link href="/dashboard/clients/new" className="btn-subtle btn-subtle-primary mt-4 inline-flex">
-            <UserPlus size={15} /> Nuevo cliente
-          </Link>
-        </div>
+        <EmptyState
+          emoji="👥"
+          title="Sin clientes"
+          subtitle="Cree un cliente para comenzar"
+          action={{ href: '/dashboard/clients/new', label: '✨ Nuevo cliente' }}
+        />
       )}
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">

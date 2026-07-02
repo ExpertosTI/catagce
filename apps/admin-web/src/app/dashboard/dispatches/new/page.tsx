@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
+import { EmptyState } from '../../../../components/EmptyState';
+import { LoadingState } from '../../../../components/LoadingState';
 import { FormField } from '../../../../components/FormField';
 import { ClientPicker, PickerClient } from '../../../../components/ClientPicker';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
@@ -65,14 +67,12 @@ export default function NewDispatchPage() {
       <PageHeader emoji={PAGE.dispatchesNew.emoji} title={PAGE.dispatchesNew.title} subtitle={PAGE.dispatchesNew.subtitle} />
 
       {fetching ? (
-        <div className="form-card max-w-2xl animate-pulse h-40 bg-slate-100" />
+        <LoadingState emoji="🚚" message="Cargando mercancía pendiente..." />
       ) : !clientOptions.length ? (
-        <div className="form-card max-w-2xl text-center py-10 text-slate-500">
-          No hay mercancía pendiente de despacho en este momento.
-        </div>
+        <EmptyState emoji="✅" title="Sin pendientes de despacho" subtitle="Toda la mercancía facturada ya fue entregada" />
       ) : (
         <form onSubmit={submit} className="form-card max-w-2xl space-y-4">
-          <FormField label="Cliente">
+          <FormField label="👤 Cliente">
             <ClientPicker
               clients={clientOptions}
               value={clientId}
@@ -83,10 +83,10 @@ export default function NewDispatchPage() {
           </FormField>
 
           {clientId && byClient[clientId]?.map((item) => (
-            <div key={item.id} className="flex items-center justify-between border-b border-slate-100 pb-3 gap-3">
+            <div key={item.id} className="executive-card !p-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium truncate">{item.productName}</p>
-                <p className="text-sm text-slate-500">Pendiente: {item.pendingQty}</p>
+                <p className="font-medium truncate">📦 {item.productName}</p>
+                <p className="text-sm text-slate-500">Pendiente: <strong className="text-amber-700">{item.pendingQty}</strong></p>
               </div>
               <QuantityStepper
                 value={selected[item.invoiceItemId] || 0}
@@ -98,10 +98,10 @@ export default function NewDispatchPage() {
             </div>
           ))}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600">❌ {error}</p>}
 
           <button type="submit" disabled={loading || !clientId} className="btn-primary disabled:opacity-50">
-            {loading ? 'Registrando...' : 'Confirmar despacho'}
+            {loading ? '⏳ Registrando...' : '🚚 Confirmar despacho'}
           </button>
         </form>
       )}

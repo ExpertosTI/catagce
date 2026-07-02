@@ -24,30 +24,36 @@ export default function PendingMerchandisePage() {
 
   return (
     <PortalLayout>
-      <h2 className="text-2xl font-bold flex items-center gap-2">
+      <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-slate-900">
         <span aria-hidden>{PORTAL_PAGE.pending.emoji}</span> {PORTAL_PAGE.pending.title}
       </h2>
-      <p className="text-slate-500 mt-1">{PORTAL_PAGE.pending.subtitle}</p>
-      <div className="grid gap-4 mt-6">
+      <p className="text-slate-500 mt-1 text-sm">{PORTAL_PAGE.pending.subtitle}</p>
+
+      <div className="grid gap-3 mt-6">
         {loading && (
-          <>
-            <div className="card p-5 animate-pulse h-20 bg-slate-100" />
-            <div className="card p-5 animate-pulse h-20 bg-slate-100" />
-          </>
+          <p className="text-center text-slate-400 py-12">
+            <span className="text-2xl block mb-2" aria-hidden>📦</span>
+            Cargando mercancía...
+          </p>
         )}
         {!loading && items.map((item, i) => (
-          <div key={i} className="card p-5 flex justify-between items-center">
-            <div>
-              <h3 className="font-semibold">{item.productName}</h3>
+          <article key={i} className="executive-card flex justify-between items-center gap-4">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-slate-900 truncate">📦 {item.productName}</h3>
               <p className="text-sm text-slate-500">{item.productSku}</p>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <p className="text-2xl font-bold text-amber-600">{item.pendingQty}</p>
-              <p className="text-xs text-slate-500">de {item.allocatedQty} facturados · {item.dispatchedQty} despachados</p>
+              <p className="text-xs text-slate-500">de {item.allocatedQty} fact. · {item.dispatchedQty} desp.</p>
             </div>
-          </div>
+          </article>
         ))}
-        {!loading && !items.length && <div className="card p-10 text-center text-slate-500">No tiene mercancía pendiente 🎉</div>}
+        {!loading && !items.length && (
+          <div className="executive-card p-10 text-center text-slate-500">
+            <p className="text-4xl mb-2" aria-hidden>🎉</p>
+            No tiene mercancía pendiente
+          </div>
+        )}
       </div>
     </PortalLayout>
   );

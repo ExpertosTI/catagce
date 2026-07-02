@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
+import DashboardLayout, { PageHeader, SectionTitle } from '../../../components/DashboardLayout';
 import { FormField } from '../../../components/FormField';
 import { ImageUploadField } from '../../../components/ImageUploadField';
 import { apiFetch } from '../../../lib/api';
 import { SITE_URL, ADMIN_URL } from '../../../lib/site';
 import { comprobanteTypeLabel } from '../../../lib/labels';
+import { LoadingState } from '../../../components/LoadingState';
 import { PAGE } from '../../../lib/page-titles';
 
 type FiscalSequence = {
@@ -54,14 +55,12 @@ function FiscalSequencesPanel() {
   }
 
   return (
-    <div className="form-card max-w-2xl space-y-4 mt-6">
-      <div>
-        <p className="text-sm font-semibold text-slate-700">🧾 Secuencias NCF (DGII)</p>
-        <p className="text-xs text-slate-500 mt-1">Configure los rangos autorizados por la DGII para cada tipo de comprobante.</p>
-      </div>
+    <div className="executive-card max-w-2xl space-y-4 mt-6">
+      <SectionTitle emoji="🧾">Secuencias NCF (DGII)</SectionTitle>
+      <p className="text-xs text-slate-500 -mt-2">Configure los rangos autorizados por la DGII para cada tipo de comprobante.</p>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Cargando secuencias...</p>
+        <p className="text-sm text-slate-400">⏳ Cargando secuencias...</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -83,7 +82,7 @@ function FiscalSequencesPanel() {
                 </tr>
               ))}
               {!sequences.length && (
-                <tr><td colSpan={4} className="py-4 text-center text-slate-400">Sin secuencias configuradas</td></tr>
+                <tr><td colSpan={4} className="py-4 text-center text-slate-400">📋 Sin secuencias configuradas</td></tr>
               )}
             </tbody>
           </table>
@@ -113,8 +112,8 @@ function FiscalSequencesPanel() {
             <input type="number" min={1} value={form.currentNumber} onChange={(e) => setForm({ ...form, currentNumber: parseInt(e.target.value, 10) })} className="input text-sm" />
           </FormField>
         </div>
-        <button type="submit" disabled={saving} className="btn-secondary text-sm disabled:opacity-50">
-          {saving ? 'Guardando...' : 'Guardar secuencia NCF'}
+        <button type="submit" disabled={saving} className="btn-primary text-sm disabled:opacity-50">
+          {saving ? '⏳ Guardando...' : '💾 Guardar secuencia NCF'}
         </button>
       </form>
     </div>
@@ -172,7 +171,7 @@ export default function SettingsPage() {
   if (!ready) {
     return (
       <DashboardLayout>
-        <div className="animate-pulse h-96 bg-slate-100 rounded-2xl max-w-lg" />
+        <LoadingState emoji="⚙️" message="Cargando configuración..." />
       </DashboardLayout>
     );
   }
@@ -181,7 +180,8 @@ export default function SettingsPage() {
     <DashboardLayout>
       <PageHeader emoji={PAGE.settings.emoji} title={PAGE.settings.title} subtitle={PAGE.settings.subtitle} />
 
-      <form onSubmit={submit} className="form-card max-w-lg space-y-4">
+      <SectionTitle emoji="🏢">Datos de la empresa</SectionTitle>
+      <form onSubmit={submit} className="form-card max-w-lg space-y-4 mb-6">
         <ImageUploadField
           value={form.logoUrl ?? ''}
           onChange={(url) => setForm({ ...form, logoUrl: url })}
@@ -209,16 +209,16 @@ export default function SettingsPage() {
 
         <div className="flex items-center gap-3">
           <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
-            {loading ? 'Guardando...' : 'Guardar cambios'}
+            {loading ? '⏳ Guardando...' : '💾 Guardar cambios'}
           </button>
-          {saved && <span className="text-sm text-emerald-600 font-medium">Guardado ✓</span>}
+          {saved && <span className="text-sm text-emerald-600 font-medium">✅ Guardado</span>}
         </div>
       </form>
 
       <FiscalSequencesPanel />
 
-      <div className="form-card max-w-lg space-y-3 mt-6">
-        <p className="text-sm font-semibold text-slate-700">🔗 Enlaces de la plataforma</p>
+      <div className="executive-card max-w-lg space-y-3 mt-6">
+        <SectionTitle emoji="🔗">Enlaces de la plataforma</SectionTitle>
         <div>
           <p className="text-xs text-slate-500">Identificador del portal (slug)</p>
           <p className="font-mono text-blue-700">{form.slug}</p>

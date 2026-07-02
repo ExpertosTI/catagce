@@ -87,7 +87,7 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      <div className="card p-4 mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="executive-card p-4 mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="relative sm:col-span-2">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente o factura..." className="input !pl-9 text-sm" />

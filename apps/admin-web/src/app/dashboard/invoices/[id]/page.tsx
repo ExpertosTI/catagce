@@ -29,7 +29,7 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
     return (
       <DashboardLayout>
         <PageHeader emoji={PAGE.invoicesNotFound.emoji} title={PAGE.invoicesNotFound.title} />
-        <div className="card p-8 text-center text-slate-500">{error}</div>
+        <div className="executive-card p-8 text-center text-slate-500">❌ {error}</div>
       </DashboardLayout>
     );
   }

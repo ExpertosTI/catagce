@@ -96,9 +96,9 @@ export default function NewCatalogPage() {
             />
           </div>
           <div className="max-h-56 overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2">
-            {fetching && <p className="text-sm text-slate-400 text-center py-6">Cargando productos...</p>}
+            {fetching && <p className="text-sm text-slate-400 text-center py-6">📦 Cargando productos...</p>}
             {!fetching && !filteredProducts.length && (
-              <p className="text-sm text-slate-400 text-center py-6">Sin productos que coincidan</p>
+              <p className="text-sm text-slate-400 text-center py-6">🔍 Sin productos que coincidan</p>
             )}
             {!fetching && filteredProducts.map((p) => (
               <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer px-2 py-1.5 rounded-lg hover:bg-slate-50">

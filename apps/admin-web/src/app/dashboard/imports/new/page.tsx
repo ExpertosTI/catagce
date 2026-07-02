@@ -160,10 +160,10 @@ export default function NewImportPage() {
           </div>
         )}
 
-        {pageError && <p className="text-sm text-red-600">{pageError}</p>}
+        {pageError && <p className="text-sm text-red-600">❌ {pageError}</p>}
 
         <button type="submit" disabled={loading || !reference} className="btn-primary w-full sm:w-auto disabled:opacity-50">
-          {loading ? 'Registrando...' : 'Registrar importación'}
+          {loading ? '⏳ Registrando...' : '🚢 Registrar importación'}
         </button>
       </form>
     </DashboardLayout>

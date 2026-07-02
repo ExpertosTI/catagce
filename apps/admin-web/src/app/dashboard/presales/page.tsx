@@ -1,19 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
+import DashboardLayout, { PageHeader, SectionTitle } from '../../../components/DashboardLayout';
+import { LoadingState } from '../../../components/LoadingState';
+import { EmptyState } from '../../../components/EmptyState';
 import { apiFetch } from '../../../lib/api';
 import { formatCurrency } from '../../../lib/currency';
 import { presaleStatusLabel } from '../../../lib/labels';
 import { PAGE } from '../../../lib/page-titles';
 
+type Presale = {
+  id: string;
+  reference: string;
+  clientName: string;
+  status: string;
+  totalAmount: string;
+};
+
 export default function PresalesPage() {
-  const [presales, setPresales] = useState<any[]>([]);
+  const [presales, setPresales] = useState<Presale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    apiFetch('/catalogs/presales')
+    apiFetch<Presale[]>('/catalogs/presales')
       .then(setPresales)
       .catch(() => setError('No se pudieron cargar las preventas'))
       .finally(() => setLoading(false));
@@ -23,42 +33,59 @@ export default function PresalesPage() {
     <DashboardLayout>
       <PageHeader emoji={PAGE.presales.emoji} title={PAGE.presales.title} subtitle={PAGE.presales.subtitle} />
 
-      <div className="executive-card overflow-hidden !p-0">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 border-b">
-            <tr>
-              <th className="text-left p-4">Referencia</th>
-              <th className="text-left p-4">Cliente</th>
-              <th className="text-left p-4">Estado</th>
-              <th className="text-right p-4">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={4} className="p-8 text-center text-slate-400">🛒 Cargando preventas...</td></tr>
-            )}
-            {!loading && error && (
-              <tr><td colSpan={4} className="p-8 text-center text-red-600">❌ {error}</td></tr>
-            )}
-            {!loading && !error && presales.map((p) => (
-              <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
-                <td className="p-4 font-medium">{p.reference}</td>
-                <td className="p-4">{p.clientName}</td>
-                <td className="p-4"><span className="badge-blue">{presaleStatusLabel[p.status] ?? p.status}</span></td>
-                <td className="p-4 text-right font-medium">{formatCurrency(p.totalAmount)}</td>
-              </tr>
+      {loading && <LoadingState emoji="🛒" message="Cargando preventas..." />}
+      {!loading && error && (
+        <div className="executive-card p-8 text-center text-red-600">❌ {error}</div>
+      )}
+
+      {!loading && !error && presales.length === 0 && (
+        <EmptyState
+          emoji="🛒"
+          title="Sin preventas"
+          subtitle="Se crean cuando los clientes piden desde el catálogo público"
+        />
+      )}
+
+      {!loading && !error && presales.length > 0 && (
+        <>
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 lg:hidden mb-4">
+            {presales.map((p) => (
+              <article key={p.id} className="executive-card">
+                <div className="flex justify-between gap-2 mb-2">
+                  <p className="font-bold text-slate-900">{p.reference}</p>
+                  <span className="badge-blue shrink-0">{presaleStatusLabel[p.status] ?? p.status}</span>
+                </div>
+                <p className="text-sm text-slate-600">👤 {p.clientName}</p>
+                <p className="text-lg font-bold text-blue-700 mt-2">{formatCurrency(p.totalAmount)}</p>
+              </article>
             ))}
-            {!loading && !error && !presales.length && (
-              <tr>
-                <td colSpan={4} className="p-10 text-center text-slate-500">
-                  <p className="text-3xl mb-2" aria-hidden>🛒</p>
-                  Aún no hay preventas. Se crean desde el catálogo público que comparta con sus clientes.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+
+          <SectionTitle emoji="🛒">Listado de preventas</SectionTitle>
+          <div className="executive-card overflow-hidden !p-0 hidden lg:block">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 border-b">
+                <tr>
+                  <th className="text-left p-4">Referencia</th>
+                  <th className="text-left p-4">Cliente</th>
+                  <th className="text-left p-4">Estado</th>
+                  <th className="text-right p-4">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {presales.map((p) => (
+                  <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/60">
+                    <td className="p-4 font-medium">{p.reference}</td>
+                    <td className="p-4">{p.clientName}</td>
+                    <td className="p-4"><span className="badge-blue">{presaleStatusLabel[p.status] ?? p.status}</span></td>
+                    <td className="p-4 text-right font-medium">{formatCurrency(p.totalAmount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </DashboardLayout>
   );
 }

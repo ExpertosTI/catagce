@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Loader2, Plus, Minus } from 'lucide-react';
-import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
+import DashboardLayout, { PageHeader, SectionTitle } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
@@ -166,7 +166,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 type="button"
                 onClick={generateDescription}
                 disabled={generating}
-                className="btn-action btn-action-secondary text-xs disabled:opacity-50"
+                className="btn-subtle btn-subtle-primary text-xs disabled:opacity-50"
               >
                 {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 {generating ? 'Generando...' : 'Generar con IA'}
@@ -194,19 +194,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </form>
 
         <div className="space-y-6">
-          <div className="card p-5">
+          <div className="executive-card p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-sm text-slate-500">Inventario disponible</p>
+                <SectionTitle emoji="📦">Inventario disponible</SectionTitle>
                 <p className={`text-3xl font-bold mt-1 ${availableQty <= form.minStock ? 'text-amber-600' : 'text-emerald-700'}`}>{availableQty}</p>
               </div>
               {availableQty <= form.minStock && (
-                <span className="badge-amber">Bajo stock mínimo</span>
+                <span className="badge-amber shrink-0">⚠️ Bajo stock</span>
               )}
             </div>
 
             <form onSubmit={applyAdjustment} className="space-y-3 pt-4 border-t border-slate-100">
-              <p className="form-label">Ajustar inventario</p>
+              <p className="form-label">⚖️ Ajustar inventario</p>
               <SegmentedControl<'in' | 'out'>
                 value={adjustDirection}
                 onChange={setAdjustDirection}
@@ -232,8 +232,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </form>
           </div>
 
-          <div className="card overflow-hidden">
-            <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">Historial de movimientos</div>
+          <div className="executive-card overflow-hidden !p-0">
+            <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">📋 Historial de movimientos</div>
             <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
               {movements.map((m) => (
                 <li key={m.id} className="px-4 py-3 text-sm">
@@ -249,7 +249,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                   </p>
                 </li>
               ))}
-              {!movements.length && <li className="p-6 text-center text-slate-400 text-sm">Sin movimientos registrados</li>}
+              {!movements.length && <li className="p-6 text-center text-slate-400 text-sm">📋 Sin movimientos registrados</li>}
             </ul>
           </div>
         </div>
