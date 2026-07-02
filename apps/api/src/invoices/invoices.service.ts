@@ -1,5 +1,5 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import {
   clients, invoices, invoiceItems, invoicePayments, clientAllocations,
   stockLevels, products, dispatches, dispatchItems,
@@ -128,8 +128,16 @@ export class InvoicesService {
     amount: number; method?: string; reference?: string; notes?: string;
   }) {
     const invoice = await this.getById(user, invoiceId);
-    const paid = parseFloat(invoice.paidAmount ?? '0') + data.amount;
+    if (!data.amount || data.amount <= 0) {
+      throw new BadRequestException('El monto del abono debe ser mayor a cero');
+    }
+    const currentPaid = parseFloat(invoice.paidAmount ?? '0');
     const total = parseFloat(invoice.totalAmount ?? '0');
+    const balance = Math.max(0, total - currentPaid);
+    if (data.amount > balance + 0.01) {
+      throw new BadRequestException(`El monto excede el saldo pendiente (RD$ ${balance.toFixed(2)})`);
+    }
+    const paid = currentPaid + data.amount;
 
     await this.db.insert(invoicePayments).values({
       invoiceId,
@@ -151,6 +159,58 @@ export class InvoicesService {
     }).where(eq(invoices.id, invoiceId));
 
     return this.getById(user, invoiceId);
+  }
+
+  async voidPayment(user: AuthUser, invoiceId: string, paymentId: string) {
+    const invoice = await this.getById(user, invoiceId);
+    const payment = (invoice.payments ?? []).find((p: any) => p.id === paymentId);
+    if (!payment) throw new NotFoundException('Pago no encontrado');
+
+    await this.db.delete(invoicePayments).where(eq(invoicePayments.id, paymentId));
+
+    const total = parseFloat(invoice.totalAmount ?? '0');
+    const paid = Math.max(0, parseFloat(invoice.paidAmount ?? '0') - parseFloat(payment.amount));
+    let status = invoice.status;
+    if (status !== 'cancelled' && status !== 'draft') {
+      if (paid <= 0) status = 'issued';
+      else if (paid >= total) status = 'paid';
+      else status = 'partially_paid';
+    }
+
+    await this.db.update(invoices).set({
+      paidAmount: paid.toFixed(2),
+      status,
+      updatedAt: new Date(),
+    }).where(eq(invoices.id, invoiceId));
+
+    return this.getById(user, invoiceId);
+  }
+
+  async listPayments(user: AuthUser, filters: { clientId?: string; method?: string; from?: string; to?: string } = {}) {
+    const conditions = [eq(invoices.companyId, user.companyId)];
+    if (filters.clientId) conditions.push(eq(invoices.clientId, filters.clientId));
+    if (filters.method) conditions.push(eq(invoicePayments.method, filters.method as any));
+    if (filters.from) conditions.push(gte(invoicePayments.paidAt, new Date(filters.from)));
+    if (filters.to) conditions.push(lte(invoicePayments.paidAt, new Date(`${filters.to}T23:59:59`)));
+
+    return this.db.select({
+      id: invoicePayments.id,
+      amount: invoicePayments.amount,
+      method: invoicePayments.method,
+      reference: invoicePayments.reference,
+      notes: invoicePayments.notes,
+      paidAt: invoicePayments.paidAt,
+      invoiceId: invoices.id,
+      invoiceReference: invoices.reference,
+      clientId: clients.id,
+      clientName: clients.name,
+      clientPhone: clients.phone,
+    })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .innerJoin(clients, eq(invoices.clientId, clients.id))
+      .where(and(...conditions))
+      .orderBy(desc(invoicePayments.paidAt));
   }
 
   private async reserveStock(companyId: string, productId: string, qty: number, warehouseId?: string) {

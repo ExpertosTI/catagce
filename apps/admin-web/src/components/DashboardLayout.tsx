@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, Package, FileText, Truck, ShoppingBag,
-  Ship, BookOpen, Settings, LogOut, Plus, Menu, X,
+  Ship, BookOpen, Settings, LogOut, Plus, Menu, X, Wallet, BarChart3,
 } from 'lucide-react';
 import { clearAuth, getUser } from '../lib/api';
 import { SITE_URL } from '../lib/site';
@@ -17,10 +17,12 @@ const nav = [
   { href: '/dashboard/clients', label: 'Clientes', icon: Users },
   { href: '/dashboard/products', label: 'Mercancía', icon: Package },
   { href: '/dashboard/invoices', label: 'Facturas', icon: FileText },
+  { href: '/dashboard/payments', label: 'Pagos', icon: Wallet },
   { href: '/dashboard/dispatches', label: 'Despachos', icon: Truck },
   { href: '/dashboard/presales', label: 'Preventas', icon: ShoppingBag },
   { href: '/dashboard/imports', label: 'Importaciones', icon: Ship },
   { href: '/dashboard/catalogs', label: 'Catálogos', icon: BookOpen },
+  { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3 },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
 ];
 

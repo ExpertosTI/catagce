@@ -50,4 +50,16 @@ export class ProductsController {
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.productsService.remove(user, id);
   }
+
+  @StaffOnly()
+  @Post(':id/stock-adjustment')
+  adjustStock(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
+    return this.productsService.adjustStock(user, id, body);
+  }
+
+  @StaffOnly()
+  @Get(':id/stock-movements')
+  stockMovements(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.productsService.listStockMovements(user, id);
+  }
 }

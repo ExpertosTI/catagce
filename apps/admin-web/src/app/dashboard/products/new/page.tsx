@@ -11,7 +11,7 @@ import { apiFetch } from '../../../../lib/api';
 
 export default function NewProductPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', stockQty: 0 });
+  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', stockQty: 0, minStock: 0 });
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
@@ -38,7 +38,7 @@ export default function NewProductPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const product = await apiFetch<any>('/products', {
+      await apiFetch<any>('/products', {
         method: 'POST',
         body: JSON.stringify({
           sku: form.sku,
@@ -47,14 +47,10 @@ export default function NewProductPage() {
           salePrice: parseFloat(form.salePrice),
           costPrice: form.costPrice ? parseFloat(form.costPrice) : undefined,
           imageUrl: form.imageUrl || undefined,
+          stockQty: form.stockQty || undefined,
+          minStock: form.minStock || undefined,
         }),
       });
-      if (form.stockQty > 0) {
-        await apiFetch(`/products/${product.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ stockQty: form.stockQty }),
-        });
-      }
       router.push('/dashboard/products');
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Error al crear producto');
@@ -97,9 +93,14 @@ export default function NewProductPage() {
             <input type="number" step="0.01" min={0} value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} className="input" />
           </FormField>
         </div>
-        <FormField label="Cantidad en inventario">
-          <QuantityStepper value={form.stockQty} onChange={(v) => setForm({ ...form, stockQty: v })} min={0} />
-        </FormField>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Cantidad inicial en inventario">
+            <QuantityStepper value={form.stockQty} onChange={(v) => setForm({ ...form, stockQty: v })} min={0} />
+          </FormField>
+          <FormField label="Stock mínimo (alerta)">
+            <QuantityStepper value={form.minStock} onChange={(v) => setForm({ ...form, minStock: v })} min={0} />
+          </FormField>
+        </div>
         <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
           {loading ? 'Creando...' : 'Crear producto'}
         </button>

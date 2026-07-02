@@ -16,6 +16,7 @@ import { CompaniesModule } from './companies/companies.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AiModule } from './ai/ai.module';
+import { ReportsModule } from './reports/reports.module';
 import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
@@ -35,6 +36,7 @@ import { AuthGuard } from './common/guards/auth.guard';
     SuppliersModule,
     NotificationsModule,
     AiModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
 import { InvoicesService, DispatchesService } from './invoices.service';
 import { StaffOnly } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/user.decorator';
@@ -27,6 +27,17 @@ export class InvoicesController {
     return this.dispatchesService.listPending(user);
   }
 
+  @Get('payments')
+  listPayments(
+    @CurrentUser() user: AuthUser,
+    @Query('clientId') clientId?: string,
+    @Query('method') method?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.invoicesService.listPayments(user, { clientId, method, from, to });
+  }
+
   @Get(':id')
   get(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.invoicesService.getById(user, id);
@@ -40,6 +51,11 @@ export class InvoicesController {
   @Post(':id/payments')
   addPayment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
     return this.invoicesService.addPayment(user, id, body);
+  }
+
+  @Delete(':id/payments/:paymentId')
+  voidPayment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('paymentId') paymentId: string) {
+    return this.invoicesService.voidPayment(user, id, paymentId);
   }
 
   @Post('dispatches')

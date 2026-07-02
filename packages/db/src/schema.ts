@@ -19,6 +19,9 @@ export const orderRequestStatusEnum = pgEnum('order_request_status', [
 export const quoteStatusEnum = pgEnum('quote_status', ['draft', 'sent', 'accepted', 'rejected', 'expired']);
 export const importStatusEnum = pgEnum('import_status', ['in_transit', 'customs', 'received', 'closed']);
 export const allocationStatusEnum = pgEnum('allocation_status', ['reserved', 'partially_dispatched', 'dispatched']);
+export const stockMovementTypeEnum = pgEnum('stock_movement_type', [
+  'adjustment', 'import', 'dispatch', 'return', 'correction',
+]);
 
 // ─── Empresa importadora ─────────────────────────────────────────────────────
 export const companies = pgTable('companies', {
@@ -115,6 +118,7 @@ export const products = pgTable('products', {
   unit: text('unit').default('un'),
   costPrice: decimal('cost_price', { precision: 14, scale: 2 }),
   salePrice: decimal('sale_price', { precision: 14, scale: 2 }).notNull(),
+  minStock: integer('min_stock').default(0),
   isActive: boolean('is_active').default(true),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow(),
@@ -171,6 +175,20 @@ export const stockLevels = pgTable('stock_levels', {
 }, (t) => ({
   productWarehouseIdx: uniqueIndex('stock_levels_product_warehouse_idx').on(t.productId, t.warehouseId),
 }));
+
+// ─── Movimientos de inventario (auditoría) ──────────────────────────────────
+export const stockMovements = pgTable('stock_movements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  warehouseId: uuid('warehouse_id').references(() => warehouses.id).notNull(),
+  type: stockMovementTypeEnum('type').default('adjustment').notNull(),
+  quantityChange: integer('quantity_change').notNull(),
+  resultingQty: integer('resulting_qty').notNull(),
+  reason: text('reason'),
+  staffId: uuid('staff_id').references(() => staffUsers.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
 // ─── Catálogos y visual de mercancía ─────────────────────────────────────────
 export const catalogs = pgTable('catalogs', {

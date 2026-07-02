@@ -207,6 +207,104 @@ export function printInvoicePdf(inv: InvoiceDetail, companyName = 'General Home'
   }, 800);
 }
 
+export type PaymentReceipt = {
+  id: string;
+  amount: string;
+  method: string;
+  reference?: string | null;
+  notes?: string | null;
+  paidAt: string;
+  invoiceReference: string;
+  clientName?: string;
+  clientPhone?: string | null;
+};
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cash: 'Efectivo', transfer: 'Transferencia', card: 'Tarjeta', check: 'Cheque', other: 'Otro',
+};
+
+export function buildPaymentReceiptMessage(p: PaymentReceipt, companyName = 'General Home') {
+  let msg = `*${companyName}*\n🧾 *Recibo de pago*\n\n`;
+  msg += `Factura: *${p.invoiceReference}*\n`;
+  if (p.clientName) msg += `Cliente: ${p.clientName}\n`;
+  msg += `Fecha: ${formatDate(p.paidAt)}\n`;
+  msg += `Método: ${PAYMENT_METHOD_LABEL[p.method] ?? p.method}\n`;
+  if (p.reference) msg += `Referencia: ${p.reference}\n`;
+  msg += `\n*Monto abonado: ${formatUsd(p.amount)}*\n`;
+  msg += '\n_Generado desde GHome · renace.tech_';
+  return msg;
+}
+
+export function sharePaymentReceiptWhatsApp(p: PaymentReceipt, companyName?: string) {
+  const msg = buildPaymentReceiptMessage(p, companyName);
+  const url = p.clientPhone
+    ? `https://wa.me/${p.clientPhone.replace(/\D/g, '').replace(/^(\d{10})$/, '1$1')}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+export function printPaymentReceipt(p: PaymentReceipt, companyName = 'General Home', logoUrl?: string) {
+  const safeCompany = escapeHtml(companyName);
+  const safeRef = escapeHtml(p.invoiceReference);
+  const safeClient = escapeHtml(p.clientName ?? '—');
+  const safeMethod = escapeHtml(PAYMENT_METHOD_LABEL[p.method] ?? p.method);
+
+  const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"/><title>Recibo ${safeRef}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #0f172a; padding: 0; margin: 0; background: #f1f5f9; }
+  .sheet { max-width: 480px; margin: 0 auto; background: #fff; }
+  .header { background: linear-gradient(135deg, #059669, #047857); color: #fff; padding: 32px; text-align: center; }
+  .header-logo { width: 48px; height: 48px; border-radius: 10px; background: #fff; object-fit: contain; padding: 4px; margin: 0 auto 10px; display: block; }
+  .header h1 { margin: 0; font-size: 18px; font-weight: 800; }
+  .header p { margin: 4px 0 0; font-size: 12px; opacity: 0.9; }
+  .amount { text-align: center; padding: 28px 20px 8px; }
+  .amount .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .amount .value { font-size: 34px; font-weight: 800; color: #047857; margin-top: 6px; }
+  .details { padding: 20px 32px 32px; }
+  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+  .row span:first-child { color: #64748b; }
+  .row span:last-child { font-weight: 600; }
+  .footer { text-align: center; padding: 16px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+  @media print { body { background: #fff; } }
+</style></head><body>
+  <div class="sheet">
+    <div class="header">
+      ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" class="header-logo" alt="" />` : ''}
+      <h1>${safeCompany}</h1>
+      <p>Recibo de pago</p>
+    </div>
+    <div class="amount">
+      <p class="label">Monto abonado</p>
+      <p class="value">${formatUsd(p.amount)}</p>
+    </div>
+    <div class="details">
+      <div class="row"><span>Factura</span><span>${safeRef}</span></div>
+      <div class="row"><span>Cliente</span><span>${safeClient}</span></div>
+      <div class="row"><span>Fecha</span><span>${formatDate(p.paidAt)}</span></div>
+      <div class="row"><span>Método</span><span>${safeMethod}</span></div>
+      ${p.reference ? `<div class="row"><span>Referencia</span><span>${escapeHtml(p.reference)}</span></div>` : ''}
+    </div>
+    <div class="footer">Santo Domingo, RD · Documento generado por GHome · Desarrollado por renace.tech</div>
+  </div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    URL.revokeObjectURL(url);
+    alert('Permita ventanas emergentes para imprimir o guardar como PDF.');
+    return;
+  }
+  win.addEventListener('load', () => { win.focus(); win.print(); });
+  setTimeout(() => {
+    try { win.focus(); win.print(); } catch { /* noop */ }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }, 800);
+}
+
 export async function copyInvoiceSummary(inv: InvoiceDetail) {
   const text = buildInvoiceWhatsAppMessage(inv);
   try {

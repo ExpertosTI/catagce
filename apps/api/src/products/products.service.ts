@@ -1,6 +1,6 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, and, desc } from 'drizzle-orm';
-import { products, productMedia, productCategories, stockLevels, warehouses } from '@ghome/db';
+import { products, productMedia, productCategories, stockLevels, warehouses, stockMovements } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { generateWithGemini } from '../ai/gemini.util';
@@ -18,6 +18,7 @@ export class ProductsService {
       unit: products.unit,
       salePrice: products.salePrice,
       costPrice: products.costPrice,
+      minStock: products.minStock,
       isActive: products.isActive,
       categoryId: products.categoryId,
       imageUrl: productMedia.url,
@@ -61,6 +62,7 @@ export class ProductsService {
   async create(user: AuthUser, data: {
     sku: string; name: string; description?: string; unit?: string;
     salePrice: number; costPrice?: number; categoryId?: string; imageUrl?: string;
+    stockQty?: number; minStock?: number;
   }) {
     const [product] = await this.db.insert(products).values({
       companyId: user.companyId,
@@ -71,6 +73,7 @@ export class ProductsService {
       salePrice: data.salePrice.toFixed(2),
       costPrice: data.costPrice?.toFixed(2),
       categoryId: data.categoryId,
+      minStock: data.minStock ?? 0,
     }).returning();
 
     if (data.imageUrl) {
@@ -86,6 +89,11 @@ export class ProductsService {
         companyId: user.companyId, productId: product.id, warehouseId: wh.id,
         totalQty: 0, reservedQty: 0, dispatchedQty: 0,
       });
+      if (data.stockQty && data.stockQty > 0) {
+        await this.adjustStock(user, product.id, {
+          warehouseId: wh.id, delta: data.stockQty, reason: 'Inventario inicial', type: 'adjustment',
+        });
+      }
     }
 
     return this.getById(user, product.id);
@@ -99,7 +107,7 @@ export class ProductsService {
   async update(user: AuthUser, id: string, data: {
     sku?: string; name?: string; description?: string; unit?: string;
     salePrice?: number; costPrice?: number; categoryId?: string; imageUrl?: string;
-    stockQty?: number;
+    minStock?: number;
   }) {
     await this.getById(user, id);
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -110,6 +118,7 @@ export class ProductsService {
     if (data.salePrice !== undefined) updates.salePrice = data.salePrice.toFixed(2);
     if (data.costPrice !== undefined) updates.costPrice = data.costPrice.toFixed(2);
     if (data.categoryId !== undefined) updates.categoryId = data.categoryId;
+    if (data.minStock !== undefined) updates.minStock = data.minStock;
 
     await this.db.update(products).set(updates).where(and(eq(products.id, id), eq(products.companyId, user.companyId)));
 
@@ -125,15 +134,6 @@ export class ProductsService {
       }
     }
 
-    if (data.stockQty !== undefined) {
-      const [stock] = await this.db.select().from(stockLevels)
-        .where(and(eq(stockLevels.productId, id), eq(stockLevels.companyId, user.companyId))).limit(1);
-      if (stock) {
-        await this.db.update(stockLevels).set({ totalQty: data.stockQty, updatedAt: new Date() })
-          .where(eq(stockLevels.id, stock.id));
-      }
-    }
-
     return this.getById(user, id);
   }
 
@@ -142,6 +142,58 @@ export class ProductsService {
     await this.db.update(products).set({ isActive: false, updatedAt: new Date() })
       .where(and(eq(products.id, id), eq(products.companyId, user.companyId)));
     return { ok: true, message: 'Producto eliminado' };
+  }
+
+  async adjustStock(user: AuthUser, productId: string, data: {
+    warehouseId?: string; delta: number; reason?: string; type?: 'adjustment' | 'correction' | 'return';
+  }) {
+    await this.getById(user, productId);
+    if (!data.delta) throw new BadRequestException('La cantidad de ajuste no puede ser cero');
+
+    const conditions = [eq(stockLevels.companyId, user.companyId), eq(stockLevels.productId, productId)];
+    if (data.warehouseId) conditions.push(eq(stockLevels.warehouseId, data.warehouseId));
+
+    const [stock] = await this.db.select().from(stockLevels).where(and(...conditions)).limit(1);
+    if (!stock) throw new NotFoundException('No se encontró inventario para este producto en el almacén indicado');
+
+    const newQty = stock.totalQty + data.delta;
+    if (newQty < 0) {
+      throw new BadRequestException(`El ajuste dejaría el inventario en negativo (actual: ${stock.totalQty})`);
+    }
+
+    await this.db.update(stockLevels).set({ totalQty: newQty, updatedAt: new Date() })
+      .where(eq(stockLevels.id, stock.id));
+
+    await this.db.insert(stockMovements).values({
+      companyId: user.companyId,
+      productId,
+      warehouseId: stock.warehouseId,
+      type: data.type ?? 'adjustment',
+      quantityChange: data.delta,
+      resultingQty: newQty,
+      reason: data.reason,
+      staffId: user.userId,
+    });
+
+    return this.getById(user, productId);
+  }
+
+  async listStockMovements(user: AuthUser, productId: string) {
+    await this.getById(user, productId);
+    return this.db.select({
+      id: stockMovements.id,
+      type: stockMovements.type,
+      quantityChange: stockMovements.quantityChange,
+      resultingQty: stockMovements.resultingQty,
+      reason: stockMovements.reason,
+      createdAt: stockMovements.createdAt,
+      warehouseName: warehouses.name,
+    })
+      .from(stockMovements)
+      .innerJoin(warehouses, eq(stockMovements.warehouseId, warehouses.id))
+      .where(and(eq(stockMovements.companyId, user.companyId), eq(stockMovements.productId, productId)))
+      .orderBy(desc(stockMovements.createdAt))
+      .limit(30);
   }
 
   async generateDescription(name: string, category?: string) {

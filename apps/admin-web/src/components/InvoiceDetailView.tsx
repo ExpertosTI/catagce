@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X } from 'lucide-react';
+import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X, Receipt, Ban } from 'lucide-react';
 import { useState } from 'react';
 import {
   InvoiceDetail, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary,
+  printPaymentReceipt, sharePaymentReceiptWhatsApp,
 } from '../lib/invoice-utils';
 import { invoiceStatusLabel, paymentMethodLabel } from '../lib/labels';
 import { useCompany } from '../lib/useCompany';
@@ -36,8 +37,10 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('transfer');
   const [paymentRef, setPaymentRef] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [voidingId, setVoidingId] = useState<string | null>(null);
 
   async function handleCopy() {
     const ok = await copyInvoiceSummary(invoice);
@@ -59,16 +62,30 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
     try {
       const updated = await apiFetch<InvoiceDetail>(`/invoices/${invoice.id}/payments`, {
         method: 'POST',
-        body: JSON.stringify({ amount, method: paymentMethod, reference: paymentRef || undefined }),
+        body: JSON.stringify({ amount, method: paymentMethod, reference: paymentRef || undefined, notes: paymentNotes || undefined }),
       });
       onInvoiceUpdated?.({ ...updated, clientName: updated.client?.name ?? updated.clientName });
       setShowPaymentForm(false);
       setPaymentAmount('');
       setPaymentRef('');
+      setPaymentNotes('');
     } catch (err: unknown) {
       setPaymentError(err instanceof Error ? err.message : 'No se pudo registrar el abono');
     } finally {
       setPaymentSaving(false);
+    }
+  }
+
+  async function voidPayment(paymentId: string) {
+    if (!confirm('¿Anular este abono? Esta acción no se puede deshacer.')) return;
+    setVoidingId(paymentId);
+    try {
+      const updated = await apiFetch<InvoiceDetail>(`/invoices/${invoice.id}/payments/${paymentId}`, { method: 'DELETE' });
+      onInvoiceUpdated?.({ ...updated, clientName: updated.client?.name ?? updated.clientName });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'No se pudo anular el abono');
+    } finally {
+      setVoidingId(null);
     }
   }
 
@@ -135,6 +152,10 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
             <label className="form-label">Referencia (opcional)</label>
             <input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} className="input" placeholder="N.º de comprobante" />
           </div>
+          <div>
+            <label className="form-label">Notas (opcional)</label>
+            <input value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} className="input" placeholder="Observaciones del abono" />
+          </div>
           {paymentError && <p className="text-sm text-red-600">{paymentError}</p>}
           <div className="flex gap-2">
             <button type="button" onClick={() => setShowPaymentForm(false)} className="btn-secondary flex-1">Cancelar</button>
@@ -193,9 +214,46 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
           <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">Abonos</div>
           <ul className="divide-y divide-slate-100">
             {invoice.payments.map((p) => (
-              <li key={p.id} className="px-4 py-3 flex justify-between text-sm hover:bg-slate-50/80">
+              <li key={p.id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm hover:bg-slate-50/80">
                 <span className="text-slate-600">{formatDate(p.paidAt)} · {paymentMethodLabel[p.method] ?? p.method} {p.reference && `(${p.reference})`}</span>
-                <span className="font-semibold text-emerald-700">{formatUsd(p.amount)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-emerald-700">{formatUsd(p.amount)}</span>
+                  <button
+                    type="button"
+                    title="Imprimir recibo"
+                    onClick={() => printPaymentReceipt({
+                      id: p.id, amount: p.amount, method: p.method, reference: p.reference,
+                      paidAt: p.paidAt, invoiceReference: invoice.reference,
+                      clientName: invoice.clientName ?? invoice.client?.name,
+                    }, resolvedName, company?.logoUrl)}
+                    className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                  >
+                    <Receipt size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    title="Enviar recibo por WhatsApp"
+                    onClick={() => sharePaymentReceiptWhatsApp({
+                      id: p.id, amount: p.amount, method: p.method, reference: p.reference,
+                      paidAt: p.paidAt, invoiceReference: invoice.reference,
+                      clientName: invoice.clientName ?? invoice.client?.name, clientPhone: invoice.client?.phone,
+                    }, resolvedName)}
+                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                  >
+                    <MessageCircle size={15} />
+                  </button>
+                  {canManagePayments && (
+                    <button
+                      type="button"
+                      title="Anular abono"
+                      disabled={voidingId === p.id}
+                      onClick={() => voidPayment(p.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
+                    >
+                      <Ban size={15} />
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
