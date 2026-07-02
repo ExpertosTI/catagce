@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      - DB_HOST=ghome-db
+      - DB_HOST=ghome_db
       - DB_USER=ghome_admin
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=ghome_prod

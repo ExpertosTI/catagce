@@ -51,8 +51,8 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md card p-8">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-md card p-6 sm:p-8 shadow-sm">
         <Link href="/" className="text-blue-700 font-bold text-sm">← Volver al inicio</Link>
         <h1 className="text-2xl font-bold mt-4">{mode === 'login' ? 'Portal de clientes' : 'Registro de cliente'}</h1>
         <p className="text-slate-500 text-sm mt-1">Acceda a facturas, despachos y catálogos</p>
@@ -68,9 +68,9 @@ export default function LoginForm() {
           {mode === 'register' && (
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre comercial" required className="input" />
           )}
-          <input value={companySlug} onChange={(e) => setCompanySlug(e.target.value)} placeholder="Empresa (ghome)" className="input" />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className="input" />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" required className="input" />
+          <input value={companySlug} onChange={(e) => setCompanySlug(e.target.value)} placeholder="Empresa (generalhome)" className="input w-full" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className="input w-full" />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" required className="input w-full" />
           <button type="submit" className="btn-primary w-full">
             {mode === 'login' ? 'Entrar al portal' : 'Enviar registro'}
           </button>
