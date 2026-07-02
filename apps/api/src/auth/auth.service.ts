@@ -1,9 +1,10 @@
-import { Injectable, Inject, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, ConflictException, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { eq, and } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { companies, staffUsers, clients, warehouses, priceLists } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
+import { isFirebaseConfigured, verifyFirebaseIdToken } from './firebase-admin.util';
 
 export type AuthUser = {
   userId: string;
@@ -147,6 +148,91 @@ export class AuthService {
       token: this.signToken(client, company, 'client'),
       client: { id: client.id, code: client.code, name: client.name, email: client.email },
       company: { id: company.id, name: company.name, slug: company.slug },
+    };
+  }
+
+  async loginClientOAuth(data: { idToken: string; companySlug: string; displayName?: string }) {
+    if (!isFirebaseConfigured()) {
+      throw new ServiceUnavailableException('Inicio de sesión social no disponible. Contacte al administrador.');
+    }
+
+    let decoded: Awaited<ReturnType<typeof verifyFirebaseIdToken>>;
+    try {
+      decoded = await verifyFirebaseIdToken(data.idToken);
+    } catch {
+      throw new UnauthorizedException('Token de autenticación inválido o expirado');
+    }
+
+    const email = decoded.email?.trim();
+    if (!email) {
+      throw new BadRequestException('No se pudo obtener el correo. En Apple, comparta su email al iniciar sesión.');
+    }
+
+    const signInProvider = decoded.firebase?.sign_in_provider;
+    const authProvider = signInProvider === 'apple.com'
+      ? 'apple'
+      : signInProvider === 'google.com'
+        ? 'google'
+        : null;
+    if (!authProvider) {
+      throw new BadRequestException('Proveedor de inicio de sesión no soportado');
+    }
+
+    const [company] = await this.db.select().from(companies)
+      .where(eq(companies.slug, data.companySlug.trim().toLowerCase())).limit(1);
+    if (!company) throw new NotFoundException('Empresa no encontrada');
+
+    const providerSubject = decoded.uid;
+    const displayName = data.displayName?.trim() || (decoded as { name?: string }).name?.trim() || email.split('@')[0];
+
+    let [client] = await this.db.select().from(clients)
+      .where(and(eq(clients.companyId, company.id), eq(clients.providerSubject, providerSubject))).limit(1);
+
+    if (!client) {
+      [client] = await this.db.select().from(clients)
+        .where(and(eq(clients.companyId, company.id), eq(clients.email, email))).limit(1);
+    }
+
+    let isNewUser = false;
+
+    if (client) {
+      if (client.status === 'suspended') {
+        throw new UnauthorizedException('Su cuenta está suspendida');
+      }
+
+      const updates: Record<string, unknown> = {
+        providerSubject,
+        authProvider,
+        lastLoginAt: new Date(),
+      };
+      if (client.status === 'pending') updates.status = 'active';
+
+      await this.db.update(clients).set(updates).where(eq(clients.id, client.id));
+      client = { ...client, ...updates, status: (updates.status as string) ?? client.status };
+    } else {
+      isNewUser = true;
+      const code = `CLI-${Date.now().toString(36).toUpperCase()}`;
+      [client] = await this.db.insert(clients).values({
+        companyId: company.id,
+        code,
+        name: displayName,
+        email,
+        authProvider,
+        providerSubject,
+        status: 'active',
+        lastLoginAt: new Date(),
+      }).returning();
+    }
+
+    if (client.status !== 'active') {
+      throw new UnauthorizedException('Su cuenta está pendiente de activación por un administrador');
+    }
+
+    return {
+      token: this.signToken(client, company, 'client'),
+      client: { id: client.id, code: client.code, name: client.name, email: client.email },
+      company: { id: company.id, name: company.name, slug: company.slug },
+      isNewUser,
     };
   }
 

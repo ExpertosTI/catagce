@@ -34,4 +34,10 @@ export class AuthController {
   loginClient(@Body() body: { email: string; password: string; companySlug?: string }) {
     return this.authService.loginClient(body.email, body.password, body.companySlug);
   }
+
+  @Public()
+  @Post('client/oauth')
+  loginClientOAuth(@Body() body: { idToken: string; companySlug: string; displayName?: string }) {
+    return this.authService.loginClientOAuth(body);
+  }
 }

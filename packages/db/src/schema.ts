@@ -6,6 +6,7 @@ import { relations } from 'drizzle-orm';
 // ─── Enums ───────────────────────────────────────────────────────────────────
 export const staffRoleEnum = pgEnum('staff_role', ['owner', 'admin', 'sales', 'warehouse', 'viewer']);
 export const clientStatusEnum = pgEnum('client_status', ['pending', 'active', 'suspended']);
+export const clientAuthProviderEnum = pgEnum('client_auth_provider', ['password', 'google', 'apple']);
 export const invoiceStatusEnum = pgEnum('invoice_status', [
   'draft', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled',
 ]);
@@ -63,6 +64,8 @@ export const clients = pgTable('clients', {
   name: text('name').notNull(),
   email: text('email').notNull(),
   passwordHash: text('password_hash'),
+  authProvider: clientAuthProviderEnum('auth_provider').default('password'),
+  providerSubject: text('provider_subject'),
   phone: text('phone'),
   taxId: text('tax_id'),
   address: text('address'),
@@ -76,6 +79,7 @@ export const clients = pgTable('clients', {
 }, (t) => ({
   emailCompanyIdx: uniqueIndex('clients_email_company_idx').on(t.email, t.companyId),
   codeCompanyIdx: uniqueIndex('clients_code_company_idx').on(t.code, t.companyId),
+  providerCompanyIdx: uniqueIndex('clients_provider_company_idx').on(t.providerSubject, t.companyId),
 }));
 
 // ─── Proveedores internacionales ─────────────────────────────────────────────

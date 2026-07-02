@@ -12,6 +12,9 @@ services:
       - DB_NAME=ghome_prod
       - JWT_SECRET=${JWT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL:-}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY:-}
       - PUBLIC_API_URL=https://api.generalhome.tech/api
       - CORS_ORIGINS=${CORS_ORIGINS:-https://generalhome.tech,https://www.generalhome.tech,https://admin.generalhome.tech}
     networks:
@@ -50,11 +53,17 @@ services:
         NEXT_PUBLIC_SITE_URL: https://generalhome.tech
         NEXT_PUBLIC_ADMIN_URL: https://admin.generalhome.tech
         NEXT_PUBLIC_COMPANY_SLUG: generalhome
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:-}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}
     environment:
       - NEXT_PUBLIC_API_URL=https://api.generalhome.tech/api
       - NEXT_PUBLIC_SITE_URL=https://generalhome.tech
       - NEXT_PUBLIC_ADMIN_URL=https://admin.generalhome.tech
       - NEXT_PUBLIC_COMPANY_SLUG=generalhome
+      - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY:-}
+      - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
+      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}
     networks:
       - RenaceNet
     deploy:

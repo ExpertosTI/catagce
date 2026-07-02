@@ -6,11 +6,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { publicFetch, setAuth } from '../../lib/api';
 import { COMPANY_SLUG } from '../../lib/site';
 import { PORTAL_PAGE } from '../../lib/page-titles';
+import { OAuthButtons } from '../../components/OAuthButtons';
+import { isFirebaseConfigured } from '../../lib/firebase';
 
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/portal';
+  const oauthEnabled = isFirebaseConfigured();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('cliente@demo.com');
@@ -51,6 +54,10 @@ export default function LoginForm() {
     }
   }
 
+  function handleOAuthSuccess() {
+    router.push(redirect);
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md card p-6 sm:p-8 shadow-sm">
@@ -65,13 +72,41 @@ export default function LoginForm() {
           <button type="button" onClick={() => setMode('register')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mode === 'register' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'}`}>Registrarse</button>
         </div>
 
+        {mode === 'login' && (
+          <div className="mt-4">
+            <label className="text-xs font-medium text-slate-500 mb-1 block">Empresa</label>
+            <input value={companySlug} onChange={(e) => setCompanySlug(e.target.value)} placeholder="generalhome" className="input w-full" />
+          </div>
+        )}
+
+        {mode === 'login' && oauthEnabled && (
+          <div className="mt-4">
+            <OAuthButtons
+              companySlug={companySlug}
+              onSuccess={handleOAuthSuccess}
+              onError={setError}
+              onNewUser={() => setMessage('¡Bienvenido! Su cuenta fue creada correctamente.')}
+            />
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-slate-400">o con correo</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4 mt-6">
-          {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">{error}</p>}
-          {message && <p className="text-emerald-700 text-sm bg-emerald-50 p-3 rounded-lg">{message}</p>}
+          {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">❌ {error}</p>}
+          {message && <p className="text-emerald-700 text-sm bg-emerald-50 p-3 rounded-lg">✅ {message}</p>}
           {mode === 'register' && (
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre comercial" required className="input" />
           )}
-          <input value={companySlug} onChange={(e) => setCompanySlug(e.target.value)} placeholder="Empresa (generalhome)" className="input w-full" />
+          {mode === 'register' && (
+            <input value={companySlug} onChange={(e) => setCompanySlug(e.target.value)} placeholder="Empresa (generalhome)" className="input w-full" />
+          )}
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo electrónico" required className="input w-full" />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" required className="input w-full" />
           <button type="submit" className="btn-primary w-full">
