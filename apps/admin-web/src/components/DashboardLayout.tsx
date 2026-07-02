@@ -192,7 +192,8 @@ export function PageHeader({ emoji, title, subtitle, action }: { emoji?: string;
 export function ActionButton({ href, label, emoji }: { href: string; label: string; emoji?: string }) {
   return (
     <Link href={href} className="btn-primary inline-flex items-center gap-2 text-sm w-full sm:w-auto justify-center">
-      <Plus size={16} /> {emoji && <span aria-hidden>{emoji}</span>} {label}
+      {emoji ? <span aria-hidden>{emoji}</span> : <Plus size={16} />}
+      {label}
     </Link>
   );
 }

@@ -1,5 +1,7 @@
-import { Controller, Get, Patch, Param, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, Post } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
+import { InvoiceReminderService } from './invoice-reminder.service';
+import { StockAlertService } from './stock-alert.service';
 import { StaffOnly } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/user.decorator';
 import { AuthUser } from '../auth/auth.service';
@@ -7,7 +9,11 @@ import { AuthUser } from '../auth/auth.service';
 @StaffOnly()
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private notificationsService: NotificationsService) {}
+  constructor(
+    private notificationsService: NotificationsService,
+    private invoiceReminderService: InvoiceReminderService,
+    private stockAlertService: StockAlertService,
+  ) {}
 
   @Get()
   list(@CurrentUser() user: AuthUser, @Query('unread') unread?: string) {
@@ -27,5 +33,14 @@ export class NotificationsController {
   @Patch('read-all')
   markAllRead(@CurrentUser() user: AuthUser) {
     return this.notificationsService.markAllRead(user, 'staff');
+  }
+
+  @Post('run-checks')
+  async runChecks() {
+    const [invoices, stock] = await Promise.all([
+      this.invoiceReminderService.runCheck(),
+      this.stockAlertService.runCheck(),
+    ]);
+    return { invoices, stock };
   }
 }

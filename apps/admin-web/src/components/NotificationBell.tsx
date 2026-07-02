@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Check, AlertTriangle, Clock, BellRing } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, Check, AlertTriangle, Clock, BellRing, Package, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 type Notification = {
@@ -24,10 +25,25 @@ function timeAgo(dateStr: string) {
   return `hace ${Math.floor(hours / 24)} d`;
 }
 
+function notifIcon(type: string) {
+  if (type.includes('overdue')) return { Icon: AlertTriangle, cls: 'notif-icon-danger' };
+  if (type.includes('due_soon')) return { Icon: Clock, cls: 'notif-icon-warn' };
+  if (type.includes('low_stock')) return { Icon: Package, cls: 'notif-icon-warn' };
+  return { Icon: Bell, cls: 'notif-icon-info' };
+}
+
+function notifHref(n: Notification): string | null {
+  if (n.type.includes('invoice') && n.invoiceId) return `/dashboard/invoices/${n.invoiceId}`;
+  if (n.type === 'low_stock' && n.invoiceId) return `/dashboard/products/${n.invoiceId}`;
+  return null;
+}
+
 export function NotificationBell() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
+  const [syncing, setSyncing] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   function loadUnread() {
@@ -35,14 +51,18 @@ export function NotificationBell() {
   }
 
   function loadList() {
-    apiFetch<Notification[]>('/notifications').then(setNotifications).catch(() => {});
+    return apiFetch<Notification[]>('/notifications').then(setNotifications).catch(() => {});
   }
 
   useEffect(() => {
     loadUnread();
-    const interval = setInterval(loadUnread, 60_000);
+    loadList();
+    const interval = setInterval(() => {
+      loadUnread();
+      if (open) loadList();
+    }, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [open]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -57,10 +77,17 @@ export function NotificationBell() {
     setOpen((v) => !v);
   }
 
-  async function markRead(id: string) {
-    await apiFetch(`/notifications/${id}/read`, { method: 'PATCH' });
-    setNotifications((list) => list.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-    setUnread((c) => Math.max(0, c - 1));
+  async function handleClick(n: Notification) {
+    if (!n.isRead) {
+      await apiFetch(`/notifications/${n.id}/read`, { method: 'PATCH' });
+      setNotifications((list) => list.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+      setUnread((c) => Math.max(0, c - 1));
+    }
+    const href = notifHref(n);
+    if (href) {
+      setOpen(false);
+      router.push(href);
+    }
   }
 
   async function markAllRead() {
@@ -69,14 +96,18 @@ export function NotificationBell() {
     setUnread(0);
   }
 
+  async function syncAlerts() {
+    setSyncing(true);
+    try {
+      await apiFetch('/notifications/run-checks', { method: 'POST' });
+      await Promise.all([loadList(), loadUnread()]);
+    } catch { /* noop */ }
+    finally { setSyncing(false); }
+  }
+
   return (
     <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={toggle}
-        className="notif-bell-btn"
-        aria-label="Notificaciones"
-      >
+      <button type="button" onClick={toggle} className="notif-bell-btn" aria-label="Notificaciones">
         <Bell size={20} strokeWidth={2} />
         {unread > 0 && <span className="notif-bell-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
@@ -89,11 +120,22 @@ export function NotificationBell() {
               Notificaciones
               {unread > 0 && <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{unread} nuevas</span>}
             </p>
-            {unread > 0 && (
-              <button type="button" onClick={markAllRead} className="text-xs text-blue-700 font-semibold hover:underline">
-                Marcar todo leído
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={syncAlerts}
+                disabled={syncing}
+                className="text-xs text-slate-500 hover:text-blue-700 font-semibold flex items-center gap-1"
+                title="Buscar alertas de vencimiento e inventario"
+              >
+                <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
               </button>
-            )}
+              {unread > 0 && (
+                <button type="button" onClick={markAllRead} className="text-xs text-blue-700 font-semibold hover:underline">
+                  Leído
+                </button>
+              )}
+            </div>
           </div>
           <div className="max-h-[min(420px,70vh)] overflow-y-auto">
             {notifications.length === 0 && (
@@ -102,31 +144,41 @@ export function NotificationBell() {
                   <Bell size={22} className="text-slate-400" />
                 </div>
                 <p className="text-sm font-medium text-slate-500">Sin notificaciones</p>
-                <p className="text-xs text-slate-400 mt-1">Le avisaremos sobre vencimientos y cobros</p>
+                <p className="text-xs text-slate-400 mt-1">Vencimientos, cobros e inventario bajo</p>
+                <button type="button" onClick={syncAlerts} disabled={syncing} className="report-toolbar-btn mt-4 mx-auto">
+                  <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} /> Buscar alertas
+                </button>
               </div>
             )}
-            {notifications.map((n) => (
-              <button
-                type="button"
-                key={n.id}
-                onClick={() => !n.isRead && markRead(n.id)}
-                className={`notif-item ${!n.isRead ? 'notif-item-unread' : ''}`}
-              >
-                <div className={`notif-icon ${n.type.includes('overdue') ? 'notif-icon-danger' : n.type.includes('due_soon') ? 'notif-icon-warn' : 'notif-icon-info'}`}>
-                  {n.type.includes('overdue') ? <AlertTriangle size={16} /> : <Clock size={16} />}
-                </div>
-                <div className="min-w-0 flex-1 text-left">
-                  <p className="text-sm font-semibold text-slate-900 leading-snug">{n.subject}</p>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{n.body}</p>
-                  <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{timeAgo(n.createdAt)}</p>
-                </div>
-                {!n.isRead ? (
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0 mt-1 shadow-sm" />
-                ) : (
-                  <Check size={14} className="text-emerald-400 shrink-0 mt-1" />
-                )}
-              </button>
-            ))}
+            {notifications.map((n) => {
+              const { Icon, cls } = notifIcon(n.type);
+              const href = notifHref(n);
+              return (
+                <button
+                  type="button"
+                  key={n.id}
+                  onClick={() => handleClick(n)}
+                  className={`notif-item ${!n.isRead ? 'notif-item-unread' : ''}`}
+                >
+                  <div className={`notif-icon ${cls}`}>
+                    <Icon size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-sm font-semibold text-slate-900 leading-snug">{n.subject}</p>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{n.body}</p>
+                    <p className="text-[11px] text-slate-400 mt-1.5 font-medium flex items-center gap-2">
+                      {timeAgo(n.createdAt)}
+                      {href && <span className="text-blue-600">Ver →</span>}
+                    </p>
+                  </div>
+                  {!n.isRead ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0 mt-1 shadow-sm" />
+                  ) : (
+                    <Check size={14} className="text-emerald-400 shrink-0 mt-1" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

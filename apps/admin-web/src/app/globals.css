@@ -172,7 +172,7 @@ body {
 }
 
 .product-card {
-  @apply card overflow-hidden transition-all duration-200 hover:shadow-md;
+  @apply card overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
 }
 
 .modal-overlay {
