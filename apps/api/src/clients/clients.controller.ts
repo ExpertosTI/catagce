@@ -28,4 +28,9 @@ export class ClientsController {
   updateStatus(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { status: string }) {
     return this.clientsService.updateStatus(user, id, body.status as any);
   }
+
+  @Patch(':id')
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
+    return this.clientsService.update(user, id, body);
+  }
 }

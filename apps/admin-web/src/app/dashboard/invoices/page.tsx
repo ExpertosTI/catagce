@@ -35,7 +35,7 @@ export default function InvoicesPage() {
     <DashboardLayout>
       <PageHeader
         title="Facturas"
-        subtitle="Gestión, WhatsApp y PDF"
+        subtitle="Gestión, compartir e imprimir"
         action={<ActionButton href="/dashboard/invoices/new" label="Nueva factura" />}
       />
 

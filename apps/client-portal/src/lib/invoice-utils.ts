@@ -33,9 +33,17 @@ export type InvoiceDetail = InvoiceListItem & {
   }>;
 };
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function formatUsd(n: number | string) {
   const v = typeof n === 'number' ? n : parseFloat(n || '0');
-  return `US$ ${(Number.isFinite(v) ? v : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `US$ ${(Number.isFinite(v) ? v : 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function formatDate(value?: string | null) {
@@ -67,7 +75,7 @@ export function buildInvoiceWhatsAppMessage(inv: InvoiceDetail, companyName = 'G
   if (parseFloat(inv.paidAmount || '0') > 0) {
     msg += `Pagado: ${formatUsd(inv.paidAmount!)}\n`;
   }
-  if (balance > 0) msg += `*Balance pendiente: ${formatUsd(balance)}*\n`;
+  if (balance > 0) msg += `*Saldo pendiente: ${formatUsd(balance)}*\n`;
   msg += '\n_Generado desde GHome · renace.tech_';
   return msg;
 }
@@ -77,14 +85,25 @@ export function shareInvoiceWhatsApp(inv: InvoiceDetail, phone?: string | null) 
   const url = phone
     ? `https://wa.me/${phone.replace(/\D/g, '').replace(/^(\d{10})$/, '1$1')}?text=${encodeURIComponent(msg)}`
     : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  window.open(url, '_blank');
 }
 
 export function printInvoicePdf(inv: InvoiceDetail, companyName = 'General Home') {
   const items = inv.items ?? [];
   const balance = invoiceBalance(inv);
+  const safeCompany = escapeHtml(companyName);
+  const safeRef = escapeHtml(inv.reference);
+  const safeClient = escapeHtml(inv.clientName ?? inv.client?.name ?? '—');
+  const safeNotes = inv.notes ? escapeHtml(inv.notes) : '';
+
+  const rows = items.map((i) => {
+    const name = escapeHtml(i.productName ?? '');
+    const sku = escapeHtml(i.productSku ?? '');
+    return `<tr><td>${name}${sku ? `<br/><small>${sku}</small>` : ''}</td><td class="right">${i.quantity}</td><td class="right">${formatUsd(i.unitPrice)}</td><td class="right">${formatUsd(i.lineTotal)}</td></tr>`;
+  }).join('');
+
   const html = `<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"/><title>${inv.reference}</title>
+<html lang="es"><head><meta charset="utf-8"/><title>${safeRef}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: system-ui, sans-serif; color: #0f172a; padding: 32px; max-width: 800px; margin: 0 auto; }
@@ -100,31 +119,42 @@ export function printInvoicePdf(inv: InvoiceDetail, companyName = 'General Home'
   .footer { margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center; }
   @media print { body { padding: 16px; } }
 </style></head><body>
-  <h1>${companyName}</h1>
-  <div class="meta">${invoiceTypeLabel(inv.invoiceType)} · ${inv.reference}<br/>
+  <h1>${safeCompany}</h1>
+  <div class="meta">${invoiceTypeLabel(inv.invoiceType)} · ${safeRef}<br/>
   Fecha: ${formatDate(inv.issuedAt)}${inv.dueDate ? ` · Vence: ${formatDate(inv.dueDate)}` : ''}<br/>
-  Cliente: ${inv.clientName ?? inv.client?.name ?? '—'}</div>
+  Cliente: ${safeClient}</div>
   <table><thead><tr><th>Producto</th><th class="right">Cant.</th><th class="right">P. unit.</th><th class="right">Total</th></tr></thead>
-  <tbody>${items.map((i) => `<tr><td>${i.productName}<br/><small>${i.productSku ?? ''}</small></td><td class="right">${i.quantity}</td><td class="right">${formatUsd(i.unitPrice)}</td><td class="right">${formatUsd(i.lineTotal)}</td></tr>`).join('')}</tbody></table>
+  <tbody>${rows}</tbody></table>
   <div class="totals">
     <div><span>Bruto</span><span>${formatUsd(inv.subtotal ?? inv.totalAmount)}</span></div>
     <div><span>ITBIS</span><span>${formatUsd(inv.taxAmount ?? 0)}</span></div>
     <div><span>Pagado</span><span>${formatUsd(inv.paidAmount ?? 0)}</span></div>
-    <div class="total-row"><span>Balance</span><span>${formatUsd(balance)}</span></div>
+    <div class="total-row"><span>Saldo pendiente</span><span>${formatUsd(balance)}</span></div>
   </div>
-  ${inv.notes ? `<p><strong>Notas:</strong> ${inv.notes}</p>` : ''}
+  ${safeNotes ? `<p><strong>Notas:</strong> ${safeNotes}</p>` : ''}
   <div class="footer">Santo Domingo, RD · Desarrollado por renace.tech</div>
-  <script>window.onload=function(){window.print();}</script>
 </body></html>`;
 
-  const win = window.open('', '_blank', 'noopener,noreferrer');
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
   if (!win) {
+    URL.revokeObjectURL(url);
     alert('Permita ventanas emergentes para imprimir o guardar como PDF.');
     return;
   }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+
+  win.addEventListener('load', () => {
+    win.focus();
+    win.print();
+  });
+  setTimeout(() => {
+    try {
+      win.focus();
+      win.print();
+    } catch { /* noop */ }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }, 800);
 }
 
 export async function copyInvoiceSummary(inv: InvoiceDetail) {

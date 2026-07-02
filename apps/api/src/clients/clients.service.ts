@@ -47,4 +47,22 @@ export class ClientsService {
     }).returning();
     return client;
   }
+
+  async update(user: AuthUser, id: string, data: {
+    name?: string; email?: string; phone?: string; taxId?: string;
+    address?: string; creditLimit?: number; creditDays?: number;
+  }) {
+    await this.getById(user, id);
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.name !== undefined) updates.name = data.name.trim();
+    if (data.email !== undefined) updates.email = data.email.trim();
+    if (data.phone !== undefined) updates.phone = data.phone;
+    if (data.taxId !== undefined) updates.taxId = data.taxId;
+    if (data.address !== undefined) updates.address = data.address;
+    if (data.creditLimit !== undefined) updates.creditLimit = data.creditLimit.toFixed(2);
+    if (data.creditDays !== undefined) updates.creditDays = data.creditDays;
+
+    const [updated] = await this.db.update(clients).set(updates).where(eq(clients.id, id)).returning();
+    return updated;
+  }
 }

@@ -11,7 +11,7 @@ import { clearAuth, getUser } from '../lib/api';
 import { SITE_URL } from '../lib/site';
 
 const nav = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
   { href: '/dashboard/clients', label: 'Clientes', icon: Users },
   { href: '/dashboard/products', label: 'Mercancía', icon: Package },
   { href: '/dashboard/invoices', label: 'Facturas', icon: FileText },

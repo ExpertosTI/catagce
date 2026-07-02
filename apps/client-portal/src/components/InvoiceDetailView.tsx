@@ -63,7 +63,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName = 'General Ho
         {[
           { label: 'Total', value: formatUsd(invoice.totalAmount), cls: 'text-blue-700' },
           { label: 'Pagado', value: formatUsd(invoice.paidAmount ?? 0), cls: 'text-emerald-700' },
-          { label: 'Balance', value: formatUsd(balance), cls: 'text-red-600' },
+          { label: 'Saldo pendiente', value: formatUsd(balance), cls: 'text-red-600' },
           { label: 'ITBIS', value: formatUsd(invoice.taxAmount ?? 0), cls: 'text-slate-700' },
         ].map((s) => (
           <div key={s.label} className="stat-card">

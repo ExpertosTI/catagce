@@ -7,6 +7,7 @@ import {
   InvoiceDetail, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary,
 } from '../lib/invoice-utils';
+import { invoiceStatusLabel } from '../lib/labels';
 
 type Props = {
   invoice: InvoiceDetail;
@@ -40,7 +41,9 @@ export function InvoiceDetailView({ invoice, backHref, companyName = 'General Ho
           <h2 className="text-2xl font-bold text-slate-900 mt-1">{invoice.reference}</h2>
           <p className="text-slate-500 text-sm">{invoiceTypeLabel(invoice.invoiceType)} · {formatDate(invoice.issuedAt)}</p>
         </div>
-        {invoice.status && <span className="badge-blue capitalize h-fit">{invoice.status.replace(/_/g, ' ')}</span>}
+        {invoice.status && (
+          <span className="badge-blue h-fit">{invoiceStatusLabel[invoice.status] ?? invoice.status}</span>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mt-4">
@@ -63,7 +66,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName = 'General Ho
         {[
           { label: 'Total', value: formatUsd(invoice.totalAmount), cls: 'text-blue-700' },
           { label: 'Pagado', value: formatUsd(invoice.paidAmount ?? 0), cls: 'text-emerald-700' },
-          { label: 'Balance', value: formatUsd(balance), cls: 'text-red-600' },
+          { label: 'Saldo pendiente', value: formatUsd(balance), cls: 'text-red-600' },
           { label: 'ITBIS', value: formatUsd(invoice.taxAmount ?? 0), cls: 'text-slate-700' },
         ].map((s) => (
           <div key={s.label} className="stat-card">

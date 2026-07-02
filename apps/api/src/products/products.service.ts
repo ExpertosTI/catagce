@@ -23,7 +23,7 @@ export class ProductsService {
     })
       .from(products)
       .leftJoin(productMedia, and(eq(productMedia.productId, products.id), eq(productMedia.isPrimary, true)))
-      .where(eq(products.companyId, user.companyId))
+      .where(and(eq(products.companyId, user.companyId), eq(products.isActive, true)))
       .orderBy(desc(products.createdAt));
 
     return rows;
@@ -93,5 +93,53 @@ export class ProductsService {
   async listCategories(user: AuthUser) {
     return this.db.select().from(productCategories)
       .where(eq(productCategories.companyId, user.companyId));
+  }
+
+  async update(user: AuthUser, id: string, data: {
+    sku?: string; name?: string; description?: string; unit?: string;
+    salePrice?: number; costPrice?: number; categoryId?: string; imageUrl?: string;
+    stockQty?: number;
+  }) {
+    await this.getById(user, id);
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.sku !== undefined) updates.sku = data.sku.trim();
+    if (data.name !== undefined) updates.name = data.name.trim();
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.unit !== undefined) updates.unit = data.unit;
+    if (data.salePrice !== undefined) updates.salePrice = data.salePrice.toFixed(2);
+    if (data.costPrice !== undefined) updates.costPrice = data.costPrice.toFixed(2);
+    if (data.categoryId !== undefined) updates.categoryId = data.categoryId;
+
+    await this.db.update(products).set(updates).where(and(eq(products.id, id), eq(products.companyId, user.companyId)));
+
+    if (data.imageUrl !== undefined) {
+      const [existing] = await this.db.select().from(productMedia)
+        .where(and(eq(productMedia.productId, id), eq(productMedia.isPrimary, true))).limit(1);
+      if (data.imageUrl) {
+        if (existing) {
+          await this.db.update(productMedia).set({ url: data.imageUrl }).where(eq(productMedia.id, existing.id));
+        } else {
+          await this.db.insert(productMedia).values({ productId: id, url: data.imageUrl, isPrimary: true });
+        }
+      }
+    }
+
+    if (data.stockQty !== undefined) {
+      const [stock] = await this.db.select().from(stockLevels)
+        .where(and(eq(stockLevels.productId, id), eq(stockLevels.companyId, user.companyId))).limit(1);
+      if (stock) {
+        await this.db.update(stockLevels).set({ totalQty: data.stockQty, updatedAt: new Date() })
+          .where(eq(stockLevels.id, stock.id));
+      }
+    }
+
+    return this.getById(user, id);
+  }
+
+  async remove(user: AuthUser, id: string) {
+    await this.getById(user, id);
+    await this.db.update(products).set({ isActive: false, updatedAt: new Date() })
+      .where(and(eq(products.id, id), eq(products.companyId, user.companyId)));
+    return { ok: true, message: 'Producto eliminado' };
   }
 }

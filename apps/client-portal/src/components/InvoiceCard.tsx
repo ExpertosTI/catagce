@@ -78,7 +78,7 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
         <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-slate-600 sm:text-right shrink-0">
           <span className="text-slate-400">Bruto</span><span className="col-span-2 sm:col-span-1 font-medium">{formatUsd(bruto)}</span>
           <span className="text-slate-400">ITBIS</span><span className="col-span-2 sm:col-span-1 font-medium">{formatUsd(itbis)}</span>
-          <span className="text-slate-400">Balance</span><span className="col-span-2 sm:col-span-1 font-semibold text-red-600">{formatUsd(balance)}</span>
+          <span className="text-slate-400">Saldo</span><span className="col-span-2 sm:col-span-1 font-semibold text-red-600">{formatUsd(balance)}</span>
         </div>
 
         <div className="text-right shrink-0">

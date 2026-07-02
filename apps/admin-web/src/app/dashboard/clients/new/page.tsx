@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
+import { FormField } from '../../../../components/FormField';
 import { apiFetch } from '../../../../lib/api';
 
 export default function NewClientPage() {
@@ -16,8 +17,8 @@ export default function NewClientPage() {
     try {
       await apiFetch('/clients', { method: 'POST', body: JSON.stringify(form) });
       router.push('/dashboard/clients');
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al crear cliente');
     } finally {
       setLoading(false);
     }
@@ -25,25 +26,34 @@ export default function NewClientPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Nuevo cliente" />
-      <form onSubmit={submit} className="card p-6 max-w-lg space-y-4">
-        {(['name', 'email', 'phone', 'taxId', 'address'] as const).map((f) => (
-          <div key={f}>
-            <label className="text-sm font-medium capitalize">{f}</label>
-            <input value={(form as any)[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} className="input mt-1" required={f === 'name' || f === 'email'} />
-          </div>
-        ))}
+      <PageHeader title="Nuevo cliente" subtitle="Registre un cliente activo" />
+      <form onSubmit={submit} className="form-card max-w-lg space-y-4">
+        <FormField label="Nombre">
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />
+        </FormField>
+        <FormField label="Correo electrónico">
+          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" required />
+        </FormField>
+        <FormField label="Teléfono (WhatsApp)">
+          <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder="8095551234" />
+        </FormField>
+        <FormField label="RNC / Cédula">
+          <input value={form.taxId} onChange={(e) => setForm({ ...form, taxId: e.target.value })} className="input" />
+        </FormField>
+        <FormField label="Dirección">
+          <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" />
+        </FormField>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Límite crédito</label>
-            <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: Number(e.target.value) })} className="input mt-1" />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Días crédito</label>
-            <input type="number" value={form.creditDays} onChange={(e) => setForm({ ...form, creditDays: Number(e.target.value) })} className="input mt-1" />
-          </div>
+          <FormField label="Límite de crédito">
+            <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: Number(e.target.value) })} className="input" />
+          </FormField>
+          <FormField label="Días de crédito">
+            <input type="number" value={form.creditDays} onChange={(e) => setForm({ ...form, creditDays: Number(e.target.value) })} className="input" />
+          </FormField>
         </div>
-        <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">Crear cliente</button>
+        <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
+          {loading ? 'Creando...' : 'Crear cliente'}
+        </button>
       </form>
     </DashboardLayout>
   );
