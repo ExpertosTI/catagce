@@ -93,24 +93,27 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
         </div>
       </div>
 
-      <div className="action-bar mt-4">
-        <Link href={detailPath} className="btn-subtle btn-subtle-primary">
-          <Eye size={15} /> Ver detalle
-        </Link>
+      <div className="action-bar mt-4 flex-col sm:flex-row gap-2">
         {balance > 0 && (
-          <Link href={`${detailPath}?abono=1`} className="btn-subtle btn-subtle-success">
-            <Wallet size={15} /> Pagar
+          <Link
+            href={`${detailPath}?abono=1`}
+            className="btn-primary w-full sm:w-auto justify-center order-first sm:order-none text-base py-2.5"
+          >
+            <Wallet size={18} /> Pagar {formatUsd(balance)}
           </Link>
         )}
-        <button type="button" onClick={handleWhatsApp} disabled={loading === 'wa'} className="btn-subtle">
+        <Link href={detailPath} className="btn-subtle btn-subtle-primary w-full sm:w-auto justify-center">
+          <Eye size={15} /> Ver detalle
+        </Link>
+        <button type="button" onClick={handleWhatsApp} disabled={loading === 'wa'} className="btn-subtle flex-1 justify-center">
           {loading === 'wa' ? <Loader2 size={15} className="animate-spin" /> : <MessageCircle size={15} />}
           WhatsApp
         </button>
-        <button type="button" onClick={handlePdf} disabled={loading === 'pdf'} className="btn-subtle">
+        <button type="button" onClick={handlePdf} disabled={loading === 'pdf'} className="btn-subtle flex-1 justify-center">
           {loading === 'pdf' ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
           PDF
         </button>
-        <button type="button" onClick={handleCopy} className="btn-subtle ml-auto">
+        <button type="button" onClick={handleCopy} className="btn-subtle flex-1 justify-center sm:ml-auto">
           {copied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
           {copied ? 'Copiado' : 'Copiar'}
         </button>

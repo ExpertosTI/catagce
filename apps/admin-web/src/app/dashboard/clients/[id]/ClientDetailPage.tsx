@@ -28,8 +28,8 @@ type Client = {
 
 const fields: Array<{ key: keyof typeof defaultForm; label: string; type?: string; required?: boolean }> = [
   { key: 'name', label: 'Nombre', required: true },
-  { key: 'email', label: 'Correo electrónico', type: 'email', required: true },
-  { key: 'phone', label: 'Teléfono (WhatsApp)', type: 'tel' },
+  { key: 'email', label: 'Correo electrónico', type: 'text' },
+  { key: 'phone', label: 'Teléfono (WhatsApp)', type: 'tel', required: true },
   { key: 'taxId', label: 'RNC / Cédula' },
   { key: 'address', label: 'Dirección' },
 ];

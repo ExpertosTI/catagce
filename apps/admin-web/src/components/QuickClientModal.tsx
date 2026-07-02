@@ -69,15 +69,15 @@ export function QuickClientModal({ open, onClose, onCreated, initialName = '' }:
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4" noValidate>
           <FormField label="Nombre *">
-            <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus required placeholder="Ej. Distribuidora El Progreso" />
+            <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus placeholder="Ej. Distribuidora El Progreso" />
           </FormField>
           <FormField label="Teléfono / WhatsApp *">
-            <input type="tel" className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required placeholder="8095551234" />
+            <input type="tel" className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="8095551234" />
           </FormField>
           <FormField label="Correo electrónico">
-            <input type="email" className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Opcional" />
+            <input type="text" inputMode="email" className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Opcional" />
             <p className="form-hint">Opcional — se usa para acceso al portal si lo activa después</p>
           </FormField>
           <FormField label="RNC / Cédula">

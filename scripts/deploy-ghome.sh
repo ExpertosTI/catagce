@@ -50,8 +50,13 @@ docker build -t ghome-admin:latest \
 echo "═══ Deploy stack Docker Swarm ═══"
 docker stack deploy -c docker-compose.yml ghome
 
-echo "═══ Esperando servicios (~30s) ═══"
-sleep 30
+echo "═══ Forzar actualización de contenedores (nueva imagen) ═══"
+docker service update --force ghome_admin
+docker service update --force ghome_api
+docker service update --force ghome_portal
+
+echo "═══ Esperando servicios (~45s) ═══"
+sleep 45
 
 echo "═══ Health check ═══"
 HTTP=$(curl -s -o /dev/null -w "%{http_code}" https://api.generalhome.tech/api/health 2>/dev/null || echo "000")

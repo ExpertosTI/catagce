@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Pencil, CheckCircle, FileText, ChevronRight } from 'lucide-react';
+import { Pencil, CheckCircle, FileText, ChevronDown, ChevronUp, Wallet } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
+import { ClientInvoicePanel } from '../../../components/ClientInvoicePanel';
 import { EmptyState } from '../../../components/EmptyState';
 import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
@@ -22,10 +22,10 @@ type Client = {
 };
 
 export default function ClientsPage() {
-  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -40,6 +40,10 @@ export default function ClientsPage() {
     load();
   }
 
+  function toggleClient(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }
+
   const filtered = clients.filter((c) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
@@ -51,7 +55,7 @@ export default function ClientsPage() {
       <PageHeader
         emoji={PAGE.clients.emoji}
         title={PAGE.clients.title}
-        subtitle={PAGE.clients.subtitle}
+        subtitle="Toque un cliente para ver sus facturas y registrar pagos"
         action={<ActionButton href="/dashboard/clients/new" emoji="✨" label="Nuevo cliente" />}
       />
 
@@ -76,52 +80,70 @@ export default function ClientsPage() {
         />
       )}
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-        {filtered.map((c) => (
-          <article
-            key={c.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => router.push(`/dashboard/clients/${c.id}`)}
-            onKeyDown={(e) => e.key === 'Enter' && router.push(`/dashboard/clients/${c.id}`)}
-            className="executive-card cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-bold shrink-0 group-hover:bg-blue-100 transition">
-                  {c.name.charAt(0)}
+      <div className="space-y-3">
+        {filtered.map((c) => {
+          const expanded = expandedId === c.id;
+          return (
+            <article
+              key={c.id}
+              className={`executive-card transition-all cursor-pointer ${expanded ? 'ring-2 ring-blue-200 border-blue-200' : 'hover:border-blue-200 hover:shadow-md'}`}
+              onClick={() => toggleClient(c.id)}
+              onKeyDown={(e) => e.key === 'Enter' && toggleClient(c.id)}
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-bold shrink-0">
+                    {c.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-900 truncate">{c.name}</p>
+                    <p className="text-xs text-slate-500">{c.code}</p>
+                    <p className="text-sm text-slate-600 truncate">{c.phone || c.email}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 truncate">{c.name}</p>
-                  <p className="text-xs text-slate-500">{c.code}</p>
-                  <p className="text-sm text-slate-600 truncate">{c.phone || c.email}</p>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span className={`text-[10px] ${c.status === 'active' ? 'badge-green' : c.status === 'pending' ? 'badge-amber' : 'badge-blue'}`}>
+                    {clientStatusLabel[c.status] ?? c.status}
+                  </span>
+                  {expanded ? <ChevronUp size={18} className="text-blue-600" /> : <ChevronDown size={18} className="text-slate-400" />}
                 </div>
               </div>
-              <span className={`shrink-0 text-[10px] ${c.status === 'active' ? 'badge-green' : c.status === 'pending' ? 'badge-amber' : 'badge-blue'}`}>
-                {clientStatusLabel[c.status] ?? c.status}
-              </span>
-            </div>
-            <p className="text-sm text-slate-600 mt-3">💳 Crédito: <strong>{formatMoney(c.creditLimit)}</strong></p>
-            <div className="action-bar mt-3 !p-2" onClick={(e) => e.stopPropagation()}>
-              {c.status === 'pending' && (
-                <button type="button" onClick={(e) => approve(c.id, e)} className="btn-subtle btn-subtle-success text-xs">
-                  <CheckCircle size={14} /> Aprobar
+
+              <p className="text-sm text-slate-600 mt-3">💳 Crédito: <strong>{formatMoney(c.creditLimit)}</strong></p>
+
+              <p className="text-xs text-blue-600 font-medium mt-2 flex items-center gap-1">
+                <Wallet size={14} />
+                {expanded ? 'Ocultar facturas' : 'Toque para ver facturas y pagar'}
+              </p>
+
+              <ClientInvoicePanel clientId={c.id} clientName={c.name} expanded={expanded} />
+
+              <div className="action-bar mt-3 !p-2" onClick={(e) => e.stopPropagation()}>
+                {c.status === 'pending' && (
+                  <button type="button" onClick={(e) => approve(c.id, e)} className="btn-subtle btn-subtle-success text-xs">
+                    <CheckCircle size={14} /> Aprobar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => toggleClient(c.id)}
+                  className="btn-subtle btn-subtle-primary text-xs"
+                >
+                  <FileText size={14} /> {expanded ? 'Cerrar' : 'Facturas'}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => router.push(`/dashboard/clients/${c.id}`)}
-                className="btn-subtle btn-subtle-primary text-xs"
-              >
-                <FileText size={14} /> Ver facturas
-              </button>
-              <Link href={`/dashboard/clients/${c.id}?tab=edit`} className="btn-subtle text-xs ml-auto">
-                <Pencil size={14} /> Editar
-              </Link>
-              <ChevronRight size={16} className="text-slate-300 ml-1 hidden sm:block" />
-            </div>
-          </article>
-        ))}
+                <Link href={`/dashboard/clients/${c.id}`} className="btn-subtle text-xs">
+                  Perfil
+                </Link>
+                <Link href={`/dashboard/clients/${c.id}?tab=edit`} className="btn-subtle text-xs ml-auto">
+                  <Pencil size={14} /> Editar
+                </Link>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </DashboardLayout>
   );
