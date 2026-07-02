@@ -77,7 +77,6 @@ export default function NewDispatchPage() {
               value={clientId}
               onChange={(id) => { setClientId(id); setSelected({}); }}
               allowCreate={false}
-              placeholder="Buscar cliente con mercancía pendiente..."
               emptyMessage="Sin clientes con pendientes"
             />
           </FormField>

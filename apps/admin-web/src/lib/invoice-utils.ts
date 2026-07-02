@@ -48,6 +48,7 @@ function escapeHtml(value: string) {
 
 import { formatCurrency } from './currency';
 import { comprobanteTypeLabel } from './labels';
+import { FISCAL_TERMS, FISCAL_FOOTER_LEGAL } from './fiscal-terms';
 
 export function formatUsd(n: number | string) {
   return formatCurrency(n);
@@ -163,7 +164,12 @@ export function printInvoicePdf(
   .total-row { font-weight: 800; font-size: 18px; color: #1e3a8a; border-top: 2px solid #1e3a8a; margin-top: 8px; padding-top: 12px !important; }
   .balance-row { color: #dc2626 !important; font-weight: 700; }
   .notes-box { margin-top: 24px; background: #f8fafc; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #475569; }
-  .footer { margin-top: 40px; padding: 20px 40px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+  .terms-box { margin-top: 28px; padding: 16px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 10px; line-height: 1.55; color: #64748b; white-space: pre-line; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 48px; padding-top: 8px; }
+  .sig-block { text-align: center; }
+  .sig-line { border-top: 1.5px solid #334155; margin-top: 56px; padding-top: 10px; font-size: 12px; font-weight: 700; color: #0f172a; }
+  .sig-hint { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+  .footer { margin-top: 32px; padding: 20px 40px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
   @media print {
     body { background: #fff; }
     .sheet { max-width: 100%; }
@@ -208,9 +214,22 @@ export function printInvoicePdf(
       </div>
 
       ${safeNotes ? `<div class="notes-box"><strong>Notas:</strong> ${safeNotes}</div>` : ''}
+
+      <div class="terms-box">${escapeHtml(FISCAL_TERMS)}</div>
+
+      <div class="signatures">
+        <div class="sig-block">
+          <div class="sig-line">Recibido conforme</div>
+          <div class="sig-hint">Nombre y firma del cliente · Fecha: _______________</div>
+        </div>
+        <div class="sig-block">
+          <div class="sig-line">Entregado por</div>
+          <div class="sig-hint">${safeCompany} · Nombre y firma · Fecha: _______________</div>
+        </div>
+      </div>
     </div>
 
-    <div class="footer">Santo Domingo, RD · Documento generado por GHome · Desarrollado por renace.tech</div>
+    <div class="footer">${escapeHtml(FISCAL_FOOTER_LEGAL)} · Documento generado por GHome · Desarrollado por renace.tech</div>
   </div>
 </body></html>`;
 

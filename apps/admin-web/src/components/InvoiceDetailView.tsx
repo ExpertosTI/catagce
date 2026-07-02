@@ -17,6 +17,7 @@ type Props = {
   backHref: string;
   companyName?: string;
   canManagePayments?: boolean;
+  initialShowPayment?: boolean;
   onInvoiceUpdated?: (invoice: InvoiceDetail) => void;
 };
 
@@ -28,12 +29,12 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Otro' },
 ];
 
-export function InvoiceDetailView({ invoice, backHref, companyName, canManagePayments, onInvoiceUpdated }: Props) {
+export function InvoiceDetailView({ invoice, backHref, companyName, canManagePayments, initialShowPayment, onInvoiceUpdated }: Props) {
   const [copied, setCopied] = useState(false);
   const balance = invoiceBalance(invoice);
   const company = useCompany();
   const resolvedName = companyName ?? company?.name ?? 'General Home';
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(initialShowPayment ?? false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('transfer');
   const [paymentRef, setPaymentRef] = useState('');
@@ -139,31 +140,43 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 mt-4">
-        <button type="button" onClick={() => shareInvoiceWhatsApp(invoice, invoice.client?.phone)} className="btn-action btn-action-whatsapp">
-          <MessageCircle size={16} /> Enviar WhatsApp
-        </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-action btn-action-secondary">
-          <FileDown size={16} /> Guardar PDF
-        </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-action btn-action-secondary">
-          <Printer size={16} /> Imprimir
-        </button>
-        <button type="button" onClick={handleCopy} className="btn-action btn-action-ghost">
-          {copied ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-          {copied ? 'Copiado' : 'Copiar resumen'}
-        </button>
+      <div className="action-bar mt-4">
         {canManagePayments && balance > 0 && (
-          <button type="button" onClick={() => setShowPaymentForm((v) => !v)} className="btn-action btn-action-primary">
-            {showPaymentForm ? <X size={16} /> : <Plus size={16} />} Registrar abono
+          <button type="button" onClick={() => setShowPaymentForm((v) => !v)} className="btn-subtle btn-subtle-success">
+            {showPaymentForm ? <X size={15} /> : <Plus size={15} />} Registrar abono
           </button>
         )}
+        <button type="button" onClick={() => shareInvoiceWhatsApp(invoice, invoice.client?.phone)} className="btn-subtle">
+          <MessageCircle size={15} /> WhatsApp
+        </button>
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-subtle">
+          <FileDown size={15} /> PDF
+        </button>
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl, company?.taxId)} className="btn-subtle">
+          <Printer size={15} /> Imprimir
+        </button>
+        <button type="button" onClick={handleCopy} className="btn-subtle">
+          {copied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
+          {copied ? 'Copiado' : 'Copiar'}
+        </button>
         {canIssueCreditNote && (
-          <button type="button" onClick={issueCreditNote} disabled={creditNoteSaving} className="btn-action btn-action-secondary disabled:opacity-50">
-            <FileMinus size={16} /> {creditNoteSaving ? 'Emitiendo...' : 'Nota de crédito'}
+          <button type="button" onClick={issueCreditNote} disabled={creditNoteSaving} className="btn-subtle ml-auto disabled:opacity-50">
+            <FileMinus size={15} /> {creditNoteSaving ? 'Emitiendo...' : 'Nota de crédito'}
           </button>
         )}
       </div>
+
+      {canManagePayments && balance > 0 && !showPaymentForm && (
+        <div className="mt-4 p-4 rounded-xl bg-emerald-50/80 border border-emerald-200/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-emerald-800">Saldo pendiente: {formatUsd(balance)}</p>
+            <p className="text-xs text-emerald-700/80 mt-0.5">Registre un abono para actualizar el estado de la factura</p>
+          </div>
+          <button type="button" onClick={() => setShowPaymentForm(true)} className="btn-primary text-sm shrink-0">
+            <Plus size={15} /> Registrar abono
+          </button>
+        </div>
+      )}
 
       {showPaymentForm && (
         <form onSubmit={submitPayment} className="card p-4 mt-4 space-y-3 max-w-md">

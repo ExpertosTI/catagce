@@ -84,6 +84,39 @@ body {
   @apply bg-slate-100 text-slate-600 hover:bg-slate-200;
 }
 
+/* Botones ejecutivos sutiles */
+.btn-subtle {
+  @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 bg-white border border-slate-200/90 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 active:scale-[0.98];
+}
+
+.btn-subtle-primary {
+  @apply text-blue-700 border-blue-200/80 bg-blue-50/40 hover:bg-blue-50 hover:border-blue-300;
+}
+
+.btn-subtle-success {
+  @apply text-emerald-700 border-emerald-200/80 bg-emerald-50/40 hover:bg-emerald-50;
+}
+
+.btn-subtle-danger {
+  @apply text-red-600 border-red-200/80 bg-red-50/30 hover:bg-red-50;
+}
+
+.btn-icon-subtle {
+  @apply p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition;
+}
+
+.action-bar {
+  @apply flex flex-wrap gap-2 p-3 bg-slate-50/80 border border-slate-200/80 rounded-xl;
+}
+
+.executive-card {
+  @apply card p-5 sm:p-6 transition-shadow hover:shadow-md;
+}
+
+.payment-card {
+  @apply executive-card flex flex-col sm:flex-row sm:items-center gap-4;
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

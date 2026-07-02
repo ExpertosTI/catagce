@@ -33,10 +33,10 @@ export default function NewInvoicePage() {
 
   useEffect(() => {
     apiFetch<any[]>('/clients').then((c) => {
-      const active = c.map((x) => ({ id: x.id, name: x.name, code: x.code, email: x.email, phone: x.phone, taxId: x.taxId }));
-      setClients(active.filter((x) => x.id));
-      const first = active.find((x) => x.id);
-      if (first) setClientId((prev) => prev || first.id);
+      const active = c
+        .filter((x) => x.status === 'active')
+        .map((x) => ({ id: x.id, name: x.name, code: x.code, email: x.email, phone: x.phone, taxId: x.taxId }));
+      setClients(active);
     }).catch(() => setError('No se pudieron cargar los clientes'));
     apiFetch<PickerProduct[]>('/products').then(setProducts).catch(() => setError('No se pudieron cargar los productos'));
   }, []);
@@ -98,19 +98,17 @@ export default function NewInvoicePage() {
       <PageHeader title="Nueva factura" subtitle="Comprobante fiscal DGII con NCF e ITBIS" />
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
+        <FormField label="Cliente">
+          <ClientPicker
+            clients={clients}
+            value={clientId}
+            onChange={setClientId}
+            onCreated={(client) => setClients((prev) => [...prev, client])}
+            emptyMessage="Busque o cree un cliente para facturar"
+          />
+        </FormField>
+
         <div className="grid sm:grid-cols-2 gap-4">
-          <FormField label="Cliente">
-            <ClientPicker
-              clients={clients}
-              value={clientId}
-              onChange={setClientId}
-              onCreated={(client) => setClients((prev) => [...prev, client])}
-              emptyMessage="Sin clientes activos"
-            />
-            {selectedClient?.taxId && (
-              <p className="text-xs text-slate-500 mt-1">RNC/Cédula: {selectedClient.taxId}</p>
-            )}
-          </FormField>
           <FormField label="Condición de pago">
             <SegmentedControl<'cash' | 'credit'>
               value={invoiceType}
@@ -121,17 +119,16 @@ export default function NewInvoicePage() {
               ]}
             />
           </FormField>
+          <FormField label="Tipo de comprobante (DGII)">
+            <select value={comprobanteType} onChange={(e) => setComprobanteType(e.target.value)} className="input">
+              {SALE_COMPROBANTE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </FormField>
         </div>
-
-        <FormField label="Tipo de comprobante (DGII)">
-          <select value={comprobanteType} onChange={(e) => setComprobanteType(e.target.value)} className="input">
-            {SALE_COMPROBANTE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <p className="text-xs text-slate-500 mt-1">{comprobanteTypeLabel[comprobanteType]}</p>
-          {comprobanteWarning && <p className="text-xs text-amber-700 mt-1">{comprobanteWarning}</p>}
-        </FormField>
+        <p className="text-xs text-slate-500 -mt-2">{comprobanteTypeLabel[comprobanteType]}</p>
+        {comprobanteWarning && <p className="text-xs text-amber-700">{comprobanteWarning}</p>}
 
         <div>
           <p className="form-label">Productos</p>

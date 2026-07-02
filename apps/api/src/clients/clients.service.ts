@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, and, desc } from 'drizzle-orm';
 import { clients } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
@@ -29,16 +29,20 @@ export class ClientsService {
   }
 
   async create(user: AuthUser, data: {
-    name: string; email: string; phone?: string; taxId?: string;
+    name: string; email?: string; phone: string; taxId?: string;
     address?: string; creditLimit?: number; creditDays?: number;
   }) {
+    if (!data.name?.trim()) throw new BadRequestException('El nombre es obligatorio');
+    if (!data.phone?.trim()) throw new BadRequestException('El teléfono es obligatorio');
     const code = `CLI-${Date.now().toString(36).toUpperCase()}`;
+    const email = data.email?.trim()
+      || `${code.toLowerCase().replace(/[^a-z0-9]/g, '')}@cliente.ghome.local`;
     const [client] = await this.db.insert(clients).values({
       companyId: user.companyId,
       code,
       name: data.name.trim(),
-      email: data.email.trim(),
-      phone: data.phone,
+      email,
+      phone: data.phone.trim(),
       taxId: data.taxId,
       address: data.address,
       creditLimit: data.creditLimit?.toFixed(2) ?? '0',

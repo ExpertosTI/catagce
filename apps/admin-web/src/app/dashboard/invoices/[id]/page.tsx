@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { InvoiceDetailView } from '../../../../components/InvoiceDetailView';
 import { apiFetch } from '../../../../lib/api';
 import { InvoiceDetail } from '../../../../lib/invoice-utils';
 
 export default function AdminInvoiceDetailPage({ params }: { params: { id: string } }) {
+  const searchParams = useSearchParams();
+  const openPayment = searchParams.get('abono') === '1';
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [error, setError] = useState('');
 
@@ -47,6 +50,7 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
         invoice={invoice}
         backHref="/dashboard/invoices"
         canManagePayments
+        initialShowPayment={openPayment}
         onInvoiceUpdated={(updated) => setInvoice(updated)}
       />
     </DashboardLayout>

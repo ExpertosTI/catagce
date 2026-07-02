@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Receipt, MessageCircle, Ban } from 'lucide-react';
+import { Search, Receipt, MessageCircle, Ban, Wallet } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
 import { formatCurrency } from '../../../lib/currency';
@@ -59,7 +59,7 @@ export default function PaymentsPage() {
   const total = filtered.reduce((s, p) => s + parseFloat(p.amount), 0);
 
   async function voidPayment(p: Payment) {
-    if (!confirm(`¿Anular el abono de ${formatCurrency(p.amount)} de ${p.clientName}? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Anular el abono de ${formatCurrency(p.amount)} de ${p.clientName}?`)) return;
     setVoidingId(p.id);
     try {
       await apiFetch(`/invoices/${p.invoiceId}/payments/${p.id}`, { method: 'DELETE' });
@@ -73,21 +73,27 @@ export default function PaymentsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Pagos" subtitle="Historial de abonos recibidos en todas las facturas" />
+      <PageHeader title="Pagos" subtitle="Abonos y cobros registrados" />
 
-      <div className="card p-4 mb-4 grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="stat-card">
+          <p className="text-xs text-slate-500">Abonos</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{filtered.length}</p>
+        </div>
+        <div className="stat-card col-span-1 lg:col-span-1">
+          <p className="text-xs text-slate-500">Total cobrado</p>
+          <p className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(total)}</p>
+        </div>
+      </div>
+
+      <div className="card p-4 mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="relative sm:col-span-2">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por cliente o factura..."
-            className="input !pl-9 text-sm"
-          />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente o factura..." className="input !pl-9 text-sm" />
         </div>
         <select value={method} onChange={(e) => setMethod(e.target.value)} className="input text-sm">
           <option value="">Todos los métodos</option>
-          {Object.entries(paymentMethodLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          {Object.entries(paymentMethodLabel).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <div className="flex gap-2">
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input text-sm flex-1" />
@@ -95,69 +101,45 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {!loading && !error && (
-        <div className="card p-4 mb-4 flex items-center justify-between">
-          <p className="text-sm text-slate-500">{filtered.length} abono{filtered.length !== 1 ? 's' : ''}</p>
-          <p className="text-lg font-bold text-emerald-700">{formatCurrency(total)}</p>
-        </div>
-      )}
-
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 border-b">
-            <tr>
-              <th className="text-left p-4">Fecha</th>
-              <th className="text-left p-4">Cliente</th>
-              <th className="text-left p-4">Factura</th>
-              <th className="text-left p-4">Método</th>
-              <th className="text-right p-4">Monto</th>
-              <th className="text-right p-4">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={6} className="p-8 text-center text-slate-400">Cargando...</td></tr>}
-            {!loading && error && <tr><td colSpan={6} className="p-8 text-center text-red-600">{error}</td></tr>}
-            {!loading && !error && filtered.map((p) => (
-              <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
-                <td className="p-4 whitespace-nowrap">{new Date(p.paidAt).toLocaleDateString('es-DO', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                <td className="p-4">{p.clientName}</td>
-                <td className="p-4">
-                  <Link href={`/dashboard/invoices/${p.invoiceId}`} className="text-blue-700 font-medium hover:underline">{p.invoiceReference}</Link>
-                </td>
-                <td className="p-4">{paymentMethodLabel[p.method] ?? p.method}{p.reference ? ` (${p.reference})` : ''}</td>
-                <td className="p-4 text-right font-semibold text-emerald-700">{formatCurrency(p.amount)}</td>
-                <td className="p-4">
-                  <div className="flex items-center justify-end gap-1">
-                    <button
-                      type="button" title="Imprimir recibo"
-                      onClick={() => printPaymentReceipt(p, company?.name, company?.logoUrl)}
-                      className="p-1.5 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
-                    >
-                      <Receipt size={15} />
-                    </button>
-                    <button
-                      type="button" title="Enviar por WhatsApp"
-                      onClick={() => sharePaymentReceiptWhatsApp(p, company?.name)}
-                      className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg"
-                    >
-                      <MessageCircle size={15} />
-                    </button>
-                    <button
-                      type="button" title="Anular abono" disabled={voidingId === p.id}
-                      onClick={() => voidPayment(p)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50"
-                    >
-                      <Ban size={15} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!loading && !error && !filtered.length && (
-              <tr><td colSpan={6} className="p-10 text-center text-slate-500">No hay pagos que coincidan con los filtros</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className="space-y-3">
+        {loading && <p className="text-center text-slate-400 py-12">Cargando pagos...</p>}
+        {!loading && error && <p className="text-center text-red-600 py-8">{error}</p>}
+        {!loading && !error && filtered.map((p) => (
+          <article key={p.id} className="payment-card">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-slate-500 uppercase">{p.clientName}</p>
+              <p className="text-lg font-bold text-emerald-700 mt-0.5">{formatCurrency(p.amount)}</p>
+              <p className="text-sm text-slate-600 mt-1">
+                {paymentMethodLabel[p.method] ?? p.method}
+                {p.reference ? ` · ${p.reference}` : ''}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {new Date(p.paidAt).toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {' · '}
+                <Link href={`/dashboard/invoices/${p.invoiceId}`} className="text-blue-700 hover:underline">{p.invoiceReference}</Link>
+              </p>
+            </div>
+            <div className="action-bar sm:!p-2 sm:!bg-transparent sm:!border-0 shrink-0">
+              <button type="button" title="Recibo" onClick={() => printPaymentReceipt(p, company?.name, company?.logoUrl)} className="btn-subtle">
+                <Receipt size={15} /> Recibo
+              </button>
+              <button type="button" title="WhatsApp" onClick={() => sharePaymentReceiptWhatsApp(p, company?.name)} className="btn-subtle">
+                <MessageCircle size={15} />
+              </button>
+              <button type="button" title="Anular" disabled={voidingId === p.id} onClick={() => voidPayment(p)} className="btn-subtle btn-subtle-danger">
+                <Ban size={15} />
+              </button>
+            </div>
+          </article>
+        ))}
+        {!loading && !error && !filtered.length && (
+          <div className="text-center py-16 text-slate-500">
+            <Wallet size={32} className="mx-auto text-slate-300 mb-3" />
+            <p className="font-medium">Sin pagos registrados</p>
+            <p className="text-sm mt-1">Los abonos aparecen aquí al registrarlos desde una factura</p>
+            <Link href="/dashboard/invoices" className="btn-subtle btn-subtle-primary mt-4 inline-flex">Ir a facturas</Link>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

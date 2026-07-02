@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, UserPlus, Check, ChevronDown } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Search, UserPlus, X } from 'lucide-react';
 import { QuickClientModal } from './QuickClientModal';
 
 export type PickerClient = { id: string; name: string; code?: string; email?: string; phone?: string; taxId?: string };
@@ -12,34 +12,28 @@ type Props = {
   onChange: (id: string) => void;
   allowCreate?: boolean;
   onCreated?: (client: PickerClient) => void;
-  placeholder?: string;
   emptyMessage?: string;
 };
 
 export function ClientPicker({
-  clients, value, onChange, allowCreate = true, onCreated, placeholder = 'Buscar cliente por nombre o código...',
-  emptyMessage = 'No hay clientes disponibles',
+  clients, value, onChange, allowCreate = true, onCreated,
+  emptyMessage = 'Busque y seleccione un cliente',
 }: Props) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   const selected = clients.find((c) => c.id === value);
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, []);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return clients.slice(0, 8);
     return clients
-      .filter((c) => c.name.toLowerCase().includes(q) || c.code?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q))
+      .filter((c) =>
+        c.name.toLowerCase().includes(q)
+        || c.code?.toLowerCase().includes(q)
+        || c.phone?.includes(q)
+        || c.taxId?.includes(q))
       .slice(0, 8);
   }, [clients, query]);
 
@@ -49,79 +43,104 @@ export function ClientPicker({
     setOpen(false);
   }
 
+  function clear() {
+    onChange('');
+    setQuery('');
+  }
+
   function handleCreated(client: PickerClient) {
     onChange(client.id);
     onCreated?.(client);
     setShowModal(false);
+    setQuery('');
+    setOpen(false);
   }
 
   return (
-    <div className="relative" ref={ref}>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="input-search !pr-9 text-left flex items-center"
-          >
-            {selected ? (
-              <span className="truncate">{selected.name}{selected.code ? ` (${selected.code})` : ''}</span>
-            ) : (
-              <span className="text-slate-400">{clients.length ? 'Seleccionar cliente...' : emptyMessage}</span>
-            )}
-          </button>
-          <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        </div>
-        {allowCreate && (
-          <button type="button" onClick={() => setShowModal(true)} className="btn-secondary shrink-0 px-3" title="Crear cliente nuevo">
-            <UserPlus size={18} />
-          </button>
-        )}
-      </div>
-
-      {open && (
-        <div className="product-picker-dropdown">
-          <div className="p-2 border-b border-slate-100 sticky top-0 bg-white">
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={placeholder}
-              className="input !py-2 text-sm"
-            />
+    <div className="space-y-3">
+      {selected && (
+        <div className="line-item-card flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">{selected.name}</p>
+            <p className="text-xs text-slate-500 truncate">
+              {selected.phone || 'Sin teléfono'}
+              {selected.taxId ? ` · RNC ${selected.taxId}` : ''}
+            </p>
           </div>
-          {results.length === 0 && (
-            <p className="text-sm text-slate-400 p-4 text-center">Sin resultados</p>
+          <button type="button" onClick={clear} className="btn-icon-subtle" aria-label="Cambiar cliente">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {!selected && (
+        <div className="relative">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            placeholder="Buscar cliente por nombre, teléfono o código..."
+            className="input-search"
+          />
+          {open && (
+            <div className="product-picker-dropdown">
+              {results.map((c) => (
+                <button
+                  type="button"
+                  key={c.id}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(c)}
+                  className="product-picker-result"
+                >
+                  <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 text-sm font-bold">
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    <p className="text-xs text-slate-400 truncate">
+                      {c.phone || '—'}{c.code ? ` · ${c.code}` : ''}
+                    </p>
+                  </div>
+                </button>
+              ))}
+              {query.trim() && results.length === 0 && (
+                <p className="text-sm text-slate-400 p-4 text-center">Sin resultados</p>
+              )}
+              {allowCreate && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { setOpen(false); setShowModal(true); }}
+                  className="product-picker-result text-blue-700 font-medium border-t border-slate-100"
+                >
+                  <UserPlus size={16} /> Crear cliente nuevo
+                </button>
+              )}
+            </div>
           )}
-          {results.map((c) => (
-            <button
-              type="button"
-              key={c.id}
-              onClick={() => pick(c)}
-              className="product-picker-result"
-            >
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-sm font-medium truncate">{c.name}</p>
-                <p className="text-xs text-slate-400 truncate">{c.code}{c.email ? ` · ${c.email}` : ''}</p>
-              </div>
-              {c.id === value && <Check size={16} className="text-blue-700 shrink-0" />}
-            </button>
-          ))}
+        </div>
+      )}
+
+      {!selected && clients.length === 0 && !open && (
+        <div className="text-center py-6 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
+          {emptyMessage}
           {allowCreate && (
-            <button
-              type="button"
-              onClick={() => { setOpen(false); setShowModal(true); }}
-              className="product-picker-result text-blue-700 font-medium"
-            >
-              <UserPlus size={16} /> Crear cliente nuevo
+            <button type="button" onClick={() => setShowModal(true)} className="btn-subtle btn-subtle-primary mt-3 mx-auto">
+              <UserPlus size={15} /> Crear primer cliente
             </button>
           )}
         </div>
       )}
 
       {allowCreate && (
-        <QuickClientModal open={showModal} onClose={() => setShowModal(false)} onCreated={handleCreated} />
+        <QuickClientModal
+          open={showModal}
+          onClose={() => setShowModal(false)}
+          onCreated={handleCreated}
+          initialName={query.trim()}
+        />
       )}
     </div>
   );

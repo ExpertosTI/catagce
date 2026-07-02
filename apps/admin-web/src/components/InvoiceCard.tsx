@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { MessageCircle, FileDown, Eye, Copy, Check, Loader2 } from 'lucide-react';
+import { MessageCircle, FileDown, Eye, Copy, Check, Loader2, Wallet } from 'lucide-react';
 import {
   InvoiceListItem, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary, InvoiceDetail,
+  fiscalDocumentTitle,
 } from '../lib/invoice-utils';
 import { apiFetch } from '../lib/api';
 import { useCompany } from '../lib/useCompany';
@@ -48,7 +49,7 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
     const detail = await loadDetail();
     setLoading(null);
     if (!detail) return;
-    printInvoicePdf(detail, company?.name, company?.logoUrl);
+    printInvoicePdf(detail, company?.name, company?.logoUrl, company?.taxId);
   }
 
   async function handleCopy() {
@@ -61,48 +62,56 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
     }
   }
 
+  const statusKey = invoice.status?.toLowerCase().replace(' ', '_');
+  const statusText = statusKey ? (invoiceStatusLabel[statusKey] ?? invoiceStatusLabel[invoice.status!] ?? invoice.status) : '';
+
   return (
-    <article className="invoice-card group">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="flex-1 min-w-0">
+    <article className="executive-card group">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-emerald-600 font-bold text-xs uppercase tracking-wide truncate">
-              {invoice.clientName ?? 'Cliente'}
-            </p>
-            {invoice.status && (
-              <span className="badge-blue text-[10px]">{invoiceStatusLabel[invoice.status] ?? invoice.status}</span>
-            )}
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{invoice.clientName ?? 'Cliente'}</span>
+            {statusText && <span className="badge-blue text-[10px]">{statusText}</span>}
           </div>
-          <p className="text-blue-700 font-bold text-base mt-1">{invoice.ncf ?? invoice.reference}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{invoiceTypeLabel(invoice.invoiceType)}</p>
-          {invoice.ncf && <p className="text-xs text-slate-400">Ref: {invoice.reference}</p>}
-          <p className="text-xs text-slate-400">{formatDate(invoice.issuedAt)}</p>
+          <h3 className="text-lg font-bold text-slate-900 tracking-tight">{invoice.ncf ?? invoice.reference}</h3>
+          <p className="text-sm text-slate-600">{fiscalDocumentTitle(invoice)} · {invoiceTypeLabel(invoice.invoiceType)}</p>
+          <p className="text-xs text-slate-400">{formatDate(invoice.issuedAt)}{invoice.ncf ? ` · Ref. ${invoice.reference}` : ''}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-slate-600 sm:text-right shrink-0">
-          <span className="text-slate-400">Bruto</span><span className="col-span-2 sm:col-span-1 font-medium">{formatUsd(bruto)}</span>
-          <span className="text-slate-400">ITBIS</span><span className="col-span-2 sm:col-span-1 font-medium">{formatUsd(itbis)}</span>
-          <span className="text-slate-400">Saldo</span><span className="col-span-2 sm:col-span-1 font-semibold text-red-600">{formatUsd(balance)}</span>
-        </div>
-
-        <div className="text-right shrink-0">
-          <p className="text-red-600 font-extrabold text-lg">{formatUsd(totalAmt)}</p>
+        <div className="flex gap-6 lg:gap-8 shrink-0 flex-wrap">
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Total</p>
+            <p className="text-xl font-bold text-slate-900">{formatUsd(totalAmt)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400">Saldo</p>
+            <p className={`text-lg font-bold ${balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatUsd(balance)}</p>
+          </div>
+          <div className="hidden sm:block text-right text-xs text-slate-500 space-y-1">
+            <p>Subtotal {formatUsd(bruto)}</p>
+            <p>ITBIS {formatUsd(itbis)}</p>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-100">
-        <Link href={detailPath} className="btn-action btn-action-primary">
-          <Eye size={15} /> Ver
+      <div className="action-bar mt-4">
+        <Link href={detailPath} className="btn-subtle btn-subtle-primary">
+          <Eye size={15} /> Ver detalle
         </Link>
-        <button type="button" onClick={handleWhatsApp} disabled={loading === 'wa'} className="btn-action btn-action-whatsapp">
+        {balance > 0 && (
+          <Link href={`${detailPath}?abono=1`} className="btn-subtle btn-subtle-success">
+            <Wallet size={15} /> Registrar abono
+          </Link>
+        )}
+        <button type="button" onClick={handleWhatsApp} disabled={loading === 'wa'} className="btn-subtle">
           {loading === 'wa' ? <Loader2 size={15} className="animate-spin" /> : <MessageCircle size={15} />}
           WhatsApp
         </button>
-        <button type="button" onClick={handlePdf} disabled={loading === 'pdf'} className="btn-action btn-action-secondary">
+        <button type="button" onClick={handlePdf} disabled={loading === 'pdf'} className="btn-subtle">
           {loading === 'pdf' ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
           PDF
         </button>
-        <button type="button" onClick={handleCopy} className="btn-action btn-action-ghost">
+        <button type="button" onClick={handleCopy} className="btn-subtle ml-auto">
           {copied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
           {copied ? 'Copiado' : 'Copiar'}
         </button>
