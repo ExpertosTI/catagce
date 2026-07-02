@@ -13,8 +13,8 @@ export class InvoicesController {
   ) {}
 
   @Get()
-  list(@CurrentUser() user: AuthUser) {
-    return this.invoicesService.list(user);
+  list(@CurrentUser() user: AuthUser, @Query('clientId') clientId?: string) {
+    return this.invoicesService.list(user, { clientId });
   }
 
   @Get('dispatches/history')

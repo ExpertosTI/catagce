@@ -19,7 +19,11 @@ export class InvoicesService {
     private fiscalService: FiscalService,
   ) {}
 
-  async list(user: AuthUser) {
+  async list(user: AuthUser, filters?: { clientId?: string }) {
+    const conditions = [eq(invoices.companyId, user.companyId)];
+    if (filters?.clientId) {
+      conditions.push(eq(invoices.clientId, filters.clientId));
+    }
     return this.db.select({
       id: invoices.id,
       reference: invoices.reference,
@@ -38,7 +42,7 @@ export class InvoicesService {
     })
       .from(invoices)
       .innerJoin(clients, eq(invoices.clientId, clients.id))
-      .where(eq(invoices.companyId, user.companyId))
+      .where(and(...conditions))
       .orderBy(desc(invoices.createdAt));
   }
 

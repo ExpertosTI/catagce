@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Pencil, CheckCircle, UserPlus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Pencil, CheckCircle, UserPlus, FileText, ChevronRight } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
 import { clientStatusLabel, formatMoney } from '../../../lib/labels';
@@ -19,6 +20,7 @@ type Client = {
 };
 
 export default function ClientsPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -30,7 +32,8 @@ export default function ClientsPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function approve(id: string) {
+  async function approve(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
     await apiFetch(`/clients/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'active' }) });
     load();
   }
@@ -75,10 +78,17 @@ export default function ClientsPage() {
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {filtered.map((c) => (
-          <article key={c.id} className="executive-card">
+          <article
+            key={c.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => router.push(`/dashboard/clients/${c.id}`)}
+            onKeyDown={(e) => e.key === 'Enter' && router.push(`/dashboard/clients/${c.id}`)}
+            className="executive-card cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group"
+          >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center text-lg font-bold shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl font-bold shrink-0 group-hover:bg-blue-100 transition">
                   {c.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
@@ -92,15 +102,23 @@ export default function ClientsPage() {
               </span>
             </div>
             <p className="text-sm text-slate-600 mt-3">💳 Crédito: <strong>{formatMoney(c.creditLimit)}</strong></p>
-            <div className="action-bar mt-3 !p-2">
+            <div className="action-bar mt-3 !p-2" onClick={(e) => e.stopPropagation()}>
               {c.status === 'pending' && (
-                <button type="button" onClick={() => approve(c.id)} className="btn-subtle btn-subtle-success text-xs">
+                <button type="button" onClick={(e) => approve(c.id, e)} className="btn-subtle btn-subtle-success text-xs">
                   <CheckCircle size={14} /> Aprobar
                 </button>
               )}
-              <Link href={`/dashboard/clients/${c.id}`} className="btn-subtle btn-subtle-primary text-xs ml-auto">
+              <button
+                type="button"
+                onClick={() => router.push(`/dashboard/clients/${c.id}`)}
+                className="btn-subtle btn-subtle-primary text-xs"
+              >
+                <FileText size={14} /> Ver facturas
+              </button>
+              <Link href={`/dashboard/clients/${c.id}?tab=edit`} className="btn-subtle text-xs ml-auto">
                 <Pencil size={14} /> Editar
               </Link>
+              <ChevronRight size={16} className="text-slate-300 ml-1 hidden sm:block" />
             </div>
           </article>
         ))}
