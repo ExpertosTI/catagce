@@ -129,6 +129,42 @@ body {
   @apply bg-white rounded-2xl shadow-xl w-full max-w-md p-5 sm:p-6 max-h-[90dvh] overflow-y-auto;
 }
 
+.segmented-control {
+  @apply inline-flex w-full bg-slate-100 rounded-full p-1 gap-1;
+}
+
+.segmented-option {
+  @apply flex-1 text-center text-sm font-semibold px-4 py-2 rounded-full text-slate-500 transition-all duration-150;
+}
+
+.segmented-option-active {
+  @apply bg-white text-blue-700 shadow-sm;
+}
+
+.qty-stepper {
+  @apply inline-flex items-center gap-1 bg-slate-100 rounded-full p-1;
+}
+
+.qty-stepper-btn {
+  @apply flex items-center justify-center rounded-full bg-white text-slate-600 shadow-sm hover:bg-blue-50 hover:text-blue-700 transition-colors disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600;
+}
+
+.qty-stepper-input {
+  @apply text-center bg-transparent font-semibold text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none;
+}
+
+.upload-dropzone {
+  @apply w-full max-w-xs border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/40 overflow-hidden;
+}
+
+.product-picker-dropdown {
+  @apply absolute z-20 mt-1.5 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-72 overflow-y-auto;
+}
+
+.product-picker-result {
+  @apply w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0;
+}
+
 @media print {
   .no-print { display: none !important; }
 }

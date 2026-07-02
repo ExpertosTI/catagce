@@ -8,6 +8,7 @@ import {
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary, InvoiceDetail,
 } from '../lib/invoice-utils';
 import { apiFetch } from '../lib/api';
+import { useCompany } from '../lib/useCompany';
 
 type Props = {
   invoice: InvoiceListItem;
@@ -18,6 +19,7 @@ type Props = {
 export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
   const [loading, setLoading] = useState<'wa' | 'pdf' | null>(null);
   const [copied, setCopied] = useState(false);
+  const company = useCompany();
 
   const bruto = parseFloat(invoice.subtotal || invoice.totalAmount || '0');
   const itbis = parseFloat(invoice.taxAmount || '0');
@@ -45,7 +47,7 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
     const detail = await loadDetail();
     setLoading(null);
     if (!detail) return;
-    printInvoicePdf(detail);
+    printInvoicePdf(detail, company?.name, company?.logoUrl);
   }
 
   async function handleCopy() {

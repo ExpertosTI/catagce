@@ -8,6 +8,7 @@ import {
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary,
 } from '../lib/invoice-utils';
 import { invoiceStatusLabel } from '../lib/labels';
+import { useCompany } from '../lib/useCompany';
 
 type Props = {
   invoice: InvoiceDetail;
@@ -15,9 +16,11 @@ type Props = {
   companyName?: string;
 };
 
-export function InvoiceDetailView({ invoice, backHref, companyName = 'General Home' }: Props) {
+export function InvoiceDetailView({ invoice, backHref, companyName }: Props) {
   const [copied, setCopied] = useState(false);
   const balance = invoiceBalance(invoice);
+  const company = useCompany();
+  const resolvedName = companyName ?? company?.name ?? 'General Home';
 
   async function handleCopy() {
     const ok = await copyInvoiceSummary(invoice);
@@ -50,10 +53,10 @@ export function InvoiceDetailView({ invoice, backHref, companyName = 'General Ho
         <button type="button" onClick={() => shareInvoiceWhatsApp(invoice, invoice.client?.phone)} className="btn-action btn-action-whatsapp">
           <MessageCircle size={16} /> Enviar WhatsApp
         </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, companyName)} className="btn-action btn-action-secondary">
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl)} className="btn-action btn-action-secondary">
           <FileDown size={16} /> Guardar PDF
         </button>
-        <button type="button" onClick={() => printInvoicePdf(invoice, companyName)} className="btn-action btn-action-secondary">
+        <button type="button" onClick={() => printInvoicePdf(invoice, resolvedName, company?.logoUrl)} className="btn-action btn-action-secondary">
           <Printer size={16} /> Imprimir
         </button>
         <button type="button" onClick={handleCopy} className="btn-action btn-action-ghost">

@@ -142,4 +142,28 @@ export class ProductsService {
       .where(and(eq(products.id, id), eq(products.companyId, user.companyId)));
     return { ok: true, message: 'Producto eliminado' };
   }
+
+  async generateDescription(name: string, category?: string) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return {
+        description: `${name} de excelente calidad, ideal para el hogar. Producto importado con garantía, listo para entrega inmediata en Santo Domingo.`,
+        source: 'template',
+      };
+    }
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const prompt = `Escribe una descripción de venta corta (máximo 40 palabras), en español, persuasiva y profesional para este producto de electrodomésticos/hogar: "${name}"${category ? ` (categoría: ${category})` : ''}. No uses emojis ni comillas.`;
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      return { description: text, source: 'ai' };
+    } catch {
+      return {
+        description: `${name} de excelente calidad, ideal para el hogar. Producto importado con garantía, listo para entrega inmediata en Santo Domingo.`,
+        source: 'template',
+      };
+    }
+  }
 }

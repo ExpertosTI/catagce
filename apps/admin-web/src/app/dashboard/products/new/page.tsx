@@ -2,14 +2,37 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Sparkles, Loader2 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
+import { ImageUploadField } from '../../../../components/ImageUploadField';
+import { QuantityStepper } from '../../../../components/QuantityStepper';
 import { apiFetch } from '../../../../lib/api';
 
 export default function NewProductPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', stockQty: '0' });
+  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', stockQty: 0 });
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  async function generateDescription() {
+    if (!form.name.trim()) {
+      alert('Escriba primero el nombre del producto');
+      return;
+    }
+    setGenerating(true);
+    try {
+      const res = await apiFetch<{ description: string }>('/products/ai-describe', {
+        method: 'POST',
+        body: JSON.stringify({ name: form.name }),
+      });
+      setForm((f) => ({ ...f, description: res.description }));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'No se pudo generar la descripción');
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,10 +49,10 @@ export default function NewProductPage() {
           imageUrl: form.imageUrl || undefined,
         }),
       });
-      if (form.stockQty && parseInt(form.stockQty, 10) > 0) {
+      if (form.stockQty > 0) {
         await apiFetch(`/products/${product.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ stockQty: parseInt(form.stockQty, 10) }),
+          body: JSON.stringify({ stockQty: form.stockQty }),
         });
       }
       router.push('/dashboard/products');
@@ -44,6 +67,8 @@ export default function NewProductPage() {
     <DashboardLayout>
       <PageHeader title="Nuevo producto" subtitle="Agregue mercancía al catálogo" />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
+        <ImageUploadField value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} label="Foto del producto" />
+
         <FormField label="Código SKU">
           <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="input" required placeholder="GH-TV-001" />
         </FormField>
@@ -51,7 +76,18 @@ export default function NewProductPage() {
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />
         </FormField>
         <FormField label="Descripción">
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" rows={3} />
+          <div className="space-y-2">
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" rows={3} />
+            <button
+              type="button"
+              onClick={generateDescription}
+              disabled={generating}
+              className="btn-action btn-action-secondary text-xs disabled:opacity-50"
+            >
+              {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {generating ? 'Generando...' : 'Generar con IA'}
+            </button>
+          </div>
         </FormField>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Precio de venta">
@@ -62,10 +98,7 @@ export default function NewProductPage() {
           </FormField>
         </div>
         <FormField label="Cantidad en inventario">
-          <input type="number" min={0} value={form.stockQty} onChange={(e) => setForm({ ...form, stockQty: e.target.value })} className="input" />
-        </FormField>
-        <FormField label="URL de imagen">
-          <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="input" placeholder="https://..." />
+          <QuantityStepper value={form.stockQty} onChange={(v) => setForm({ ...form, stockQty: v })} min={0} />
         </FormField>
         <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
           {loading ? 'Creando...' : 'Crear producto'}

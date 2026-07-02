@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout, { PageHeader } from '../../components/DashboardLayout';
 import { apiFetch } from '../../lib/api';
+import { formatCurrency } from '../../lib/currency';
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
@@ -13,7 +14,7 @@ export default function DashboardPage() {
 
   const cards = [
     { label: 'Facturas emitidas', value: data?.invoices?.total ?? '—', color: 'text-blue-700' },
-    { label: 'Cuentas por cobrar', value: data ? `$${parseFloat(data.invoices?.creditPending || '0').toFixed(2)}` : '—', color: 'text-amber-700' },
+    { label: 'Cuentas por cobrar', value: data ? formatCurrency(data.invoices?.creditPending || '0') : '—', color: 'text-amber-700' },
     { label: 'Despachos pendientes', value: data?.pendingDispatch?.count ?? '—', color: 'text-orange-700' },
     { label: 'Unidades por despachar', value: data?.pendingDispatch?.units ?? '—', color: 'text-orange-700' },
     { label: 'Mercancía en almacén', value: data?.stock?.inWarehouse ?? '—', color: 'text-emerald-700' },

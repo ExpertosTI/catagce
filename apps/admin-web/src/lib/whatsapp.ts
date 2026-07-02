@@ -1,3 +1,5 @@
+import { formatCurrency } from './currency';
+
 /** Normaliza teléfono para wa.me (solo dígitos, con código país) */
 export function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, '');
@@ -20,9 +22,9 @@ export function buildOrderMessage(opts: {
   notes?: string;
 }): string {
   const lines = opts.items.map(
-    (i) => `• ${i.name} x${i.qty} — $${i.lineTotal.toFixed(2)}`,
+    (i) => `• ${i.name} x${i.qty} — ${formatCurrency(i.lineTotal)}`,
   );
-  let msg = `¡Hola! Soy *${opts.buyerName}*.\n\nQuiero confirmar mi pedido en *${opts.catalogName}*:\n\n${lines.join('\n')}\n\n*Total: $${opts.total.toFixed(2)}*`;
+  let msg = `¡Hola! Soy *${opts.buyerName}*.\n\nQuiero confirmar mi pedido en *${opts.catalogName}*:\n\n${lines.join('\n')}\n\n*Total: ${formatCurrency(opts.total)}*`;
   if (opts.orderId) msg += `\n\nRef: #${opts.orderId.slice(0, 8)}`;
   if (opts.notes) msg += `\n\nNotas: ${opts.notes}`;
   msg += '\n\n¡Gracias! Quedo atento/a.';
@@ -36,5 +38,5 @@ export function buildSellerNewOrderMessage(opts: {
   orderId: string;
   itemCount: number;
 }): string {
-  return `🛒 *Nuevo pedido Catagce*\n\nCliente: ${opts.buyerName}\nWhatsApp: ${opts.buyerPhone}\nProductos: ${opts.itemCount}\nTotal: $${opts.total.toFixed(2)}\nRef: #${opts.orderId.slice(0, 8)}`;
+  return `🛒 *Nuevo pedido Catagce*\n\nCliente: ${opts.buyerName}\nWhatsApp: ${opts.buyerPhone}\nProductos: ${opts.itemCount}\nTotal: ${formatCurrency(opts.total)}\nRef: #${opts.orderId.slice(0, 8)}`;
 }

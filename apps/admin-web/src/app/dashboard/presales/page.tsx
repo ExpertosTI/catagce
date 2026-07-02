@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
+import { formatCurrency } from '../../../lib/currency';
+import { presaleStatusLabel } from '../../../lib/labels';
 
 export default function PresalesPage() {
   const [presales, setPresales] = useState<any[]>([]);
@@ -29,8 +31,8 @@ export default function PresalesPage() {
               <tr key={p.id} className="border-b border-slate-100">
                 <td className="p-4 font-medium">{p.reference}</td>
                 <td className="p-4">{p.clientName}</td>
-                <td className="p-4"><span className="badge-blue capitalize">{p.status}</span></td>
-                <td className="p-4 text-right font-medium">${parseFloat(p.totalAmount).toFixed(2)}</td>
+                <td className="p-4"><span className="badge-blue">{presaleStatusLabel[p.status] ?? p.status}</span></td>
+                <td className="p-4 text-right font-medium">{formatCurrency(p.totalAmount)}</td>
               </tr>
             ))}
           </tbody>

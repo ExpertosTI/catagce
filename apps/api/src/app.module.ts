@@ -11,6 +11,9 @@ import { ImportsModule } from './imports/imports.module';
 import { PortalModule } from './portal/portal.module';
 import { PublicModule } from './public/public.module';
 import { MobileModule } from './mobile/mobile.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { CompaniesModule } from './companies/companies.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
 import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
@@ -25,6 +28,9 @@ import { AuthGuard } from './common/guards/auth.guard';
     PortalModule,
     PublicModule,
     MobileModule,
+    UploadsModule,
+    CompaniesModule,
+    SuppliersModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],

@@ -28,6 +28,12 @@ export class ProductsController {
   }
 
   @StaffOnly()
+  @Post('ai-describe')
+  aiDescribe(@CurrentUser() user: AuthUser, @Body() body: { name: string; category?: string }) {
+    return this.productsService.generateDescription(body.name, body.category);
+  }
+
+  @StaffOnly()
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() body: any) {
     return this.productsService.create(user, body);

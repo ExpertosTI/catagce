@@ -1,23 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { QuickClientModal } from '../../../../components/QuickClientModal';
+import { SegmentedControl } from '../../../../components/SegmentedControl';
+import { ProductPicker, PickedLine, PickerProduct } from '../../../../components/ProductPicker';
 import { apiFetch } from '../../../../lib/api';
-import { formatUsd } from '../../../../lib/invoice-utils';
-
-type Line = { productId: string; quantity: number; unitPrice: number };
+import { formatCurrency } from '../../../../lib/currency';
 
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<PickerProduct[]>([]);
   const [clientId, setClientId] = useState('');
   const [invoiceType, setInvoiceType] = useState<'cash' | 'credit'>('credit');
-  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: 1, unitPrice: 0 }]);
+  const [lines, setLines] = useState<PickedLine[]>([]);
   const [loading, setLoading] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
 
@@ -33,39 +33,14 @@ export default function NewInvoicePage() {
   }
 
   useEffect(() => {
-    Promise.all([loadClients(), apiFetch<any[]>('/products')]).then(([, p]) => setProducts(p));
+    Promise.all([loadClients(), apiFetch<PickerProduct[]>('/products')]).then(([, p]) => setProducts(p));
   }, []);
 
-  const total = useMemo(
-    () => lines.reduce((s, l) => s + (l.productId ? l.quantity * l.unitPrice : 0), 0),
-    [lines],
-  );
-
-  function addLine() {
-    setLines([...lines, { productId: '', quantity: 1, unitPrice: 0 }]);
-  }
-
-  function removeLine(i: number) {
-    if (lines.length === 1) return;
-    setLines(lines.filter((_, idx) => idx !== i));
-  }
-
-  function updateLine(i: number, field: keyof Line, value: string | number) {
-    const updated = [...lines];
-    if (field === 'quantity') updated[i].quantity = Math.max(1, Number(value));
-    else if (field === 'unitPrice') updated[i].unitPrice = Math.max(0, Number(value));
-    else if (field === 'productId') {
-      updated[i].productId = String(value);
-      const prod = products.find((p) => p.id === value);
-      if (prod) updated[i].unitPrice = parseFloat(prod.salePrice);
-    }
-    setLines(updated);
-  }
+  const total = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const items = lines.filter((l) => l.productId);
-    if (!items.length) {
+    if (!lines.length) {
       alert('Agregue al menos un producto');
       return;
     }
@@ -77,7 +52,7 @@ export default function NewInvoicePage() {
           clientId,
           invoiceType,
           issue: true,
-          items: items.map((l) => ({
+          items: lines.map((l) => ({
             productId: l.productId,
             quantity: Number(l.quantity),
             unitPrice: Number(l.unitPrice),
@@ -110,62 +85,26 @@ export default function NewInvoicePage() {
             </div>
           </FormField>
           <FormField label="Tipo de factura">
-            <select value={invoiceType} onChange={(e) => setInvoiceType(e.target.value as 'cash' | 'credit')} className="input">
-              <option value="credit">Crédito</option>
-              <option value="cash">Contado</option>
-            </select>
+            <SegmentedControl<'cash' | 'credit'>
+              value={invoiceType}
+              onChange={setInvoiceType}
+              options={[
+                { value: 'credit', label: 'Crédito' },
+                { value: 'cash', label: 'Contado' },
+              ]}
+            />
           </FormField>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="form-label mb-0">Productos</p>
-            <button type="button" onClick={addLine} className="text-sm text-blue-700 font-semibold inline-flex items-center gap-1 hover:underline">
-              <Plus size={16} /> Agregar línea
-            </button>
-          </div>
-
-          {lines.map((line, i) => {
-            const lineTotal = line.productId ? line.quantity * line.unitPrice : 0;
-            return (
-              <div key={i} className="line-item-card">
-                <div className="grid gap-2 sm:grid-cols-12 sm:items-end">
-                  <div className="sm:col-span-5">
-                    <label className="text-xs text-slate-500 mb-1 block">Producto</label>
-                    <select value={line.productId} onChange={(e) => updateLine(i, 'productId', e.target.value)} className="input" required={i === 0}>
-                      <option value="">Seleccionar producto</option>
-                      {products.map((p) => <option key={p.id} value={p.id}>{p.name} — {formatUsd(p.salePrice)}</option>)}
-                    </select>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="text-xs text-slate-500 mb-1 block">Cantidad</label>
-                    <input type="number" min={1} value={line.quantity} onChange={(e) => updateLine(i, 'quantity', e.target.value)} className="input" />
-                  </div>
-                  <div className="sm:col-span-3">
-                    <label className="text-xs text-slate-500 mb-1 block">Precio unitario</label>
-                    <input type="number" step="0.01" min={0} value={line.unitPrice} onChange={(e) => updateLine(i, 'unitPrice', e.target.value)} className="input" />
-                  </div>
-                  <div className="sm:col-span-2 flex items-end justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-slate-500">Subtotal</p>
-                      <p className="font-bold text-blue-700">{formatUsd(lineTotal)}</p>
-                    </div>
-                    {lines.length > 1 && (
-                      <button type="button" onClick={() => removeLine(i)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg" aria-label="Eliminar línea">
-                        <Trash2 size={18} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div>
+          <p className="form-label">Productos</p>
+          <ProductPicker products={products} lines={lines} onChange={setLines} />
         </div>
 
         <div className="invoice-summary-footer">
           <div className="flex justify-between font-bold text-lg">
             <span>Total factura</span>
-            <span className="text-blue-700">{formatUsd(total)}</span>
+            <span className="text-blue-700">{formatCurrency(total)}</span>
           </div>
         </div>
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Pencil, Trash2 } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
-import { formatMoney } from '../../../lib/labels';
+import { formatCurrency } from '../../../lib/currency';
 
 type Product = {
   id: string;
@@ -62,7 +62,7 @@ export default function ProductsPage() {
             <div className="p-4">
               <p className="text-xs text-slate-500 font-medium">{p.sku}</p>
               <h3 className="font-bold text-slate-900 mt-0.5 line-clamp-2">{p.name}</h3>
-              <p className="text-blue-700 font-extrabold text-lg mt-2">{formatMoney(p.salePrice)}</p>
+              <p className="text-blue-700 font-extrabold text-lg mt-2">{formatCurrency(p.salePrice)}</p>
               <div className="flex gap-2 mt-4">
                 <Link href={`/dashboard/products/${p.id}`} className="btn-action btn-action-primary flex-1">
                   <Pencil size={15} /> Editar

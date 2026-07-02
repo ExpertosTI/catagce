@@ -1,35 +1,119 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
+import { FormField } from '../../../components/FormField';
+import { ImageUploadField } from '../../../components/ImageUploadField';
+import { apiFetch } from '../../../lib/api';
 import { SITE_URL, ADMIN_URL } from '../../../lib/site';
 
+type Company = {
+  name: string;
+  slug: string;
+  taxId?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  logoUrl?: string;
+};
+
 export default function SettingsPage() {
+  const [form, setForm] = useState<Company>({ name: '', slug: '' });
+  const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    apiFetch<Company>('/companies/me').then((c) => {
+      setForm(c);
+      setReady(true);
+    }).catch(console.error);
+  }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setSaved(false);
+    try {
+      await apiFetch('/companies/me', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: form.name,
+          taxId: form.taxId,
+          email: form.email,
+          phone: form.phone,
+          address: form.address,
+          logoUrl: form.logoUrl,
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'No se pudo guardar');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!ready) {
+    return (
+      <DashboardLayout>
+        <div className="animate-pulse h-96 bg-slate-100 rounded-2xl max-w-lg" />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
-      <PageHeader title="Configuración" subtitle="Datos de GHome Importaciones" />
-      <div className="card p-6 max-w-lg space-y-4">
+      <PageHeader title="Configuración" subtitle="Datos y marca de su empresa" />
+
+      <form onSubmit={submit} className="form-card max-w-lg space-y-4">
+        <ImageUploadField
+          value={form.logoUrl ?? ''}
+          onChange={(url) => setForm({ ...form, logoUrl: url })}
+          label="Logo de la empresa"
+          aspect="square"
+        />
+
+        <FormField label="Nombre de la empresa">
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />
+        </FormField>
+        <FormField label="RNC / Identificación fiscal">
+          <input value={form.taxId ?? ''} onChange={(e) => setForm({ ...form, taxId: e.target.value })} className="input" />
+        </FormField>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Correo de contacto">
+            <input type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" />
+          </FormField>
+          <FormField label="Teléfono">
+            <input type="tel" value={form.phone ?? ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" />
+          </FormField>
+        </div>
+        <FormField label="Dirección">
+          <input value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" />
+        </FormField>
+
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
+            {loading ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+          {saved && <span className="text-sm text-emerald-600 font-medium">Guardado ✓</span>}
+        </div>
+      </form>
+
+      <div className="form-card max-w-lg space-y-3 mt-6">
+        <p className="text-sm font-semibold text-slate-700">Enlaces de la plataforma</p>
         <div>
-          <p className="text-sm text-slate-500">Empresa</p>
-          <p className="font-semibold text-lg">GHome Importaciones</p>
+          <p className="text-xs text-slate-500">Identificador del portal (slug)</p>
+          <p className="font-mono text-blue-700">{form.slug}</p>
         </div>
         <div>
-          <p className="text-sm text-slate-500">Slug portal</p>
-          <p className="font-mono text-blue-700">generalhome</p>
+          <p className="text-xs text-slate-500">Panel de administración</p>
+          <a href={ADMIN_URL} className="text-blue-700 hover:underline text-sm">{ADMIN_URL}</a>
         </div>
         <div>
-          <p className="text-sm text-slate-500">Panel admin</p>
-          <a href={ADMIN_URL} className="text-blue-700 hover:underline">{ADMIN_URL}</a>
-        </div>
-        <div>
-          <p className="text-sm text-slate-500">Sitio público</p>
-          <a href={SITE_URL} className="text-blue-700 hover:underline">{SITE_URL}</a>
-        </div>
-        <div>
-          <p className="text-sm text-slate-500">Colores corporativos</p>
-          <div className="flex gap-2 mt-2">
-            <div className="w-10 h-10 rounded bg-blue-700 border" title="Azul corporativo" />
-            <div className="w-10 h-10 rounded bg-white border" title="Blanco" />
-          </div>
+          <p className="text-xs text-slate-500">Portal de clientes</p>
+          <a href={SITE_URL} className="text-blue-700 hover:underline text-sm">{SITE_URL}</a>
         </div>
       </div>
     </DashboardLayout>
