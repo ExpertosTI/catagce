@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserPlus } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
-import { QuickClientModal } from '../../../../components/QuickClientModal';
+import { ClientPicker, PickerClient } from '../../../../components/ClientPicker';
 import { SegmentedControl } from '../../../../components/SegmentedControl';
 import { ProductPicker, PickedLine, PickerProduct } from '../../../../components/ProductPicker';
 import { apiFetch } from '../../../../lib/api';
@@ -13,35 +12,34 @@ import { formatCurrency } from '../../../../lib/currency';
 
 export default function NewInvoicePage() {
   const router = useRouter();
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<PickerClient[]>([]);
   const [products, setProducts] = useState<PickerProduct[]>([]);
   const [clientId, setClientId] = useState('');
   const [invoiceType, setInvoiceType] = useState<'cash' | 'credit'>('credit');
   const [lines, setLines] = useState<PickedLine[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showClientModal, setShowClientModal] = useState(false);
-
-  function loadClients() {
-    return apiFetch<any[]>('/clients').then((c) => {
-      const active = c.filter((x) => x.status === 'active');
-      setClients(active);
-      if (active.length && !active.some((x) => x.id === clientId)) {
-        setClientId(active[0].id);
-      }
-      return active;
-    });
-  }
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([loadClients(), apiFetch<PickerProduct[]>('/products')]).then(([, p]) => setProducts(p));
+    apiFetch<any[]>('/clients').then((c) => {
+      const active = c.filter((x) => x.status === 'active');
+      setClients(active);
+      if (active.length) setClientId((prev) => prev || active[0].id);
+    }).catch(() => setError('No se pudieron cargar los clientes'));
+    apiFetch<PickerProduct[]>('/products').then(setProducts).catch(() => setError('No se pudieron cargar los productos'));
   }, []);
 
   const total = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError('');
+    if (!clientId) {
+      setError('Seleccione o cree un cliente');
+      return;
+    }
     if (!lines.length) {
-      alert('Agregue al menos un producto');
+      setError('Agregue al menos un producto');
       return;
     }
     setLoading(true);
@@ -61,7 +59,7 @@ export default function NewInvoicePage() {
       });
       router.push('/dashboard/invoices');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al emitir factura');
+      setError(err instanceof Error ? err.message : 'Error al emitir factura');
     } finally {
       setLoading(false);
     }
@@ -74,15 +72,13 @@ export default function NewInvoicePage() {
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
         <div className="grid sm:grid-cols-2 gap-4">
           <FormField label="Cliente">
-            <div className="flex gap-2">
-              <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="input flex-1" required>
-                {clients.length === 0 && <option value="">Sin clientes activos</option>}
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-              </select>
-              <button type="button" onClick={() => setShowClientModal(true)} className="btn-secondary shrink-0 px-3" title="Crear cliente">
-                <UserPlus size={18} />
-              </button>
-            </div>
+            <ClientPicker
+              clients={clients}
+              value={clientId}
+              onChange={setClientId}
+              onCreated={(client) => setClients((prev) => [...prev, client])}
+              emptyMessage="Sin clientes activos"
+            />
           </FormField>
           <FormField label="Tipo de factura">
             <SegmentedControl<'cash' | 'credit'>
@@ -98,7 +94,7 @@ export default function NewInvoicePage() {
 
         <div>
           <p className="form-label">Productos</p>
-          <ProductPicker products={products} lines={lines} onChange={setLines} />
+          <ProductPicker products={products} lines={lines} onChange={setLines} emptyMessage="Busque y agregue productos a la factura" />
         </div>
 
         <div className="invoice-summary-footer">
@@ -108,19 +104,12 @@ export default function NewInvoicePage() {
           </div>
         </div>
 
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
         <button type="submit" disabled={loading || !clientId} className="btn-primary w-full sm:w-auto disabled:opacity-50">
           {loading ? 'Emitiendo...' : 'Emitir factura'}
         </button>
       </form>
-
-      <QuickClientModal
-        open={showClientModal}
-        onClose={() => setShowClientModal(false)}
-        onCreated={async (client) => {
-          await loadClients();
-          setClientId(client.id);
-        }}
-      />
     </DashboardLayout>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PortalLayout from '../../../components/PortalLayout';
 import { apiFetch } from '../../../lib/api';
+import { dispatchStatusLabel } from '../../../lib/labels';
 
 type Dispatch = {
   id: string;
@@ -17,9 +18,10 @@ type Dispatch = {
 
 export default function ClientDispatchesPage() {
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch<Dispatch[]>('/portal/dispatches').then(setDispatches).catch(console.error);
+    apiFetch<Dispatch[]>('/portal/dispatches').then(setDispatches).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -28,7 +30,13 @@ export default function ClientDispatchesPage() {
       <p className="text-slate-500 mt-1">Todas las entregas de mercancía realizadas a su negocio</p>
 
       <div className="mt-6 space-y-4">
-        {dispatches.map((d) => (
+        {loading && (
+          <>
+            <div className="card p-6 animate-pulse h-24 bg-slate-100" />
+            <div className="card p-6 animate-pulse h-24 bg-slate-100" />
+          </>
+        )}
+        {!loading && dispatches.map((d) => (
           <div key={d.id} className="card p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -38,7 +46,7 @@ export default function ClientDispatchesPage() {
                   {d.dispatchedAt ? new Date(d.dispatchedAt).toLocaleDateString('es-PA', { dateStyle: 'long' }) : '—'}
                 </p>
               </div>
-              <span className="badge-green capitalize">{d.status}</span>
+              <span className="badge-green">{dispatchStatusLabel[d.status] ?? d.status}</span>
             </div>
             <ul className="mt-4 border-t border-slate-100 pt-4 space-y-2">
               {d.items.map((item, i) => (
@@ -51,7 +59,7 @@ export default function ClientDispatchesPage() {
             {d.notes && <p className="text-sm text-slate-500 mt-3 italic">{d.notes}</p>}
           </div>
         ))}
-        {!dispatches.length && (
+        {!loading && !dispatches.length && (
           <div className="card p-10 text-center text-slate-500">Aún no tiene despachos registrados</div>
         )}
       </div>

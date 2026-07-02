@@ -7,6 +7,7 @@ import {
   InvoiceDetail, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary,
 } from '../lib/invoice-utils';
+import { invoiceStatusLabel, paymentMethodLabel } from '../lib/labels';
 
 type Props = {
   invoice: InvoiceDetail;
@@ -40,7 +41,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName = 'General Ho
           <h2 className="text-2xl font-bold text-slate-900 mt-1">{invoice.reference}</h2>
           <p className="text-slate-500 text-sm">{invoiceTypeLabel(invoice.invoiceType)} · {formatDate(invoice.issuedAt)}</p>
         </div>
-        {invoice.status && <span className="badge-blue capitalize h-fit">{invoice.status.replace(/_/g, ' ')}</span>}
+        {invoice.status && <span className="badge-blue h-fit">{invoiceStatusLabel[invoice.status] ?? invoice.status}</span>}
       </div>
 
       <div className="flex flex-wrap gap-2 mt-4">
@@ -108,7 +109,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName = 'General Ho
           <ul className="divide-y divide-slate-100">
             {invoice.payments.map((p) => (
               <li key={p.id} className="px-4 py-3 flex justify-between text-sm hover:bg-slate-50/80">
-                <span className="text-slate-600">{formatDate(p.paidAt)} · {p.method} {p.reference && `(${p.reference})`}</span>
+                <span className="text-slate-600">{formatDate(p.paidAt)} · {paymentMethodLabel[p.method] ?? p.method} {p.reference && `(${p.reference})`}</span>
                 <span className="font-semibold text-emerald-700">{formatUsd(p.amount)}</span>
               </li>
             ))}

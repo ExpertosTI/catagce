@@ -97,7 +97,7 @@ export function printInvoicePdf(inv: InvoiceDetail, companyName = 'General Home'
   const safeClient = escapeHtml(inv.clientName ?? inv.client?.name ?? '—');
   const safeNotes = inv.notes ? escapeHtml(inv.notes) : '';
   const statusLabel = inv.status
-    ? ({ draft: 'Borrador', issued: 'Emitida', paid: 'Pagada', partially_paid: 'Pago parcial', cancelled: 'Anulada' } as Record<string, string>)[inv.status] ?? inv.status
+    ? ({ draft: 'Borrador', issued: 'Emitida', paid: 'Pagada', partially_paid: 'Pago parcial', overdue: 'Vencida', cancelled: 'Anulada' } as Record<string, string>)[inv.status] ?? inv.status
     : null;
 
   const rows = items.map((i) => {

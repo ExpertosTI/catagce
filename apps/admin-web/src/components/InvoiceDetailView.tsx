@@ -1,32 +1,74 @@
 'use client';
 
 import Link from 'next/link';
-import { MessageCircle, FileDown, Printer, Copy, Check } from 'lucide-react';
+import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   InvoiceDetail, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary,
 } from '../lib/invoice-utils';
-import { invoiceStatusLabel } from '../lib/labels';
+import { invoiceStatusLabel, paymentMethodLabel } from '../lib/labels';
 import { useCompany } from '../lib/useCompany';
+import { apiFetch } from '../lib/api';
 
 type Props = {
   invoice: InvoiceDetail;
   backHref: string;
   companyName?: string;
+  canManagePayments?: boolean;
+  onInvoiceUpdated?: (invoice: InvoiceDetail) => void;
 };
 
-export function InvoiceDetailView({ invoice, backHref, companyName }: Props) {
+const PAYMENT_METHODS = [
+  { value: 'transfer', label: 'Transferencia' },
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'card', label: 'Tarjeta' },
+  { value: 'check', label: 'Cheque' },
+  { value: 'other', label: 'Otro' },
+];
+
+export function InvoiceDetailView({ invoice, backHref, companyName, canManagePayments, onInvoiceUpdated }: Props) {
   const [copied, setCopied] = useState(false);
   const balance = invoiceBalance(invoice);
   const company = useCompany();
   const resolvedName = companyName ?? company?.name ?? 'General Home';
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('transfer');
+  const [paymentRef, setPaymentRef] = useState('');
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
   async function handleCopy() {
     const ok = await copyInvoiceSummary(invoice);
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  async function submitPayment(e: React.FormEvent) {
+    e.preventDefault();
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      setPaymentError('Ingrese un monto válido');
+      return;
+    }
+    setPaymentSaving(true);
+    setPaymentError('');
+    try {
+      const updated = await apiFetch<InvoiceDetail>(`/invoices/${invoice.id}/payments`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, method: paymentMethod, reference: paymentRef || undefined }),
+      });
+      onInvoiceUpdated?.({ ...updated, clientName: updated.client?.name ?? updated.clientName });
+      setShowPaymentForm(false);
+      setPaymentAmount('');
+      setPaymentRef('');
+    } catch (err: unknown) {
+      setPaymentError(err instanceof Error ? err.message : 'No se pudo registrar el abono');
+    } finally {
+      setPaymentSaving(false);
     }
   }
 
@@ -63,7 +105,45 @@ export function InvoiceDetailView({ invoice, backHref, companyName }: Props) {
           {copied ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
           {copied ? 'Copiado' : 'Copiar resumen'}
         </button>
+        {canManagePayments && balance > 0 && (
+          <button type="button" onClick={() => setShowPaymentForm((v) => !v)} className="btn-action btn-action-primary">
+            {showPaymentForm ? <X size={16} /> : <Plus size={16} />} Registrar abono
+          </button>
+        )}
       </div>
+
+      {showPaymentForm && (
+        <form onSubmit={submitPayment} className="card p-4 mt-4 space-y-3 max-w-md">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Monto abonado</label>
+              <input
+                type="number" step="0.01" min="0" max={balance}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="input" placeholder={balance.toFixed(2)} autoFocus required
+              />
+            </div>
+            <div>
+              <label className="form-label">Método</label>
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="input">
+                {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Referencia (opcional)</label>
+            <input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} className="input" placeholder="N.º de comprobante" />
+          </div>
+          {paymentError && <p className="text-sm text-red-600">{paymentError}</p>}
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setShowPaymentForm(false)} className="btn-secondary flex-1">Cancelar</button>
+            <button type="submit" disabled={paymentSaving} className="btn-primary flex-1 disabled:opacity-50">
+              {paymentSaving ? 'Guardando...' : 'Registrar abono'}
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
         {[
@@ -114,7 +194,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName }: Props) {
           <ul className="divide-y divide-slate-100">
             {invoice.payments.map((p) => (
               <li key={p.id} className="px-4 py-3 flex justify-between text-sm hover:bg-slate-50/80">
-                <span className="text-slate-600">{formatDate(p.paidAt)} · {p.method} {p.reference && `(${p.reference})`}</span>
+                <span className="text-slate-600">{formatDate(p.paidAt)} · {paymentMethodLabel[p.method] ?? p.method} {p.reference && `(${p.reference})`}</span>
                 <span className="font-semibold text-emerald-700">{formatUsd(p.amount)}</span>
               </li>
             ))}

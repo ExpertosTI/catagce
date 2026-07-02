@@ -1,0 +1,16 @@
+---
+description: Commit y push automático al terminar modificaciones en el repo
+alwaysApply: true
+---
+
+# Commit y push al terminar
+
+Cuando completes un conjunto de modificaciones de código en este repositorio:
+
+1. Revisa que compile/typecheck pase cuando sea razonable.
+2. No incluyas artefactos de build (`tsbuildinfo`, `dist/`, `.env`, credenciales).
+3. Haz **commit** con mensaje claro en español o inglés (1-2 frases, enfoque en el porqué).
+4. Haz **push** a la rama de trabajo actual (p. ej. `ghome`) sin preguntar al usuario.
+5. Indica al usuario el hash del commit y el comando de deploy en el servidor si aplica.
+
+No pidas confirmación para commit/push salvo que el usuario lo prohíba explícitamente en ese mensaje.

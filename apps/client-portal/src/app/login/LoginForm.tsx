@@ -69,7 +69,7 @@ export default function LoginForm() {
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre comercial" required className="input" />
           )}
           <input value={companySlug} onChange={(e) => setCompanySlug(e.target.value)} placeholder="Empresa (generalhome)" className="input w-full" />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className="input w-full" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo electrónico" required className="input w-full" />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" required className="input w-full" />
           <button type="submit" className="btn-primary w-full">
             {mode === 'login' ? 'Entrar al portal' : 'Enviar registro'}

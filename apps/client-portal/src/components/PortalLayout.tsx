@@ -4,15 +4,14 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FileText, Package, BookOpen, LogOut, Truck, Home, Menu, X } from 'lucide-react';
-import { clearAuth, getClient } from '../lib/api';
+import { clearAuth, getClient, apiFetch } from '../lib/api';
 import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
 
-const nav = [
+const baseNav = [
   { href: '/portal/invoices', label: 'Mis facturas', icon: FileText },
   { href: '/portal/dispatches', label: 'Mis despachos', icon: Truck },
   { href: '/portal/pending', label: 'Mercancía pendiente', icon: Package },
-  { href: '/catalogo/preventa-marzo-2026', label: 'Catálogo', icon: BookOpen },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -20,9 +19,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const [clientName, setClientName] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [catalogSlug, setCatalogSlug] = useState<string | null>(null);
 
   useEffect(() => {
     setClientName(getClient<{ name?: string }>()?.name ?? null);
+    apiFetch<{ slug: string } | null>('/portal/active-catalog').then((c) => setCatalogSlug(c?.slug ?? null)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -33,6 +34,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     clearAuth();
     router.push('/login');
   }
+
+  const nav = catalogSlug
+    ? [...baseNav, { href: `/catalogo/${catalogSlug}`, label: 'Catálogo', icon: BookOpen }]
+    : baseNav;
 
   const navLinks = (onNavigate?: () => void) => nav.map(({ href, label, icon: Icon }) => (
     <Link

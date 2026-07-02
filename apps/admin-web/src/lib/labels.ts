@@ -9,7 +9,23 @@ export const invoiceStatusLabel: Record<string, string> = {
   issued: 'Emitida',
   paid: 'Pagada',
   partially_paid: 'Parcial',
+  overdue: 'Vencida',
   cancelled: 'Anulada',
+};
+
+export const dispatchStatusLabel: Record<string, string> = {
+  pending: 'Pendiente',
+  partial: 'Parcial',
+  completed: 'Completado',
+  cancelled: 'Cancelado',
+};
+
+export const paymentMethodLabel: Record<string, string> = {
+  cash: 'Efectivo',
+  transfer: 'Transferencia',
+  card: 'Tarjeta',
+  check: 'Cheque',
+  other: 'Otro',
 };
 
 export const importStatusLabel: Record<string, string> = {
@@ -20,9 +36,11 @@ export const importStatusLabel: Record<string, string> = {
 };
 
 export const presaleStatusLabel: Record<string, string> = {
+  open: 'Abierta',
   pending: 'Pendiente',
-  confirmed: 'Confirmado',
-  cancelled: 'Cancelado',
+  confirmed: 'Confirmada',
+  converted: 'Convertida',
+  cancelled: 'Cancelada',
 };
 
 export function formatMoney(n: number | string) {

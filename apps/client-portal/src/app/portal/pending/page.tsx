@@ -15,9 +15,10 @@ type Pending = {
 
 export default function PendingMerchandisePage() {
   const [items, setItems] = useState<Pending[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch<Pending[]>('/portal/pending-merchandise').then(setItems).catch(console.error);
+    apiFetch<Pending[]>('/portal/pending-merchandise').then(setItems).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -25,7 +26,13 @@ export default function PendingMerchandisePage() {
       <h2 className="text-2xl font-bold">Mercancía pendiente de despacho</h2>
       <p className="text-slate-500 mt-1">Productos facturados que aún están en nuestro almacén</p>
       <div className="grid gap-4 mt-6">
-        {items.map((item, i) => (
+        {loading && (
+          <>
+            <div className="card p-5 animate-pulse h-20 bg-slate-100" />
+            <div className="card p-5 animate-pulse h-20 bg-slate-100" />
+          </>
+        )}
+        {!loading && items.map((item, i) => (
           <div key={i} className="card p-5 flex justify-between items-center">
             <div>
               <h3 className="font-semibold">{item.productName}</h3>
@@ -37,7 +44,7 @@ export default function PendingMerchandisePage() {
             </div>
           </div>
         ))}
-        {!items.length && <div className="card p-10 text-center text-slate-500">No tiene mercancía pendiente 🎉</div>}
+        {!loading && !items.length && <div className="card p-10 text-center text-slate-500">No tiene mercancía pendiente 🎉</div>}
       </div>
     </PortalLayout>
   );

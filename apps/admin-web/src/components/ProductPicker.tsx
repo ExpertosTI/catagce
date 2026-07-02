@@ -12,9 +12,10 @@ type Props = {
   products: PickerProduct[];
   lines: PickedLine[];
   onChange: (lines: PickedLine[]) => void;
+  emptyMessage?: string;
 };
 
-export function ProductPicker({ products, lines, onChange }: Props) {
+export function ProductPicker({ products, lines, onChange, emptyMessage = 'Busque y agregue productos' }: Props) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
 
@@ -84,7 +85,7 @@ export function ProductPicker({ products, lines, onChange }: Props) {
 
       {lines.length === 0 && (
         <div className="text-center py-8 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
-          Busque y agregue productos a la factura
+          {emptyMessage}
         </div>
       )}
 

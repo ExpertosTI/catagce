@@ -2,7 +2,7 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import {
   invoices, clientAllocations, products, importShipments, stockLevels, clients,
-  dispatches, dispatchItems, invoiceItems, invoicePayments,
+  dispatches, dispatchItems, invoiceItems, invoicePayments, catalogs,
 } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
@@ -134,6 +134,15 @@ export class PortalService {
       },
       balanceDue: balance[0]?.totalDue ?? '0',
     };
+  }
+
+  async activeCatalog(user: AuthUser) {
+    const [catalog] = await this.db.select({ slug: catalogs.slug, name: catalogs.name })
+      .from(catalogs)
+      .where(and(eq(catalogs.companyId, user.companyId), eq(catalogs.isPublic, true), eq(catalogs.isPresale, true)))
+      .orderBy(desc(catalogs.createdAt))
+      .limit(1);
+    return catalog ?? null;
   }
 }
 

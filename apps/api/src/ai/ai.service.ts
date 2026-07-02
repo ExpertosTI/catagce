@@ -1,10 +1,11 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, and, desc, inArray, isNotNull, sql } from 'drizzle-orm';
-import { invoices, clients, clientAllocations, stockLevels, companies } from '@ghome/db';
+import { invoices, clients, clientAllocations, stockLevels, companies, invoicePayments } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { generateWithGemini, isAiConfigured } from './gemini.util';
 import { formatCurrency } from '../common/format-currency';
+import { formatDate } from '../common/format-date';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -13,7 +14,12 @@ export class AiService {
   constructor(@Inject(DRIZZLE) private db: any) {}
 
   async staffChat(user: AuthUser, message: string, history: ChatMessage[] = []) {
-    const context = await this.buildStaffContext(user);
+    const context: Record<string, unknown> = await this.buildStaffContext(user);
+
+    const mentionedClient = await this.findMentionedClient(user, message);
+    if (mentionedClient) {
+      context.clienteConsultado = await this.buildClientStatement(user, mentionedClient.id, mentionedClient.name);
+    }
 
     if (!isAiConfigured()) {
       return {
@@ -22,7 +28,7 @@ export class AiService {
       };
     }
 
-    const systemInstruction = `Eres el asistente inteligente de GHome, un panel de administración de importación y ventas en Santo Domingo, República Dominicana. Respondes en español, de forma breve, clara y profesional, con montos siempre en pesos dominicanos (RD$). Tienes acceso a datos reales de la empresa que se te dan como contexto. Si el usuario pide una acción que no puedes ejecutar directamente (como crear o borrar algo), explica cómo hacerlo desde el panel (por ejemplo indicando la sección) en vez de inventar que ya se hizo.\n\nContexto actual de la empresa (JSON):\n${JSON.stringify(context)}`;
+    const systemInstruction = `Eres el asistente inteligente de GHome, un panel de administración de importación y ventas en Santo Domingo, República Dominicana. Respondes en español, de forma breve, clara y profesional, con montos siempre en pesos dominicanos (RD$). Tienes acceso a datos reales de la empresa que se te dan como contexto, incluyendo facturas, pagos recientes, deudores principales y — si el mensaje menciona a un cliente — su estado de cuenta detallado (clienteConsultado). Si el usuario pide una acción que no puedes ejecutar directamente (como crear o borrar algo), explica cómo hacerlo desde el panel (por ejemplo indicando la sección) en vez de inventar que ya se hizo.\n\nContexto actual de la empresa (JSON):\n${JSON.stringify(context)}`;
 
     const historyText = history.slice(-6).map((h) => `${h.role === 'user' ? 'Usuario' : 'Asistente'}: ${h.content}`).join('\n');
     const prompt = `${historyText ? `${historyText}\n` : ''}Usuario: ${message}\nAsistente:`;
@@ -44,7 +50,7 @@ export class AiService {
       };
     }
 
-    const systemInstruction = `Eres el asistente virtual de atención al cliente de "${context.companyName ?? 'la empresa'}" en Santo Domingo, República Dominicana. Ayudas al cliente ${context.clientName ?? ''} con preguntas sobre sus facturas, saldos y pedidos. Responde en español, de forma breve y amable, con montos en pesos dominicanos (RD$). Solo puedes ver los datos del propio cliente, nunca inventes datos de otros clientes.\n\nDatos del cliente (JSON):\n${JSON.stringify(context)}`;
+    const systemInstruction = `Eres el asistente virtual de atención al cliente de "${context.companyName ?? 'la empresa'}" en Santo Domingo, República Dominicana. Ayudas al cliente ${context.clientName ?? ''} con preguntas sobre sus facturas, pagos, estado de cuenta y saldos. Responde en español, de forma breve y amable, con montos en pesos dominicanos (RD$). Tienes acceso a su historial de facturas (facturas), pagos (pagos) y un resumen (resumenCuenta) con totales facturados/pagados y próximo vencimiento. Solo puedes ver los datos del propio cliente, nunca inventes datos de otros clientes.\n\nDatos del cliente (JSON):\n${JSON.stringify(context)}`;
 
     const historyText = history.slice(-6).map((h) => `${h.role === 'user' ? 'Cliente' : 'Asistente'}: ${h.content}`).join('\n');
     const prompt = `${historyText ? `${historyText}\n` : ''}Cliente: ${message}\nAsistente:`;
@@ -97,6 +103,40 @@ export class AiService {
       available: sql<number>`COALESCE(SUM(${stockLevels.totalQty} - ${stockLevels.reservedQty} - ${stockLevels.dispatchedQty}), 0)::int`,
     }).from(stockLevels).where(eq(stockLevels.companyId, user.companyId));
 
+    const recentPaymentRows = await this.db.select({
+      amount: invoicePayments.amount,
+      method: invoicePayments.method,
+      paidAt: invoicePayments.paidAt,
+      reference: invoices.reference,
+      clientName: clients.name,
+    })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .innerJoin(clients, eq(invoices.clientId, clients.id))
+      .where(eq(invoices.companyId, user.companyId))
+      .orderBy(desc(invoicePayments.paidAt))
+      .limit(10);
+
+    const debtorRows = await this.db.select({
+      clientName: clients.name,
+      totalAmount: invoices.totalAmount,
+      paidAmount: invoices.paidAmount,
+    })
+      .from(invoices)
+      .innerJoin(clients, eq(invoices.clientId, clients.id))
+      .where(and(eq(invoices.companyId, user.companyId), inArray(invoices.status, ['issued', 'partially_paid', 'overdue'])));
+
+    const debtByClient = new Map<string, number>();
+    for (const r of debtorRows) {
+      const balance = parseFloat(r.totalAmount) - parseFloat(r.paidAmount);
+      if (balance <= 0) continue;
+      debtByClient.set(r.clientName, (debtByClient.get(r.clientName) ?? 0) + balance);
+    }
+    const topDebtors = [...debtByClient.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cliente, saldo]) => ({ cliente, saldo: formatCurrency(saldo) }));
+
     return {
       overdueInvoices: overdueRows.map((r: any) => ({
         reference: r.reference,
@@ -112,6 +152,72 @@ export class AiService {
       })),
       despachosPendientes: pendingDispatch,
       unidadesDisponiblesEnAlmacen: stock?.available ?? 0,
+      pagosRecientes: recentPaymentRows.map((p: any) => ({
+        cliente: p.clientName,
+        factura: p.reference,
+        monto: formatCurrency(p.amount),
+        metodo: p.method,
+        fecha: formatDate(p.paidAt),
+      })),
+      principalesDeudores: topDebtors,
+    };
+  }
+
+  private async findMentionedClient(user: AuthUser, message: string) {
+    const q = message.toLowerCase();
+    if (q.length < 4) return null;
+    const rows = await this.db.select({ id: clients.id, name: clients.name })
+      .from(clients).where(eq(clients.companyId, user.companyId));
+    return rows.find((c: any) => c.name && q.includes(c.name.toLowerCase())) ?? null;
+  }
+
+  private async buildClientStatement(user: AuthUser, clientId: string, clientName: string) {
+    const invoiceRows = await this.db.select({
+      reference: invoices.reference,
+      status: invoices.status,
+      totalAmount: invoices.totalAmount,
+      paidAmount: invoices.paidAmount,
+      dueDate: invoices.dueDate,
+      issuedAt: invoices.issuedAt,
+    })
+      .from(invoices)
+      .where(and(eq(invoices.companyId, user.companyId), eq(invoices.clientId, clientId)))
+      .orderBy(desc(invoices.issuedAt))
+      .limit(20);
+
+    const paymentRows = await this.db.select({
+      amount: invoicePayments.amount,
+      method: invoicePayments.method,
+      paidAt: invoicePayments.paidAt,
+      reference: invoices.reference,
+    })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .where(and(eq(invoices.companyId, user.companyId), eq(invoices.clientId, clientId)))
+      .orderBy(desc(invoicePayments.paidAt))
+      .limit(15);
+
+    const balanceDue = invoiceRows.reduce(
+      (sum: number, r: any) => sum + Math.max(0, parseFloat(r.totalAmount) - parseFloat(r.paidAmount)), 0,
+    );
+
+    return {
+      nombre: clientName,
+      saldoTotalPendiente: formatCurrency(balanceDue),
+      facturas: invoiceRows.map((r: any) => ({
+        reference: r.reference,
+        estado: r.status,
+        total: formatCurrency(r.totalAmount),
+        saldo: formatCurrency(parseFloat(r.totalAmount) - parseFloat(r.paidAmount)),
+        emitida: formatDate(r.issuedAt),
+        vencimiento: r.dueDate ? formatDate(r.dueDate) : null,
+      })),
+      pagos: paymentRows.map((p: any) => ({
+        factura: p.reference,
+        monto: formatCurrency(p.amount),
+        metodo: p.method,
+        fecha: formatDate(p.paidAt),
+      })),
     };
   }
 
@@ -122,15 +228,33 @@ export class AiService {
       totalAmount: invoices.totalAmount,
       paidAmount: invoices.paidAmount,
       dueDate: invoices.dueDate,
+      issuedAt: invoices.issuedAt,
     })
       .from(invoices)
       .where(and(eq(invoices.companyId, user.companyId), eq(invoices.clientId, user.userId)))
       .orderBy(desc(invoices.createdAt))
       .limit(15);
 
+    const paymentRows = await this.db.select({
+      amount: invoicePayments.amount,
+      method: invoicePayments.method,
+      paidAt: invoicePayments.paidAt,
+      reference: invoices.reference,
+    })
+      .from(invoicePayments)
+      .innerJoin(invoices, eq(invoicePayments.invoiceId, invoices.id))
+      .where(and(eq(invoices.companyId, user.companyId), eq(invoices.clientId, user.userId)))
+      .orderBy(desc(invoicePayments.paidAt))
+      .limit(15);
+
     const balanceDue = invoiceRows.reduce(
       (sum: number, r: any) => sum + Math.max(0, parseFloat(r.totalAmount) - parseFloat(r.paidAmount)), 0,
     );
+    const totalFacturado = invoiceRows.reduce((sum: number, r: any) => sum + parseFloat(r.totalAmount), 0);
+    const totalPagado = invoiceRows.reduce((sum: number, r: any) => sum + parseFloat(r.paidAmount), 0);
+    const proximaFactura = invoiceRows
+      .filter((r: any) => r.dueDate && parseFloat(r.totalAmount) - parseFloat(r.paidAmount) > 0)
+      .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
 
     const [company] = await this.db.select({ name: companies.name }).from(companies)
       .where(eq(companies.id, user.companyId)).limit(1);
@@ -141,15 +265,49 @@ export class AiService {
       facturas: invoiceRows.map((r: any) => ({
         reference: r.reference,
         estado: r.status,
+        total: formatCurrency(r.totalAmount),
         saldo: formatCurrency(parseFloat(r.totalAmount) - parseFloat(r.paidAmount)),
-        vencimiento: r.dueDate,
+        emitida: formatDate(r.issuedAt),
+        vencimiento: r.dueDate ? formatDate(r.dueDate) : null,
       })),
+      pagos: paymentRows.map((p: any) => ({
+        factura: p.reference,
+        monto: formatCurrency(p.amount),
+        metodo: p.method,
+        fecha: formatDate(p.paidAt),
+      })),
+      resumenCuenta: {
+        totalFacturadoHistorico: formatCurrency(totalFacturado),
+        totalPagadoHistorico: formatCurrency(totalPagado),
+        balanceTotalPendiente: formatCurrency(balanceDue),
+        proximoVencimiento: proximaFactura ? {
+          factura: proximaFactura.reference,
+          fecha: formatDate(proximaFactura.dueDate),
+          saldo: formatCurrency(parseFloat(proximaFactura.totalAmount) - parseFloat(proximaFactura.paidAmount)),
+        } : null,
+      },
       balanceTotalPendiente: formatCurrency(balanceDue),
     };
   }
 
   private staffFallbackReply(message: string, context: any) {
     const q = message.toLowerCase();
+    if (context.clienteConsultado) {
+      const c = context.clienteConsultado;
+      const facturas = c.facturas.slice(0, 5).map((i: any) => `• ${i.reference} (${i.estado}) — saldo ${i.saldo}${i.vencimiento ? `, vence ${i.vencimiento}` : ''}`).join('\n');
+      const pagos = c.pagos.slice(0, 3).map((p: any) => `• ${p.fecha} — ${p.monto} (${p.metodo}) — Factura ${p.factura}`).join('\n');
+      return `Estado de cuenta de ${c.nombre}:\nSaldo pendiente total: ${c.saldoTotalPendiente}\n\nFacturas:\n${facturas || 'Sin facturas'}\n\nÚltimos pagos:\n${pagos || 'Sin pagos registrados'}`;
+    }
+    if (q.includes('deb') && (q.includes('mas') || q.includes('más') || q.includes('mayor') || q.includes('quien') || q.includes('quién'))) {
+      if (!context.principalesDeudores.length) return 'No hay clientes con saldo pendiente en este momento.';
+      const list = context.principalesDeudores.map((d: any) => `• ${d.cliente} — ${d.saldo}`).join('\n');
+      return `Principales deudores:\n${list}`;
+    }
+    if (q.includes('pago') || q.includes('abono') || q.includes('cobr')) {
+      if (!context.pagosRecientes.length) return 'No se han registrado pagos recientemente.';
+      const list = context.pagosRecientes.slice(0, 5).map((p: any) => `• ${p.fecha} — ${p.cliente} — ${p.monto} (${p.metodo}) — Factura ${p.factura}`).join('\n');
+      return `Pagos recientes:\n${list}`;
+    }
     if (q.includes('vencid') || q.includes('atras')) {
       if (!context.overdueInvoices.length) return 'No hay facturas vencidas en este momento. ¡Buen trabajo!';
       const list = context.overdueInvoices.map((i: any) => `• ${i.reference} — ${i.cliente} — ${i.saldo}`).join('\n');
@@ -163,11 +321,20 @@ export class AiService {
     if (q.includes('despacho') || q.includes('pendiente')) {
       return `Despachos pendientes: ${context.despachosPendientes?.count ?? 0} (${context.despachosPendientes?.units ?? 0} unidades). Unidades disponibles en almacén: ${context.unidadesDisponiblesEnAlmacen}.`;
     }
-    return 'Puedo ayudarle con información sobre facturas vencidas, por vencer, despachos pendientes e inventario. Para respuestas más naturales, configure GEMINI_API_KEY en el servidor.';
+    return 'Puedo ayudarle con facturas vencidas o por vencer, pagos recientes, principales deudores, despachos pendientes, inventario, y el estado de cuenta de un cliente si menciona su nombre. Para respuestas más naturales, configure GEMINI_API_KEY en el servidor.';
   }
 
   private clientFallbackReply(message: string, context: any) {
     const q = message.toLowerCase();
+    if (q.includes('estado de cuenta') || q.includes('resumen')) {
+      const r = context.resumenCuenta;
+      return `Resumen de su cuenta:\nTotal facturado: ${r?.totalFacturadoHistorico}\nTotal pagado: ${r?.totalPagadoHistorico}\nSaldo pendiente: ${r?.balanceTotalPendiente}${r?.proximoVencimiento ? `\nPróximo vencimiento: factura ${r.proximoVencimiento.factura} el ${r.proximoVencimiento.fecha} por ${r.proximoVencimiento.saldo}` : ''}`;
+    }
+    if (q.includes('pago') || q.includes('abono')) {
+      if (!context.pagos?.length) return 'No tiene pagos registrados todavía.';
+      const list = context.pagos.slice(0, 5).map((p: any) => `• ${p.fecha} — ${p.monto} (${p.metodo}) — Factura ${p.factura}`).join('\n');
+      return `Sus últimos pagos:\n${list}`;
+    }
     if (q.includes('saldo') || q.includes('debo') || q.includes('pendiente')) {
       return `Su saldo total pendiente es ${context.balanceTotalPendiente}.`;
     }
@@ -176,6 +343,6 @@ export class AiService {
       const list = context.facturas.slice(0, 5).map((i: any) => `• ${i.reference} — ${i.saldo}`).join('\n');
       return `Sus facturas recientes:\n${list}`;
     }
-    return `Hola ${context.clientName ?? ''}, puedo ayudarle con información sobre sus facturas y saldo pendiente. Escriba por ejemplo "¿cuál es mi saldo?".`;
+    return `Hola ${context.clientName ?? ''}, puedo ayudarle con información sobre sus facturas, pagos y estado de cuenta. Escriba por ejemplo "¿cuál es mi estado de cuenta?" o "¿cuál es mi saldo?".`;
   }
 }

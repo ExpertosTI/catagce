@@ -23,7 +23,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Dashboard" subtitle="Resumen operativo de importación" />
+      <PageHeader title="Panel" subtitle="Resumen operativo de importación" />
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {cards.map((card) => (
           <div key={card.label} className="card p-5">

@@ -8,6 +8,7 @@ import {
   shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary, InvoiceDetail,
 } from '../lib/invoice-utils';
 import { apiFetch } from '../lib/api';
+import { invoiceStatusLabel } from '../lib/labels';
 
 type Props = {
   invoice: InvoiceListItem;
@@ -67,7 +68,7 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
               {invoice.clientName ?? 'Cliente'}
             </p>
             {invoice.status && (
-              <span className="badge-blue capitalize text-[10px]">{invoice.status.replace(/_/g, ' ')}</span>
+              <span className="badge-blue text-[10px]">{invoiceStatusLabel[invoice.status] ?? invoice.status}</span>
             )}
           </div>
           <p className="text-blue-700 font-bold text-base mt-1">{invoice.reference}</p>

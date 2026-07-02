@@ -9,7 +9,7 @@ import { apiFetch } from '../../../../lib/api';
 const fields: Array<{ key: keyof typeof defaultForm; label: string; type?: string; required?: boolean }> = [
   { key: 'name', label: 'Nombre', required: true },
   { key: 'email', label: 'Correo electrónico', type: 'email', required: true },
-  { key: 'phone', label: 'Teléfono (WhatsApp)' },
+  { key: 'phone', label: 'Teléfono (WhatsApp)', type: 'tel' },
   { key: 'taxId', label: 'RNC / Cédula' },
   { key: 'address', label: 'Dirección' },
 ];
@@ -21,6 +21,7 @@ export default function EditClientPage({ params }: { params: { id: string } }) {
   const [form, setForm] = useState(defaultForm);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     apiFetch<any>(`/clients/${params.id}`).then((c) => {
@@ -34,7 +35,7 @@ export default function EditClientPage({ params }: { params: { id: string } }) {
         creditDays: c.creditDays ?? 30,
       });
       setReady(true);
-    }).catch(console.error);
+    }).catch(() => setNotFound(true));
   }, [params.id]);
 
   async function submit(e: React.FormEvent) {
@@ -48,6 +49,15 @@ export default function EditClientPage({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (notFound) {
+    return (
+      <DashboardLayout>
+        <PageHeader title="Cliente no encontrado" />
+        <div className="card p-8 text-center text-slate-500">No se pudo cargar este cliente.</div>
+      </DashboardLayout>
+    );
   }
 
   if (!ready) {

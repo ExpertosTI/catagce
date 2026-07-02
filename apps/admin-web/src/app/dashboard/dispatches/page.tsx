@@ -3,14 +3,18 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
+import { dispatchStatusLabel } from '../../../lib/labels';
 
 export default function DispatchesPage() {
   const [pending, setPending] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch('/invoices/pending-dispatch').then(setPending).catch(console.error);
-    apiFetch('/invoices/dispatches/history').then(setHistory).catch(console.error);
+    Promise.all([
+      apiFetch('/invoices/pending-dispatch').then(setPending).catch(console.error),
+      apiFetch('/invoices/dispatches/history').then(setHistory).catch(console.error),
+    ]).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -30,7 +34,10 @@ export default function DispatchesPage() {
             </tr>
           </thead>
           <tbody>
-            {pending.map((item, i) => (
+            {loading && (
+              <tr><td colSpan={5} className="p-8 text-center text-slate-400">Cargando...</td></tr>
+            )}
+            {!loading && pending.map((item, i) => (
               <tr key={i} className="border-b border-slate-100">
                 <td className="p-4">{item.clientName}</td>
                 <td className="p-4">{item.productName}</td>
@@ -39,21 +46,22 @@ export default function DispatchesPage() {
                 <td className="p-4 text-right font-medium text-amber-700">{item.pendingQty}</td>
               </tr>
             ))}
-            {!pending.length && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Sin pendientes</td></tr>}
+            {!loading && !pending.length && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Sin pendientes</td></tr>}
           </tbody>
         </table>
       </div>
 
       <h2 className="font-semibold text-lg mb-3">Historial de despachos</h2>
       <div className="space-y-3">
-        {history.map((d) => (
+        {loading && <div className="card p-8 text-center text-slate-400">Cargando...</div>}
+        {!loading && history.map((d) => (
           <div key={d.id} className="card p-5">
             <div className="flex justify-between">
               <div>
                 <p className="font-bold">{d.reference}</p>
                 <p className="text-sm text-slate-500">{d.clientName} · {d.invoiceReference && `Factura ${d.invoiceReference}`}</p>
               </div>
-              <span className="badge-green capitalize">{d.status}</span>
+              <span className="badge-green">{dispatchStatusLabel[d.status] ?? d.status}</span>
             </div>
             <ul className="mt-3 text-sm space-y-1">
               {d.items?.map((item: any, i: number) => (
@@ -62,6 +70,9 @@ export default function DispatchesPage() {
             </ul>
           </div>
         ))}
+        {!loading && !history.length && (
+          <div className="card p-8 text-center text-slate-500">Sin despachos registrados todavía</div>
+        )}
       </div>
     </DashboardLayout>
   );

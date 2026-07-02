@@ -7,9 +7,9 @@ import { apiFetch } from '../lib/api';
 type Message = { role: 'user' | 'assistant'; content: string };
 
 const SUGGESTIONS = [
-  '¿Cuál es mi saldo pendiente?',
+  '¿Cuál es mi estado de cuenta?',
+  '¿Cuáles son mis últimos pagos?',
   '¿Tengo facturas vencidas?',
-  '¿Cuál es mi mercancía pendiente?',
 ];
 
 export function AiChatWidget() {

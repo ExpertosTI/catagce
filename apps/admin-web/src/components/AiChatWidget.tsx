@@ -8,7 +8,8 @@ type Message = { role: 'user' | 'assistant'; content: string };
 
 const SUGGESTIONS = [
   '¿Qué facturas están vencidas?',
-  '¿Cuáles facturas vencen pronto?',
+  '¿Quién me debe más dinero?',
+  '¿Cuáles fueron los últimos pagos recibidos?',
   '¿Cuántos despachos están pendientes?',
 ];
 

@@ -23,6 +23,12 @@ export class PortalController {
   }
 
   @ClientOnly()
+  @Get('active-catalog')
+  activeCatalog(@CurrentUser() user: AuthUser) {
+    return this.portalService.activeCatalog(user);
+  }
+
+  @ClientOnly()
   @Get('invoices')
   invoices(@CurrentUser() user: AuthUser) {
     return this.portalService.myInvoices(user);

@@ -43,7 +43,7 @@ export default function LoginPage() {
         </div>
         {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>}
         <div className="space-y-4">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="input" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo electrónico" className="input" />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" className="input" />
           <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
             {loading ? 'Entrando...' : 'Iniciar sesión'}

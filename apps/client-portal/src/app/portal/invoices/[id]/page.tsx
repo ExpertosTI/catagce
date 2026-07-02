@@ -8,6 +8,7 @@ import { InvoiceDetail } from '../../../../lib/invoice-utils';
 
 export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     apiFetch<InvoiceDetail>(`/portal/invoices/${params.id}`)
@@ -15,8 +16,16 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         ...data,
         clientName: data.client?.name ?? data.clientName,
       }))
-      .catch(console.error);
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'No se pudo cargar la factura'));
   }, [params.id]);
+
+  if (error) {
+    return (
+      <PortalLayout>
+        <div className="card p-8 text-center text-slate-500">{error}</div>
+      </PortalLayout>
+    );
+  }
 
   if (!invoice) {
     return (

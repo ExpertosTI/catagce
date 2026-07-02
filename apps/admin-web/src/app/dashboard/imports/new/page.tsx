@@ -24,6 +24,9 @@ export default function NewImportPage() {
   const [loading, setLoading] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
+  const [supplierError, setSupplierError] = useState('');
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const [pageError, setPageError] = useState('');
 
   function loadSuppliers() {
     return apiFetch<Supplier[]>('/suppliers').then((s) => {
@@ -34,19 +37,29 @@ export default function NewImportPage() {
   }
 
   useEffect(() => {
-    Promise.all([loadSuppliers(), apiFetch<PickerProduct[]>('/products')]).then(([, p]) => setProducts(p));
+    Promise.all([loadSuppliers(), apiFetch<PickerProduct[]>('/products')])
+      .then(([, p]) => setProducts(p))
+      .catch(() => setPageError('No se pudo cargar la información inicial'));
   }, []);
 
   async function createSupplier() {
     if (!newSupplierName.trim()) return;
-    const supplier = await apiFetch<Supplier>('/suppliers', {
-      method: 'POST',
-      body: JSON.stringify({ name: newSupplierName }),
-    });
-    await loadSuppliers();
-    setSupplierId(supplier.id);
-    setNewSupplierName('');
-    setShowSupplierForm(false);
+    setSupplierError('');
+    setCreatingSupplier(true);
+    try {
+      const supplier = await apiFetch<Supplier>('/suppliers', {
+        method: 'POST',
+        body: JSON.stringify({ name: newSupplierName }),
+      });
+      await loadSuppliers();
+      setSupplierId(supplier.id);
+      setNewSupplierName('');
+      setShowSupplierForm(false);
+    } catch (err: unknown) {
+      setSupplierError(err instanceof Error ? err.message : 'No se pudo crear el proveedor');
+    } finally {
+      setCreatingSupplier(false);
+    }
   }
 
   const totalCost = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
@@ -54,6 +67,7 @@ export default function NewImportPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setPageError('');
     try {
       await apiFetch('/imports', {
         method: 'POST',
@@ -72,7 +86,7 @@ export default function NewImportPage() {
       });
       router.push('/dashboard/imports');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al registrar importación');
+      setPageError(err instanceof Error ? err.message : 'Error al registrar importación');
     } finally {
       setLoading(false);
     }
@@ -104,16 +118,21 @@ export default function NewImportPage() {
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <input
-                value={newSupplierName}
-                onChange={(e) => setNewSupplierName(e.target.value)}
-                className="input flex-1"
-                placeholder="Nombre del proveedor"
-                autoFocus
-              />
-              <button type="button" onClick={createSupplier} className="btn-primary shrink-0 text-sm">Agregar</button>
-              <button type="button" onClick={() => setShowSupplierForm(false)} className="btn-secondary shrink-0 text-sm">Cancelar</button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  className="input flex-1"
+                  placeholder="Nombre del proveedor"
+                  autoFocus
+                />
+                <button type="button" onClick={createSupplier} disabled={creatingSupplier} className="btn-primary shrink-0 text-sm disabled:opacity-50">
+                  {creatingSupplier ? 'Agregando...' : 'Agregar'}
+                </button>
+                <button type="button" onClick={() => { setShowSupplierForm(false); setSupplierError(''); }} className="btn-secondary shrink-0 text-sm">Cancelar</button>
+              </div>
+              {supplierError && <p className="text-sm text-red-600">{supplierError}</p>}
             </div>
           )}
         </FormField>
@@ -124,7 +143,7 @@ export default function NewImportPage() {
 
         <div>
           <p className="form-label">Mercancía en el contenedor</p>
-          <ProductPicker products={products} lines={lines} onChange={setLines} />
+          <ProductPicker products={products} lines={lines} onChange={setLines} emptyMessage="Busque y agregue productos al contenedor" />
         </div>
 
         <FormField label="Notas">
@@ -139,6 +158,8 @@ export default function NewImportPage() {
             </div>
           </div>
         )}
+
+        {pageError && <p className="text-sm text-red-600">{pageError}</p>}
 
         <button type="submit" disabled={loading || !reference} className="btn-primary w-full sm:w-auto disabled:opacity-50">
           {loading ? 'Registrando...' : 'Registrar importación'}
