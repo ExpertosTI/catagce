@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query } from '@nestjs/common';
 import { InvoicesService, DispatchesService } from './invoices.service';
 import { StaffOnly } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/user.decorator';
@@ -46,6 +46,11 @@ export class InvoicesController {
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() body: any) {
     return this.invoicesService.create(user, body);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: any) {
+    return this.invoicesService.update(user, id, body);
   }
 
   @Post(':id/payments')

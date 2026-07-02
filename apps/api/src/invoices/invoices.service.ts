@@ -29,6 +29,7 @@ export class InvoicesService {
       reference: invoices.reference,
       ncf: invoices.ncf,
       comprobanteType: invoices.comprobanteType,
+      isFiscal: invoices.isFiscal,
       invoiceType: invoices.invoiceType,
       status: invoices.status,
       subtotal: invoices.subtotal,
@@ -55,6 +56,7 @@ export class InvoicesService {
       id: invoiceItems.id,
       productId: invoiceItems.productId,
       quantity: invoiceItems.quantity,
+      unitLabel: invoiceItems.unitLabel,
       unitPrice: invoiceItems.unitPrice,
       lineTotal: invoiceItems.lineTotal,
       dispatchedQty: invoiceItems.dispatchedQty,
@@ -81,25 +83,46 @@ export class InvoicesService {
     return { ...invoice, client, clientName: client?.name, items, payments, relatedInvoice };
   }
 
+  async update(user: AuthUser, id: string, data: {
+    receivedBy?: string;
+    dispatchedBy?: string;
+    notes?: string;
+  }) {
+    const invoice = await this.getById(user, id);
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.receivedBy !== undefined) updates.receivedBy = data.receivedBy.trim() || null;
+    if (data.dispatchedBy !== undefined) updates.dispatchedBy = data.dispatchedBy.trim() || null;
+    if (data.notes !== undefined) updates.notes = data.notes.trim() || null;
+    await this.db.update(invoices).set(updates).where(eq(invoices.id, invoice.id));
+    return this.getById(user, id);
+  }
+
   async create(user: AuthUser, data: {
     clientId: string;
     invoiceType: 'cash' | 'credit';
     comprobanteType?: ComprobanteType;
     itbisRate?: number;
-    items: { productId: string; quantity: number; unitPrice: number; warehouseId?: string }[];
+    isFiscal?: boolean;
+    receivedBy?: string;
+    dispatchedBy?: string;
+    items: { productId: string; quantity: number; unitPrice: number; unitLabel?: string; warehouseId?: string }[];
     dueDate?: string;
     notes?: string;
     issue?: boolean;
     relatedInvoiceId?: string;
     modificationReason?: string;
+    initialPayment?: { amount: number; method?: string; reference?: string; notes?: string };
   }) {
     const [client] = await this.db.select().from(clients)
       .where(and(eq(clients.id, data.clientId), eq(clients.companyId, user.companyId))).limit(1);
     if (!client) throw new NotFoundException('Cliente no encontrado');
 
+    const isFiscal = data.isFiscal !== false;
     const comprobanteType = data.comprobanteType ?? suggestComprobanteType(client.taxId, data.invoiceType);
-    const validationError = validateComprobanteForClient(comprobanteType, client.taxId);
-    if (validationError) throw new BadRequestException(validationError);
+    if (isFiscal) {
+      const validationError = validateComprobanteForClient(comprobanteType, client.taxId);
+      if (validationError) throw new BadRequestException(validationError);
+    }
 
     if (MODIFICATION_TYPES.includes(comprobanteType) && !data.relatedInvoiceId) {
       throw new BadRequestException('Las notas de débito/crédito requieren la factura de referencia');
@@ -113,11 +136,13 @@ export class InvoicesService {
       }
     }
 
-    const reference = comprobanteType === 'B04'
-      ? `NCR-${Date.now().toString(36).toUpperCase()}`
-      : comprobanteType === 'B03'
-        ? `NDB-${Date.now().toString(36).toUpperCase()}`
-        : `FAC-${Date.now().toString(36).toUpperCase()}`;
+    const reference = !isFiscal
+      ? `PRO-${Date.now().toString(36).toUpperCase()}`
+      : comprobanteType === 'B04'
+        ? `NCR-${Date.now().toString(36).toUpperCase()}`
+        : comprobanteType === 'B03'
+          ? `NDB-${Date.now().toString(36).toUpperCase()}`
+          : `FAC-${Date.now().toString(36).toUpperCase()}`;
 
     let subtotal = 0;
     const lineItems = data.items.map((item) => {
@@ -134,7 +159,7 @@ export class InvoicesService {
       : data.dueDate ? new Date(data.dueDate) : null;
 
     let ncf: string | null = null;
-    if (data.issue) {
+    if (data.issue && isFiscal) {
       ncf = await this.fiscalService.allocateNcf(user, comprobanteType);
     }
 
@@ -145,6 +170,7 @@ export class InvoicesService {
       ncf,
       comprobanteType,
       invoiceType: data.invoiceType,
+      isFiscal,
       status: data.issue ? 'issued' : 'draft',
       subtotal: totals.subtotal.toFixed(2),
       taxAmount: totals.taxAmount.toFixed(2),
@@ -153,6 +179,8 @@ export class InvoicesService {
       dueDate,
       issuedAt: data.issue ? new Date() : null,
       notes: data.notes,
+      receivedBy: data.receivedBy?.trim() || null,
+      dispatchedBy: data.dispatchedBy?.trim() || null,
       relatedInvoiceId: data.relatedInvoiceId ?? null,
       modificationReason: data.modificationReason ?? null,
       createdById: user.userId,
@@ -163,6 +191,7 @@ export class InvoicesService {
         invoiceId: invoice.id,
         productId: item.productId,
         quantity: item.quantity,
+        unitLabel: item.unitLabel?.trim() || 'unidad',
         unitPrice: item.unitPrice.toFixed(2),
         lineTotal: item.lineTotal.toFixed(2),
         warehouseId: item.warehouseId,
@@ -211,6 +240,10 @@ export class InvoicesService {
         status,
         updatedAt: new Date(),
       }).where(eq(invoices.id, relatedInvoice.id));
+    }
+
+    if (data.issue && data.initialPayment?.amount && data.initialPayment.amount > 0) {
+      return this.addPayment(user, invoice.id, data.initialPayment);
     }
 
     return this.getById(user, invoice.id);

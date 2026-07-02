@@ -50,7 +50,7 @@ export function AiChatWidget() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="ai-chat-fab"
-        aria-label="Asistente IA"
+        aria-label="Super AI — Asistente inteligente"
       >
         {open ? <X size={22} /> : <Sparkles size={22} />}
       </button>
@@ -63,8 +63,8 @@ export function AiChatWidget() {
                 <Bot size={16} />
               </div>
               <div>
-                <p className="font-bold text-sm">Asistente GHome</p>
-                <p className="text-[11px] opacity-80">Con datos en tiempo real</p>
+                <p className="font-bold text-sm">Super AI ✨</p>
+                <p className="text-[11px] opacity-80">Asistente GHome · datos en tiempo real</p>
               </div>
             </div>
             <button type="button" onClick={() => setOpen(false)} className="p-1 hover:bg-white/10 rounded-lg">

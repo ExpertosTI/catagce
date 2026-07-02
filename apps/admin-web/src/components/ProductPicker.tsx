@@ -1,21 +1,46 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Search, Plus, Trash2 } from 'lucide-react';
+import { Search, Trash2, Copy } from 'lucide-react';
 import { QuantityStepper } from './QuantityStepper';
 import { formatCurrency } from '../lib/currency';
+import { UNIT_OPTIONS } from '../lib/units';
 
-export type PickerProduct = { id: string; name: string; sku?: string; salePrice: string; imageUrl?: string };
-export type PickedLine = { productId: string; quantity: number; unitPrice: number };
+export type PickerProduct = { id: string; name: string; sku?: string; salePrice: string; imageUrl?: string; unit?: string };
+export type PickedLine = {
+  lineId: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  unitLabel: string;
+};
+
+function newLineId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `line-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function defaultUnitLabel(productUnit?: string) {
+  if (!productUnit || productUnit === 'un') return 'unidad';
+  return UNIT_OPTIONS.some((u) => u.value === productUnit) ? productUnit : 'unidad';
+}
 
 type Props = {
   products: PickerProduct[];
   lines: PickedLine[];
   onChange: (lines: PickedLine[]) => void;
   emptyMessage?: string;
+  allowDuplicateProducts?: boolean;
 };
 
-export function ProductPicker({ products, lines, onChange, emptyMessage = 'Busque y agregue productos' }: Props) {
+export function ProductPicker({
+  products,
+  lines,
+  onChange,
+  emptyMessage = 'Busque y agregue productos',
+  allowDuplicateProducts = true,
+}: Props) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
 
@@ -23,23 +48,33 @@ export function ProductPicker({ products, lines, onChange, emptyMessage = 'Busqu
     const q = query.trim().toLowerCase();
     if (!q) return [];
     return products
-      .filter((p) => !lines.some((l) => l.productId === p.id))
+      .filter((p) => allowDuplicateProducts || !lines.some((l) => l.productId === p.id))
       .filter((p) => p.name.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q))
       .slice(0, 8);
-  }, [products, query, lines]);
+  }, [products, query, lines, allowDuplicateProducts]);
 
   function addProduct(p: PickerProduct) {
-    onChange([...lines, { productId: p.id, quantity: 1, unitPrice: parseFloat(p.salePrice) }]);
+    onChange([...lines, {
+      lineId: newLineId(),
+      productId: p.id,
+      quantity: 1,
+      unitPrice: parseFloat(p.salePrice),
+      unitLabel: defaultUnitLabel(p.unit),
+    }]);
     setQuery('');
     setOpen(false);
   }
 
-  function updateLine(productId: string, patch: Partial<PickedLine>) {
-    onChange(lines.map((l) => (l.productId === productId ? { ...l, ...patch } : l)));
+  function duplicateLine(line: PickedLine) {
+    onChange([...lines, { ...line, lineId: newLineId() }]);
   }
 
-  function removeLine(productId: string) {
-    onChange(lines.filter((l) => l.productId !== productId));
+  function updateLine(lineId: string, patch: Partial<PickedLine>) {
+    onChange(lines.map((l) => (l.lineId === lineId ? { ...l, ...patch } : l)));
+  }
+
+  function removeLine(lineId: string) {
+    onChange(lines.filter((l) => l.lineId !== lineId));
   }
 
   return (
@@ -95,7 +130,7 @@ export function ProductPicker({ products, lines, onChange, emptyMessage = 'Busqu
           if (!product) return null;
           const lineTotal = line.quantity * line.unitPrice;
           return (
-            <div key={line.productId} className="line-item-card">
+            <div key={line.lineId} className="line-item-card">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-lg bg-slate-100 overflow-hidden shrink-0">
                   {product.imageUrl && <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />}
@@ -104,22 +139,47 @@ export function ProductPicker({ products, lines, onChange, emptyMessage = 'Busqu
                   <p className="text-sm font-semibold truncate">{product.name}</p>
                   <p className="text-xs text-slate-400">{product.sku}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeLine(line.productId)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg shrink-0"
-                  aria-label="Quitar producto"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {allowDuplicateProducts && (
+                    <button
+                      type="button"
+                      onClick={() => duplicateLine(line)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      title="Agregar otra línea con distinto precio"
+                      aria-label="Duplicar línea"
+                    >
+                      <Copy size={16} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeLine(line.lineId)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                    aria-label="Quitar producto"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
               <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-slate-100 flex-wrap">
                 <QuantityStepper
                   value={line.quantity}
-                  onChange={(q) => updateLine(line.productId, { quantity: q || 1 })}
+                  onChange={(q) => updateLine(line.lineId, { quantity: q || 1 })}
                   min={1}
                   size="sm"
                 />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Unidad</span>
+                  <select
+                    value={line.unitLabel}
+                    onChange={(e) => updateLine(line.lineId, { unitLabel: e.target.value })}
+                    className="input !w-28 !py-1.5 text-sm"
+                  >
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u.value} value={u.value}>{u.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400">Precio</span>
                   <input
@@ -127,7 +187,7 @@ export function ProductPicker({ products, lines, onChange, emptyMessage = 'Busqu
                     step="0.01"
                     min={0}
                     value={line.unitPrice}
-                    onChange={(e) => updateLine(line.productId, { unitPrice: Number(e.target.value) || 0 })}
+                    onChange={(e) => updateLine(line.lineId, { unitPrice: Number(e.target.value) || 0 })}
                     className="input !w-28 !py-1.5 text-sm"
                   />
                 </div>

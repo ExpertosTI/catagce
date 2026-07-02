@@ -5,6 +5,7 @@ export type InvoiceListItem = {
   comprobanteType?: string | null;
   invoiceType: string;
   status?: string;
+  isFiscal?: boolean;
   subtotal?: string | null;
   taxAmount?: string | null;
   totalAmount: string;
@@ -15,6 +16,8 @@ export type InvoiceListItem = {
 
 export type InvoiceDetail = InvoiceListItem & {
   notes?: string | null;
+  receivedBy?: string | null;
+  dispatchedBy?: string | null;
   dueDate?: string | null;
   itbisRate?: string | null;
   client?: { name?: string; phone?: string; email?: string; code?: string; taxId?: string };
@@ -25,6 +28,7 @@ export type InvoiceDetail = InvoiceListItem & {
     productName?: string;
     productSku?: string;
     quantity: number;
+    unitLabel?: string | null;
     unitPrice: string;
     lineTotal: string;
     dispatchedQty?: number;
@@ -47,7 +51,8 @@ function escapeHtml(value: string) {
 }
 
 import { formatCurrency } from './currency';
-import { comprobanteTypeLabel } from './labels';
+import { comprobanteTypeLabel, invoiceStatusText } from './labels';
+import { unitLabelText } from './units';
 import { FISCAL_TERMS, FISCAL_FOOTER_LEGAL } from './fiscal-terms';
 
 export function formatUsd(n: number | string) {
@@ -68,7 +73,8 @@ export function comprobanteLabel(type?: string | null) {
   return comprobanteTypeLabel[type] ?? type;
 }
 
-export function fiscalDocumentTitle(inv: Pick<InvoiceListItem, 'comprobanteType' | 'invoiceType'>) {
+export function fiscalDocumentTitle(inv: Pick<InvoiceListItem, 'comprobanteType' | 'invoiceType' | 'isFiscal' | 'ncf'>) {
+  if (inv.isFiscal === false) return 'PROFORMA / Sin comprobante fiscal';
   if (inv.comprobanteType) return comprobanteLabel(inv.comprobanteType);
   return inv.invoiceType === 'credit' ? 'FACTURA DE CRÉDITO FISCAL' : 'FACTURA';
 }
@@ -79,7 +85,7 @@ export function invoiceBalance(inv: Pick<InvoiceListItem, 'totalAmount' | 'paidA
 
 export function buildInvoiceWhatsAppMessage(inv: InvoiceDetail, companyName = 'General Home') {
   const lines = (inv.items ?? []).map(
-    (i) => `• ${i.productName} x${i.quantity} — ${formatUsd(i.lineTotal)}`,
+    (i) => `• ${i.productName} x${i.quantity} ${unitLabelText(i.unitLabel)} — ${formatUsd(i.lineTotal)}`,
   );
   const balance = invoiceBalance(inv);
   let msg = `*${companyName}*\n📄 *${inv.ncf ?? inv.reference}*\n`;
@@ -123,14 +129,13 @@ export function printInvoicePdf(
   const safeNcf = inv.ncf ? escapeHtml(inv.ncf) : '';
   const docTitle = escapeHtml(fiscalDocumentTitle(inv));
   const safeNotes = inv.notes ? escapeHtml(inv.notes) : '';
-  const statusLabel = inv.status
-    ? ({ draft: 'Borrador', issued: 'Emitida', paid: 'Pagada', partially_paid: 'Pago parcial', overdue: 'Vencida', cancelled: 'Anulada' } as Record<string, string>)[inv.status] ?? inv.status
-    : null;
+  const statusLabel = inv.status ? invoiceStatusText(inv.status) : null;
 
   const rows = items.map((i) => {
     const name = escapeHtml(i.productName ?? '');
     const sku = escapeHtml(i.productSku ?? '');
-    return `<tr><td><span class="prod-name">${name}</span>${sku ? `<span class="prod-sku">${sku}</span>` : ''}</td><td class="right">${i.quantity}</td><td class="right">${formatUsd(i.unitPrice)}</td><td class="right cell-strong">${formatUsd(i.lineTotal)}</td></tr>`;
+    const unit = escapeHtml(unitLabelText(i.unitLabel));
+    return `<tr><td><span class="prod-name">${name}</span>${sku ? `<span class="prod-sku">${sku}</span>` : ''}</td><td class="right">${i.quantity} ${unit}</td><td class="right">${formatUsd(i.unitPrice)}</td><td class="right cell-strong">${formatUsd(i.lineTotal)}</td></tr>`;
   }).join('');
 
   const html = `<!DOCTYPE html>
@@ -219,12 +224,12 @@ export function printInvoicePdf(
 
       <div class="signatures">
         <div class="sig-block">
-          <div class="sig-line">Recibido conforme</div>
-          <div class="sig-hint">Nombre y firma del cliente · Fecha: _______________</div>
+          <div class="sig-line">${inv.receivedBy ? escapeHtml(inv.receivedBy) : 'Recibido conforme'}</div>
+          <div class="sig-hint">${inv.receivedBy ? 'Recibido por' : 'Nombre y firma del cliente'} · Fecha: _______________</div>
         </div>
         <div class="sig-block">
-          <div class="sig-line">Entregado por</div>
-          <div class="sig-hint">${safeCompany} · Nombre y firma · Fecha: _______________</div>
+          <div class="sig-line">${inv.dispatchedBy ? escapeHtml(inv.dispatchedBy) : 'Despachado por'}</div>
+          <div class="sig-hint">${inv.dispatchedBy ? `${safeCompany} · Despachado` : `${safeCompany} · Nombre y firma`} · Fecha: _______________</div>
         </div>
       </div>
     </div>

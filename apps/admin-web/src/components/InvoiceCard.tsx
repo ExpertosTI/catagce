@@ -10,7 +10,7 @@ import {
 } from '../lib/invoice-utils';
 import { apiFetch } from '../lib/api';
 import { useCompany } from '../lib/useCompany';
-import { invoiceStatusLabel } from '../lib/labels';
+import { invoiceStatusText } from '../lib/labels';
 
 type Props = {
   invoice: InvoiceListItem;
@@ -62,8 +62,7 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
     }
   }
 
-  const statusKey = invoice.status?.toLowerCase().replace(' ', '_');
-  const statusText = statusKey ? (invoiceStatusLabel[statusKey] ?? invoiceStatusLabel[invoice.status!] ?? invoice.status) : '';
+  const statusText = invoice.status ? invoiceStatusText(invoice.status) : '';
 
   return (
     <article className="executive-card group">
@@ -100,7 +99,7 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
         </Link>
         {balance > 0 && (
           <Link href={`${detailPath}?abono=1`} className="btn-subtle btn-subtle-success">
-            <Wallet size={15} /> Registrar abono
+            <Wallet size={15} /> Pagar
           </Link>
         )}
         <button type="button" onClick={handleWhatsApp} disabled={loading === 'wa'} className="btn-subtle">

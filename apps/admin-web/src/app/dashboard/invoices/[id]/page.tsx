@@ -11,6 +11,7 @@ import { InvoiceDetail } from '../../../../lib/invoice-utils';
 export default function AdminInvoiceDetailPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const openPayment = searchParams.get('abono') === '1';
+  const printReceipt = searchParams.get('receipt') === '1';
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [error, setError] = useState('');
 
@@ -52,6 +53,7 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
         backHref="/dashboard/invoices"
         canManagePayments
         initialShowPayment={openPayment}
+        initialPrintReceipt={printReceipt}
         onInvoiceUpdated={(updated) => setInvoice(updated)}
       />
     </DashboardLayout>

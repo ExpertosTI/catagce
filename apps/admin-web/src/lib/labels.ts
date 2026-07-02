@@ -8,10 +8,18 @@ export const invoiceStatusLabel: Record<string, string> = {
   draft: 'Borrador',
   issued: 'Emitida',
   paid: 'Pagada',
-  partially_paid: 'Parcial',
+  partially_paid: 'Pago parcial',
+  'partially paid': 'Pago parcial',
   overdue: 'Vencida',
   cancelled: 'Anulada',
 };
+
+/** Normaliza estado de factura (API en inglés) a etiqueta en español */
+export function invoiceStatusText(status?: string | null) {
+  if (!status) return '';
+  const key = status.toLowerCase().replace(/\s+/g, '_');
+  return invoiceStatusLabel[key] ?? invoiceStatusLabel[status] ?? status;
+}
 
 export const dispatchStatusLabel: Record<string, string> = {
   pending: 'Pendiente',

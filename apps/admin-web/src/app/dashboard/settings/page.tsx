@@ -128,10 +128,12 @@ type Company = {
   phone?: string;
   address?: string;
   logoUrl?: string;
+  settings?: { autoReceiptOnPayment?: boolean };
 };
 
 export default function SettingsPage() {
   const [form, setForm] = useState<Company>({ name: '', slug: '' });
+  const [autoReceipt, setAutoReceipt] = useState(true);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -139,6 +141,7 @@ export default function SettingsPage() {
   useEffect(() => {
     apiFetch<Company>('/companies/me').then((c) => {
       setForm(c);
+      setAutoReceipt(c.settings?.autoReceiptOnPayment !== false);
       setReady(true);
     }).catch(console.error);
   }, []);
@@ -157,6 +160,7 @@ export default function SettingsPage() {
           phone: form.phone,
           address: form.address,
           logoUrl: form.logoUrl,
+          settings: { autoReceiptOnPayment: autoReceipt },
         }),
       });
       setSaved(true);
@@ -206,6 +210,19 @@ export default function SettingsPage() {
         <FormField label="Dirección">
           <input value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" />
         </FormField>
+
+        <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoReceipt}
+            onChange={(e) => setAutoReceipt(e.target.checked)}
+            className="w-4 h-4 mt-0.5 rounded border-slate-300 text-blue-600"
+          />
+          <div>
+            <p className="text-sm font-semibold text-slate-800">🧾 Generar recibo al registrar pago</p>
+            <p className="text-xs text-slate-500 mt-0.5">Imprime automáticamente el recibo cuando se confirma un pago en facturas.</p>
+          </div>
+        </label>
 
         <div className="flex items-center gap-3">
           <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
