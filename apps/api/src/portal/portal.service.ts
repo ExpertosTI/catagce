@@ -17,12 +17,16 @@ export class PortalService {
       reference: invoices.reference,
       invoiceType: invoices.invoiceType,
       status: invoices.status,
+      subtotal: invoices.subtotal,
+      taxAmount: invoices.taxAmount,
       totalAmount: invoices.totalAmount,
       paidAmount: invoices.paidAmount,
       dueDate: invoices.dueDate,
       issuedAt: invoices.issuedAt,
+      clientName: clients.name,
     })
       .from(invoices)
+      .innerJoin(clients, eq(invoices.clientId, clients.id))
       .where(and(eq(invoices.companyId, user.companyId), eq(invoices.clientId, user.userId)))
       .orderBy(desc(invoices.issuedAt));
   }

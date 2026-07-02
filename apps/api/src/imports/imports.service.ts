@@ -1,12 +1,16 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, forwardRef } from '@nestjs/common';
 import { eq, and, desc } from 'drizzle-orm';
 import { importShipments, importItems, products, suppliers, stockLevels, warehouses } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
+import { MobileService } from '../mobile/mobile.service';
 
 @Injectable()
 export class ImportsService {
-  constructor(@Inject(DRIZZLE) private db: any) {}
+  constructor(
+    @Inject(DRIZZLE) private db: any,
+    @Inject(forwardRef(() => MobileService)) private mobileService: MobileService,
+  ) {}
 
   async list(user: AuthUser) {
     return this.db.select({
@@ -101,6 +105,8 @@ export class ImportsService {
       receivedAt: new Date(),
       updatedAt: new Date(),
     }).where(eq(importShipments.id, shipmentId)).returning();
+
+    await this.mobileService.publishInventoryUpdate(user);
 
     return updated;
   }

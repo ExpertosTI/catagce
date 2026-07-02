@@ -21,6 +21,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    volumes:
+      - ghome_uploads:/app/uploads
     deploy:
       restart_policy:
         condition: on-failure
@@ -125,3 +127,4 @@ networks:
 
 volumes:
   ghome_db_data:
+  ghome_uploads:

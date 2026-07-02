@@ -13,6 +13,9 @@ export const invoiceTypeEnum = pgEnum('invoice_type', ['cash', 'credit']);
 export const paymentMethodEnum = pgEnum('payment_method', ['cash', 'transfer', 'card', 'check', 'other']);
 export const dispatchStatusEnum = pgEnum('dispatch_status', ['pending', 'partial', 'completed', 'cancelled']);
 export const presaleStatusEnum = pgEnum('presale_status', ['open', 'confirmed', 'converted', 'cancelled']);
+export const orderRequestStatusEnum = pgEnum('order_request_status', [
+  'pending_pricing', 'priced', 'confirmed', 'rejected', 'cancelled',
+]);
 export const quoteStatusEnum = pgEnum('quote_status', ['draft', 'sent', 'accepted', 'rejected', 'expired']);
 export const importStatusEnum = pgEnum('import_status', ['in_transit', 'customs', 'received', 'closed']);
 export const allocationStatusEnum = pgEnum('allocation_status', ['reserved', 'partially_dispatched', 'dispatched']);
@@ -193,6 +196,44 @@ export const catalogProducts = pgTable('catalog_products', {
   productId: uuid('product_id').references(() => products.id).notNull(),
   displayPrice: decimal('display_price', { precision: 14, scale: 2 }),
   sortOrder: integer('sort_order').default(0),
+  notes: text('notes'),
+});
+
+// ─── Catálogo PDF (app móvil — sin precios en inventario) ────────────────────
+export const catalogPdfs = pgTable('catalog_pdfs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  title: text('title').notNull(),
+  fileName: text('file_name').notNull(),
+  fileUrl: text('file_url').notNull(),
+  version: integer('version').default(1).notNull(),
+  isActive: boolean('is_active').default(true),
+  uploadedById: uuid('uploaded_by_id').references(() => staffUsers.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Pedidos sin precio (cliente pide → admin adjudica) ──────────────────────
+export const orderRequests = pgTable('order_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  clientId: uuid('client_id').references(() => clients.id).notNull(),
+  reference: text('reference').notNull(),
+  status: orderRequestStatusEnum('status').default('pending_pricing'),
+  notes: text('notes'),
+  totalAmount: decimal('total_amount', { precision: 14, scale: 2 }),
+  pricedById: uuid('priced_by_id').references(() => staffUsers.id),
+  pricedAt: timestamp('priced_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const orderRequestItems = pgTable('order_request_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderRequestId: uuid('order_request_id').references(() => orderRequests.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 14, scale: 2 }),
+  lineTotal: decimal('line_total', { precision: 14, scale: 2 }),
   notes: text('notes'),
 });
 

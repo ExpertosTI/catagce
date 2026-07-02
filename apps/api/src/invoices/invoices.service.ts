@@ -17,6 +17,8 @@ export class InvoicesService {
       reference: invoices.reference,
       invoiceType: invoices.invoiceType,
       status: invoices.status,
+      subtotal: invoices.subtotal,
+      taxAmount: invoices.taxAmount,
       totalAmount: invoices.totalAmount,
       paidAmount: invoices.paidAmount,
       dueDate: invoices.dueDate,

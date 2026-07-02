@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "General Home",
+    "slug": "generalhome",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e40af"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tech.renace.generalhome",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e40af"
+      },
+      "package": "tech.renace.generalhome",
+      "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "generalhome-mobile"
+      }
+    }
+  }
+}

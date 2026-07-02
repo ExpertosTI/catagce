@@ -10,6 +10,7 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { ImportsModule } from './imports/imports.module';
 import { PortalModule } from './portal/portal.module';
 import { PublicModule } from './public/public.module';
+import { MobileModule } from './mobile/mobile.module';
 import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
@@ -23,6 +24,7 @@ import { AuthGuard } from './common/guards/auth.guard';
     ImportsModule,
     PortalModule,
     PublicModule,
+    MobileModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
