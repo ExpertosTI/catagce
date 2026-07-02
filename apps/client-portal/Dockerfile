@@ -9,9 +9,10 @@ ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV NEXT_PUBLIC_ADMIN_URL=${NEXT_PUBLIC_ADMIN_URL}
 ENV NEXT_PUBLIC_COMPANY_SLUG=${NEXT_PUBLIC_COMPANY_SLUG}
 RUN npm install -g pnpm
-COPY . .
-RUN pnpm install
-RUN pnpm --filter @ghome/db build
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/client-portal/package.json ./apps/client-portal/
+RUN pnpm install --filter @ghome/client-portal... --frozen-lockfile
+COPY apps/client-portal ./apps/client-portal
 RUN pnpm --filter @ghome/client-portal build
 
 FROM node:20-alpine AS runner

@@ -1,8 +1,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 RUN npm install -g pnpm
-COPY . .
-RUN pnpm install
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/db/package.json ./packages/db/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
+RUN pnpm install --filter @ghome/api... --frozen-lockfile
+COPY apps/api ./apps/api
+COPY packages/db ./packages/db
+COPY packages/typescript-config ./packages/typescript-config
 RUN pnpm --filter @ghome/db build
 RUN pnpm --filter @ghome/api build && test -f apps/api/dist/main.js
 RUN pnpm --filter @ghome/api --prod deploy /prod --legacy

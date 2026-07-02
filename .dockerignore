@@ -10,6 +10,11 @@ dist
 .turbo
 **/.turbo
 
+# Apps que no van en imagen Docker (ahorra GB en build)
+apps/mobile
+apps/buyer-web
+workers
+
 # Git y entorno local
 .git
 .gitignore
