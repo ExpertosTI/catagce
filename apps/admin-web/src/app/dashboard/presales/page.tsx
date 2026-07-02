@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import DashboardLayout, { PageHeader, SectionTitle } from '../../../components/DashboardLayout';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Search, ShoppingCart, Clock, CheckCircle } from 'lucide-react';
+import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { LoadingState } from '../../../components/LoadingState';
 import { EmptyState } from '../../../components/EmptyState';
 import { apiFetch } from '../../../lib/api';
@@ -17,10 +19,14 @@ type Presale = {
   totalAmount: string;
 };
 
+type StatusFilter = 'all' | 'pending' | 'confirmed';
+
 export default function PresalesPage() {
   const [presales, setPresales] = useState<Presale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   useEffect(() => {
     apiFetch<Presale[]>('/catalogs/presales')
@@ -29,62 +35,88 @@ export default function PresalesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const stats = useMemo(() => ({
+    total: presales.length,
+    amount: presales.reduce((s, p) => s + parseFloat(p.totalAmount || '0'), 0),
+    pending: presales.filter((p) => p.status === 'pending' || p.status === 'submitted').length,
+  }), [presales]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return presales.filter((p) => {
+      if (statusFilter === 'pending' && !['pending', 'submitted'].includes(p.status)) return false;
+      if (statusFilter === 'confirmed' && p.status !== 'confirmed') return false;
+      if (!q) return true;
+      return p.reference.toLowerCase().includes(q) || p.clientName.toLowerCase().includes(q);
+    });
+  }, [presales, query, statusFilter]);
+
   return (
     <DashboardLayout>
       <PageHeader emoji={PAGE.presales.emoji} title={PAGE.presales.title} subtitle={PAGE.presales.subtitle} />
 
-      {loading && <LoadingState emoji="🛒" message="Cargando preventas..." />}
-      {!loading && error && (
-        <div className="executive-card p-8 text-center text-red-600">❌ {error}</div>
-      )}
-
-      {!loading && !error && presales.length === 0 && (
-        <EmptyState
-          emoji="🛒"
-          title="Sin preventas"
-          subtitle="Se crean cuando los clientes piden desde el catálogo público"
-        />
+      {!loading && !error && presales.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+          <div className="report-kpi">
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><ShoppingCart size={14} /> Preventas</p>
+            <p className="report-kpi-value text-slate-800">{stats.total}</p>
+          </div>
+          <div className="report-kpi">
+            <p className="text-xs text-slate-500 font-medium">💰 Valor total</p>
+            <p className="report-kpi-value text-blue-700">{formatCurrency(stats.amount)}</p>
+          </div>
+          <div className="report-kpi col-span-2 lg:col-span-1">
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Clock size={14} /> Por confirmar</p>
+            <p className="report-kpi-value text-amber-600">{stats.pending}</p>
+          </div>
+        </div>
       )}
 
       {!loading && !error && presales.length > 0 && (
-        <>
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 lg:hidden mb-4">
-            {presales.map((p) => (
-              <article key={p.id} className="executive-card">
-                <div className="flex justify-between gap-2 mb-2">
-                  <p className="font-bold text-slate-900">{p.reference}</p>
-                  <span className="badge-blue shrink-0">{presaleStatusLabel[p.status] ?? p.status}</span>
-                </div>
-                <p className="text-sm text-slate-600">👤 {p.clientName}</p>
-                <p className="text-lg font-bold text-blue-700 mt-2">{formatCurrency(p.totalAmount)}</p>
-              </article>
+        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input className="input-search" placeholder="Buscar referencia o cliente..." value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+          <div className="report-tabs !mb-0 shrink-0">
+            {([['all', 'Todas'], ['pending', 'Pendientes'], ['confirmed', 'Confirmadas']] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setStatusFilter(id)} className={`report-tab ${statusFilter === id ? 'report-tab-active' : ''}`}>
+                {label}
+              </button>
             ))}
           </div>
+        </div>
+      )}
 
-          <SectionTitle emoji="🛒">Listado de preventas</SectionTitle>
-          <div className="executive-card overflow-hidden !p-0 hidden lg:block">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 border-b">
-                <tr>
-                  <th className="text-left p-4">Referencia</th>
-                  <th className="text-left p-4">Cliente</th>
-                  <th className="text-left p-4">Estado</th>
-                  <th className="text-right p-4">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {presales.map((p) => (
-                  <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/60">
-                    <td className="p-4 font-medium">{p.reference}</td>
-                    <td className="p-4">{p.clientName}</td>
-                    <td className="p-4"><span className="badge-blue">{presaleStatusLabel[p.status] ?? p.status}</span></td>
-                    <td className="p-4 text-right font-medium">{formatCurrency(p.totalAmount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+      {loading && <LoadingState emoji="🛒" message="Cargando preventas..." />}
+      {!loading && error && <div className="executive-card p-8 text-center text-red-600">{error}</div>}
+
+      {!loading && !error && presales.length === 0 && (
+        <EmptyState emoji="🛒" title="Sin preventas" subtitle="Se crean cuando los clientes piden desde el catálogo público" />
+      )}
+
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {!loading && !error && filtered.map((p) => (
+          <article key={p.id} className="executive-card hover:shadow-md transition-shadow">
+            <div className="flex justify-between gap-2 mb-2">
+              <p className="font-bold text-slate-900">{p.reference}</p>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                p.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'badge-amber'
+              }`}>
+                {presaleStatusLabel[p.status] ?? p.status}
+              </span>
+            </div>
+            <p className="text-sm text-slate-600">{p.clientName}</p>
+            <p className="text-xl font-extrabold text-blue-700 mt-2 tabular-nums">{formatCurrency(p.totalAmount)}</p>
+            {p.status === 'confirmed' && (
+              <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1"><CheckCircle size={12} /> Confirmada</p>
+            )}
+          </article>
+        ))}
+      </div>
+
+      {!loading && !error && presales.length > 0 && !filtered.length && (
+        <div className="executive-card text-center py-12 text-slate-500 mt-4">Sin resultados para este filtro</div>
       )}
     </DashboardLayout>
   );

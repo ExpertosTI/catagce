@@ -43,8 +43,8 @@ export function ClientInvoicePanel({ clientId, clientName, expanded }: Props) {
             <span className="ml-2 text-red-600">· Pendiente {formatUsd(totalPending)}</span>
           )}
         </p>
-        <Link href={`/dashboard/invoices/new?clientId=${clientId}`} className="btn-subtle btn-subtle-primary text-xs">
-          <Plus size={14} /> Nueva factura
+        <Link href={`/dashboard/invoices/new?clientId=${clientId}`} className="action-chip action-chip-success text-xs">
+          <Plus size={14} /> <span className="!inline">Nueva factura</span>
         </Link>
       </div>
 
@@ -86,11 +86,11 @@ export function ClientInvoicePanel({ clientId, clientName, expanded }: Props) {
                       href={`/dashboard/invoices/${inv.id}?abono=1`}
                       className="btn-primary !py-2 !px-4 text-sm flex-1 sm:flex-none justify-center min-w-[120px]"
                     >
-                      <Wallet size={16} /> Pagar
+                      <Wallet size={16} /> Pagar {formatUsd(balance)}
                     </Link>
                   )}
-                  <Link href={`/dashboard/invoices/${inv.id}`} className="btn-subtle text-xs flex-1 sm:flex-none justify-center">
-                    Ver detalle
+                  <Link href={`/dashboard/invoices/${inv.id}`} className="action-chip text-xs flex-1 sm:flex-none justify-center">
+                    <span className="!inline">Ver detalle</span>
                   </Link>
                 </div>
               </div>

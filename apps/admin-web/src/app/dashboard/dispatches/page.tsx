@@ -1,22 +1,75 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import DashboardLayout, { PageHeader, ActionButton, SectionTitle } from '../../../components/DashboardLayout';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Truck, Package, Printer, FileDown, Plus, Search } from 'lucide-react';
+import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
+import { ReportTableCard } from '../../../components/ReportTableCard';
+import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { dispatchStatusLabel } from '../../../lib/labels';
+import { exportCsv, printReportTable } from '../../../lib/report-utils';
+import { useCompany } from '../../../lib/useCompany';
 import { PAGE } from '../../../lib/page-titles';
 
+type PendingItem = {
+  clientName: string;
+  productName: string;
+  allocatedQty: number;
+  dispatchedQty: number;
+  pendingQty: number;
+};
+
+type DispatchHistory = {
+  id: string;
+  reference: string;
+  clientName: string;
+  invoiceReference?: string;
+  status: string;
+  items?: Array<{ productName: string; quantity: number }>;
+};
+
 export default function DispatchesPage() {
-  const [pending, setPending] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const company = useCompany();
+  const [pending, setPending] = useState<PendingItem[]>([]);
+  const [history, setHistory] = useState<DispatchHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     Promise.all([
-      apiFetch('/invoices/pending-dispatch').then(setPending).catch(console.error),
-      apiFetch('/invoices/dispatches/history').then(setHistory).catch(console.error),
+      apiFetch<PendingItem[]>('/invoices/pending-dispatch').then(setPending).catch(() => setPending([])),
+      apiFetch<DispatchHistory[]>('/invoices/dispatches/history').then(setHistory).catch(() => setHistory([])),
     ]).finally(() => setLoading(false));
   }, []);
+
+  const stats = useMemo(() => ({
+    lines: pending.length,
+    units: pending.reduce((s, p) => s + (p.pendingQty ?? 0), 0),
+    dispatched: history.length,
+  }), [pending, history]);
+
+  const filteredPending = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return pending;
+    return pending.filter((p) => p.clientName?.toLowerCase().includes(q) || p.productName?.toLowerCase().includes(q));
+  }, [pending, query]);
+
+  function printPending() {
+    printReportTable({
+      title: 'Pendientes de despacho',
+      companyName: company?.name,
+      subtitle: `${stats.units} unidades en ${stats.lines} líneas`,
+      columns: ['Cliente', 'Producto', 'Facturado', 'Despachado', 'Pendiente'],
+      rows: filteredPending.map((p) => [p.clientName, p.productName, p.allocatedQty, p.dispatchedQty, p.pendingQty]),
+      totalsRow: ['', '', '', 'Total pendiente', stats.units],
+    });
+  }
+
+  function exportPending() {
+    exportCsv('despachos-pendientes', ['Cliente', 'Producto', 'Facturado', 'Despachado', 'Pendiente'],
+      filteredPending.map((p) => [p.clientName, p.productName, p.allocatedQty, p.dispatchedQty, p.pendingQty]));
+  }
 
   return (
     <DashboardLayout>
@@ -24,62 +77,112 @@ export default function DispatchesPage() {
         emoji={PAGE.dispatches.emoji}
         title={PAGE.dispatches.title}
         subtitle={PAGE.dispatches.subtitle}
-        action={<ActionButton href="/dashboard/dispatches/new" emoji="📤" label="Nuevo despacho" />}
+        action={(
+          <Link href="/dashboard/dispatches/new" className="btn-primary text-sm">
+            <Plus size={16} /> Nuevo despacho
+          </Link>
+        )}
       />
 
-      <SectionTitle emoji="⏳">Pendientes de despacho</SectionTitle>
-      <div className="executive-card overflow-hidden mb-8 !p-0">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 border-b">
-            <tr>
-              <th className="text-left p-4">Cliente</th>
-              <th className="text-left p-4">Producto</th>
-              <th className="text-right p-4">Facturado</th>
-              <th className="text-right p-4">Despachado</th>
-              <th className="text-right p-4">Pendiente</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={5} className="p-8 text-center text-slate-400">🚚 Cargando...</td></tr>
-            )}
-            {!loading && pending.map((item, i) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/60">
-                <td className="p-4">{item.clientName}</td>
-                <td className="p-4">{item.productName}</td>
-                <td className="p-4 text-right">{item.allocatedQty}</td>
-                <td className="p-4 text-right">{item.dispatchedQty}</td>
-                <td className="p-4 text-right font-medium text-amber-700">{item.pendingQty}</td>
-              </tr>
-            ))}
-            {!loading && !pending.length && (
-              <tr><td colSpan={5} className="p-8 text-center text-slate-500">✅ Sin pendientes de despacho</td></tr>
-            )}
-          </tbody>
-        </table>
+      {!loading && (
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="report-kpi">
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Package size={14} /> Líneas pendientes</p>
+            <p className="report-kpi-value text-amber-600">{stats.lines}</p>
+          </div>
+          <div className="report-kpi">
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Truck size={14} /> Unidades por entregar</p>
+            <p className="report-kpi-value text-orange-600">{stats.units}</p>
+          </div>
+          <div className="report-kpi">
+            <p className="text-xs text-slate-500 font-medium">✅ Despachos hechos</p>
+            <p className="report-kpi-value text-emerald-700">{stats.dispatched}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input className="input-search" placeholder="Buscar cliente o producto..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={exportPending} disabled={!filteredPending.length} className="report-toolbar-btn disabled:opacity-40">
+            <FileDown size={14} /> CSV
+          </button>
+          <button type="button" onClick={printPending} disabled={!filteredPending.length} className="report-toolbar-btn disabled:opacity-40">
+            <Printer size={14} /> Imprimir
+          </button>
+        </div>
       </div>
 
-      <SectionTitle emoji="📋">Historial de despachos</SectionTitle>
+      {loading && <LoadingState emoji="🚚" message="Cargando despachos..." />}
+
+      {!loading && (
+        <ReportTableCard
+          emoji="⏳"
+          title="Pendientes de despacho"
+          subtitle={filteredPending.length ? `${stats.units} unidades por entregar` : 'Todo despachado'}
+        >
+          <table className="w-full text-sm min-w-[480px] report-table">
+            <thead className="border-b">
+              <tr>
+                <th className="text-left">Cliente</th>
+                <th className="text-left">Producto</th>
+                <th className="text-right">Facturado</th>
+                <th className="text-right">Despachado</th>
+                <th className="text-right">Pendiente</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPending.map((item, i) => (
+                <tr key={i} className="border-b border-slate-100">
+                  <td className="font-medium">{item.clientName}</td>
+                  <td>{item.productName}</td>
+                  <td className="text-right text-slate-500">{item.allocatedQty}</td>
+                  <td className="text-right text-slate-500">{item.dispatchedQty}</td>
+                  <td className="text-right font-bold text-amber-700">{item.pendingQty}</td>
+                </tr>
+              ))}
+              {!filteredPending.length && (
+                <tr><td colSpan={5} className="p-10 text-center text-slate-500">✅ Sin pendientes de despacho</td></tr>
+              )}
+            </tbody>
+          </table>
+        </ReportTableCard>
+      )}
+
+      <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 mt-8 mb-3">
+        <span aria-hidden>📋</span> Historial de despachos
+      </h2>
+
       <div className="space-y-3">
-        {loading && <div className="executive-card p-8 text-center text-slate-400">🚚 Cargando historial...</div>}
         {!loading && history.map((d) => (
-          <article key={d.id} className="executive-card">
-            <div className="flex justify-between gap-3">
-              <div>
-                <p className="font-bold text-slate-900">📦 {d.reference}</p>
-                <p className="text-sm text-slate-500">{d.clientName} · {d.invoiceReference && `Factura ${d.invoiceReference}`}</p>
+          <article key={d.id} className="executive-card hover:shadow-md transition-shadow">
+            <div className="flex justify-between gap-3 items-start">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                  <Truck size={18} />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900">{d.reference}</p>
+                  <p className="text-sm text-slate-500">{d.clientName}{d.invoiceReference ? ` · Factura ${d.invoiceReference}` : ''}</p>
+                </div>
               </div>
               <span className="badge-green shrink-0">{dispatchStatusLabel[d.status] ?? d.status}</span>
             </div>
-            <ul className="mt-3 text-sm space-y-1 text-slate-600">
-              {d.items?.map((item: any, i: number) => (
-                <li key={i}>• {item.productName} — {item.quantity} un.</li>
+            <ul className="mt-3 text-sm space-y-1 text-slate-600 ml-12">
+              {d.items?.map((item, i) => (
+                <li key={i} className="flex justify-between">
+                  <span>{item.productName}</span>
+                  <span className="font-semibold">{item.quantity} un.</span>
+                </li>
               ))}
             </ul>
           </article>
         ))}
         {!loading && !history.length && (
-          <div className="executive-card p-8 text-center text-slate-500">
+          <div className="executive-card p-10 text-center text-slate-500">
             <p className="text-3xl mb-2" aria-hidden>🚚</p>
             Sin despachos registrados todavía
           </div>
