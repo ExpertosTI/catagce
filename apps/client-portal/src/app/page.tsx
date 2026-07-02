@@ -50,7 +50,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500">
-        © {new Date().getFullYear()} {company?.name || 'General Home'} · Desarrollado por{' '}
+        © 2026 {company?.name || 'General Home'} · Desarrollado por{' '}
         <a href="https://renace.tech" className="text-blue-700 font-medium">renace.tech</a>
       </footer>
     </div>

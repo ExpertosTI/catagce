@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { FileText, Package, User, BookOpen, LogOut, Truck, Home } from 'lucide-react';
+import { FileText, Package, User, BookOpen, LogOut, Truck, Home, Menu, X } from 'lucide-react';
 import { clearAuth, getClient } from '../lib/api';
 
 const nav = [
-  { href: '/portal', label: 'Mi cuenta', icon: User },
   { href: '/portal/invoices', label: 'Mis facturas', icon: FileText },
   { href: '/portal/dispatches', label: 'Mis despachos', icon: Truck },
   { href: '/portal/pending', label: 'Mercancía pendiente', icon: Package },
@@ -16,7 +16,16 @@ const nav = [
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const client = getClient<{ name?: string }>();
+  const [clientName, setClientName] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setClientName(getClient<{ name?: string }>()?.name ?? null);
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   function logout() {
     clearAuth();
@@ -25,33 +34,64 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 text-blue-700 font-bold">
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-30">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <button
+              type="button"
+              className="md:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100"
+              aria-label="Menú"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <Link href="/" className="flex items-center gap-2 text-blue-700 font-bold shrink-0">
               <div className="w-8 h-8 rounded bg-blue-700 text-white flex items-center justify-center text-sm">G</div>
-              GHome
+              <span className="hidden xs:inline">GHome</span>
             </Link>
-            <span className="text-slate-300">|</span>
-            <p className="text-sm text-slate-600">Portal de <strong>{client?.name || 'Cliente'}</strong></p>
+            <span className="text-slate-300 hidden sm:inline">|</span>
+            <p className="text-xs sm:text-sm text-slate-600 truncate" suppressHydrationWarning>
+              Portal de <strong>{clientName ?? 'Cliente'}</strong>
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-sm text-slate-500 hover:text-blue-700 flex items-center gap-1"><Home size={16} /> Inicio</Link>
-            <button onClick={logout} className="text-sm text-slate-500 hover:text-red-600 flex items-center gap-1">
-              <LogOut size={16} /> Salir
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <Link href="/" className="text-sm text-slate-500 hover:text-blue-700 hidden sm:flex items-center gap-1">
+              <Home size={16} /> Inicio
+            </Link>
+            <button type="button" onClick={logout} className="text-sm text-slate-500 hover:text-red-600 flex items-center gap-1">
+              <LogOut size={16} /> <span className="hidden sm:inline">Salir</span>
             </button>
           </div>
         </div>
+
+        {menuOpen && (
+          <nav className="md:hidden mt-3 pt-3 border-t border-slate-200 space-y-1">
+            {nav.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  pathname === href || pathname.startsWith(`${href}/`)
+                    ? 'bg-blue-700 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Icon size={18} /> {label}
+              </Link>
+            ))}
+          </nav>
+        )}
       </header>
-      <div className="max-w-6xl mx-auto flex gap-8 px-6 py-8">
+
+      <div className="max-w-6xl mx-auto flex gap-8 px-4 sm:px-6 py-6 sm:py-8">
         <aside className="w-52 shrink-0 hidden md:block">
-          <nav className="space-y-1">
+          <nav className="space-y-1 sticky top-24">
             {nav.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                  pathname === href || pathname.startsWith(href + '/')
+                  pathname === href || pathname.startsWith(`${href}/`)
                     ? 'bg-blue-700 text-white'
                     : 'text-slate-600 hover:bg-white hover:text-blue-700'
                 }`}

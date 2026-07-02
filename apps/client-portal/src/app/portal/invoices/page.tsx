@@ -61,7 +61,7 @@ export default function ClientInvoicesPage() {
           const itbis = parseFloat(inv.taxAmount || '0');
           const totalAmt = parseFloat(inv.totalAmount || '0');
           return (
-            <div key={inv.id} className="bg-white border border-slate-200 rounded p-3 flex gap-3 items-start">
+            <div key={inv.id} className="bg-white border border-slate-200 rounded p-3 flex flex-col sm:flex-row gap-3 sm:items-start">
               <div className="flex-1 min-w-0">
                 <p className="text-green-600 font-bold text-xs uppercase truncate">{inv.clientName}</p>
                 <p className="text-blue-600 font-bold text-sm">{inv.reference}</p>
@@ -73,7 +73,7 @@ export default function ClientInvoicesPage() {
                 <p>ITBIS: {formatUsd(itbis)}</p>
                 <p>Total: {formatUsd(totalAmt)}</p>
               </div>
-              <div className="text-right shrink-0">
+              <div className="flex flex-row sm:flex-col justify-between sm:justify-start items-center sm:items-end gap-2 shrink-0 w-full sm:w-auto">
                 <p className="text-red-600 font-extrabold text-sm">{formatUsd(totalAmt)}</p>
                 <Link href={`/portal/invoices/${inv.id}`} className="inline-block mt-2 border-2 border-cyan-600 text-cyan-700 rounded-full px-4 py-0.5 text-sm font-bold">
                   Ver
