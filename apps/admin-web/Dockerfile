@@ -22,5 +22,6 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 COPY --from=builder /app/apps/admin-web/.next/standalone ./
 COPY --from=builder /app/apps/admin-web/.next/static ./apps/admin-web/.next/static
+COPY --from=builder /app/apps/admin-web/public ./apps/admin-web/public
 EXPOSE 3000
 CMD ["node", "apps/admin-web/server.js"]

@@ -22,5 +22,6 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 COPY --from=builder /app/apps/client-portal/.next/standalone ./
 COPY --from=builder /app/apps/client-portal/.next/static ./apps/client-portal/.next/static
+COPY --from=builder /app/apps/client-portal/public ./apps/client-portal/public
 EXPOSE 3000
 CMD ["node", "apps/client-portal/server.js"]

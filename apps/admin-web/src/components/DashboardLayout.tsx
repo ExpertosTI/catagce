@@ -78,8 +78,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* Barra superior móvil */}
-      <header className="md:hidden sticky top-0 z-30 bg-blue-900 text-white flex items-center justify-between px-4 py-3 shadow">
+      {/* Móvil: barra superior */}
+      <header className="flex lg:hidden sticky top-0 z-30 bg-blue-900 text-white items-center justify-between px-4 py-3 shadow">
         <button
           type="button"
           aria-label="Abrir menú"
@@ -92,30 +92,53 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="w-9" />
       </header>
 
-      {/* Overlay móvil */}
       {menuOpen && (
         <button
           type="button"
           aria-label="Cerrar menú"
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={closeMenu}
         />
       )}
 
-      <div className="flex min-h-[calc(100vh-52px)] md:min-h-screen">
-        {/* Sidebar — oculto en móvil, drawer al abrir */}
-        <aside
-          className={`
-            fixed md:static inset-y-0 left-0 z-50 w-[min(280px,85vw)] md:w-60
-            bg-blue-900 text-white flex flex-col shrink-0
-            transform transition-transform duration-200 ease-out
-            ${menuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-            md:translate-x-0 top-0 md:top-auto
-          `}
-        >
-          <div className="p-5 border-b border-blue-800 flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-9 h-9 rounded-lg bg-white text-blue-900 flex items-center justify-center font-bold shrink-0">G</div>
+      {/* Móvil: drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[min(280px,88vw)] bg-blue-900 text-white flex flex-col lg:hidden transition-transform duration-200 ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-hidden={!menuOpen}
+      >
+        <div className="p-5 border-b border-blue-800 flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-white text-blue-900 flex items-center justify-center font-bold shrink-0">G</div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm">GHome Admin</p>
+              <p className="text-xs text-blue-300 truncate" suppressHydrationWarning>
+                {userName ?? 'Administrador'}
+              </p>
+            </div>
+          </div>
+          <button type="button" aria-label="Cerrar menú" onClick={closeMenu} className="p-1 rounded hover:bg-blue-800">
+            <X size={20} />
+          </button>
+        </div>
+        <SidebarNav pathname={pathname} onNavigate={closeMenu} />
+        <div className="p-3 border-t border-blue-800">
+          <Link href={SITE_URL} onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 text-xs text-blue-300 hover:text-white mb-1">
+            Ver sitio público
+          </Link>
+          <button type="button" onClick={logout} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-200 hover:text-white w-full">
+            <LogOut size={16} /> Cerrar sesión
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex min-h-[calc(100dvh-52px)] lg:min-h-screen">
+        {/* Escritorio: sidebar fijo */}
+        <aside className="hidden lg:flex w-60 bg-blue-900 text-white flex-col shrink-0">
+          <div className="p-5 border-b border-blue-800">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg bg-white text-blue-900 flex items-center justify-center font-bold">G</div>
               <div className="min-w-0">
                 <p className="font-bold text-sm">GHome Admin</p>
                 <p className="text-xs text-blue-300 truncate" suppressHydrationWarning>
@@ -123,37 +146,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              aria-label="Cerrar menú"
-              onClick={closeMenu}
-              className="md:hidden p-1 rounded hover:bg-blue-800 shrink-0"
-            >
-              <X size={20} />
-            </button>
           </div>
-
-          <SidebarNav pathname={pathname} onNavigate={closeMenu} />
-
-          <div className="p-3 border-t border-blue-800">
-            <Link
-              href={SITE_URL}
-              onClick={closeMenu}
-              className="flex items-center gap-2 px-3 py-2 text-xs text-blue-300 hover:text-white mb-1"
-            >
+          <SidebarNav pathname={pathname} />
+          <div className="p-3 border-t border-blue-800 mt-auto">
+            <Link href={SITE_URL} className="flex items-center gap-2 px-3 py-2 text-xs text-blue-300 hover:text-white mb-1">
               Ver sitio público
             </Link>
-            <button
-              type="button"
-              onClick={logout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-blue-200 hover:text-white w-full"
-            >
+            <button type="button" onClick={logout} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-200 hover:text-white w-full">
               <LogOut size={16} /> Cerrar sesión
             </button>
           </div>
         </aside>
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-auto w-full min-w-0">
+        <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 overflow-auto">
           {children}
         </main>
       </div>
