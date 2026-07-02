@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { apiFetch } from '../../../../lib/api';
+import { PAGE } from '../../../../lib/page-titles';
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function NewClientPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Nuevo cliente" subtitle="Registre un cliente activo" />
+      <PageHeader emoji={PAGE.clientsNew.emoji} title={PAGE.clientsNew.title} subtitle={PAGE.clientsNew.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         <FormField label="Nombre">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />

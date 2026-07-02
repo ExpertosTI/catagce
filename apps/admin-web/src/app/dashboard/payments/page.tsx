@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Receipt, MessageCircle, Ban, Wallet } from 'lucide-react';
+import { Receipt, MessageCircle, Ban, Search } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
 import { formatCurrency } from '../../../lib/currency';
 import { paymentMethodLabel } from '../../../lib/labels';
 import { printPaymentReceipt, sharePaymentReceiptWhatsApp } from '../../../lib/invoice-utils';
 import { useCompany } from '../../../lib/useCompany';
+import { PAGE } from '../../../lib/page-titles';
 
 type Payment = {
   id: string;
@@ -73,15 +74,15 @@ export default function PaymentsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Pagos" subtitle="Abonos y cobros registrados" />
+      <PageHeader emoji={PAGE.payments.emoji} title={PAGE.payments.title} subtitle={PAGE.payments.subtitle} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <div className="stat-card">
-          <p className="text-xs text-slate-500">Abonos</p>
+          <p className="text-xs text-slate-500">💰 Abonos</p>
           <p className="text-2xl font-bold text-slate-900 mt-1">{filtered.length}</p>
         </div>
         <div className="stat-card col-span-1 lg:col-span-1">
-          <p className="text-xs text-slate-500">Total cobrado</p>
+          <p className="text-xs text-slate-500">✅ Total cobrado</p>
           <p className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(total)}</p>
         </div>
       </div>
@@ -102,7 +103,7 @@ export default function PaymentsPage() {
       </div>
 
       <div className="space-y-3">
-        {loading && <p className="text-center text-slate-400 py-12">Cargando pagos...</p>}
+        {loading && <p className="text-center text-slate-400 py-12">💰 Cargando pagos...</p>}
         {!loading && error && <p className="text-center text-red-600 py-8">{error}</p>}
         {!loading && !error && filtered.map((p) => (
           <article key={p.id} className="payment-card">
@@ -134,7 +135,7 @@ export default function PaymentsPage() {
         ))}
         {!loading && !error && !filtered.length && (
           <div className="text-center py-16 text-slate-500">
-            <Wallet size={32} className="mx-auto text-slate-300 mb-3" />
+            <p className="text-4xl mb-3" aria-hidden>💰</p>
             <p className="font-medium">Sin pagos registrados</p>
             <p className="text-sm mt-1">Los abonos aparecen aquí al registrarlos desde una factura</p>
             <Link href="/dashboard/invoices" className="btn-subtle btn-subtle-primary mt-4 inline-flex">Ir a facturas</Link>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import PortalLayout from '../../../components/PortalLayout';
 import { apiFetch } from '../../../lib/api';
+import { PORTAL_PAGE } from '../../../lib/page-titles';
 
 type Pending = {
   productName: string;
@@ -23,8 +24,10 @@ export default function PendingMerchandisePage() {
 
   return (
     <PortalLayout>
-      <h2 className="text-2xl font-bold">Mercancía pendiente de despacho</h2>
-      <p className="text-slate-500 mt-1">Productos facturados que aún están en nuestro almacén</p>
+      <h2 className="text-2xl font-bold flex items-center gap-2">
+        <span aria-hidden>{PORTAL_PAGE.pending.emoji}</span> {PORTAL_PAGE.pending.title}
+      </h2>
+      <p className="text-slate-500 mt-1">{PORTAL_PAGE.pending.subtitle}</p>
       <div className="grid gap-4 mt-6">
         {loading && (
           <>

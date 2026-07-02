@@ -11,20 +11,25 @@ import { clearAuth, getUser } from '../lib/api';
 import { SITE_URL } from '../lib/site';
 import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
+import { NAV_ITEMS } from '../lib/page-titles';
 
-const nav = [
-  { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard },
-  { href: '/dashboard/clients', label: 'Clientes', icon: Users },
-  { href: '/dashboard/products', label: 'Mercancía', icon: Package },
-  { href: '/dashboard/invoices', label: 'Facturas', icon: FileText },
-  { href: '/dashboard/payments', label: 'Pagos', icon: Wallet },
-  { href: '/dashboard/dispatches', label: 'Despachos', icon: Truck },
-  { href: '/dashboard/presales', label: 'Preventas', icon: ShoppingBag },
-  { href: '/dashboard/imports', label: 'Importaciones', icon: Ship },
-  { href: '/dashboard/catalogs', label: 'Catálogos', icon: BookOpen },
-  { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3 },
-  { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
-];
+const nav = NAV_ITEMS.map((item) => ({
+  href: item.href,
+  label: `${item.emoji} ${item.label}`,
+  icon: {
+    '/dashboard': LayoutDashboard,
+    '/dashboard/clients': Users,
+    '/dashboard/products': Package,
+    '/dashboard/invoices': FileText,
+    '/dashboard/payments': Wallet,
+    '/dashboard/dispatches': Truck,
+    '/dashboard/presales': ShoppingBag,
+    '/dashboard/imports': Ship,
+    '/dashboard/catalogs': BookOpen,
+    '/dashboard/reports': BarChart3,
+    '/dashboard/settings': Settings,
+  }[item.href] ?? LayoutDashboard,
+}));
 
 function SidebarNav({
   pathname,
@@ -169,22 +174,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+export function PageHeader({ emoji, title, subtitle, action }: { emoji?: string; title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-3 sm:gap-4 mb-6">
       <div className="min-w-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{title}</h1>
-        {subtitle && <p className="text-slate-500 mt-1 text-sm">{subtitle}</p>}
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+          {emoji && <span className="text-2xl sm:text-3xl leading-none" aria-hidden>{emoji}</span>}
+          <span>{title}</span>
+        </h1>
+        {subtitle && <p className="text-slate-500 mt-1.5 text-sm">{subtitle}</p>}
       </div>
       {action}
     </div>
   );
 }
 
-export function ActionButton({ href, label }: { href: string; label: string }) {
+export function ActionButton({ href, label, emoji }: { href: string; label: string; emoji?: string }) {
   return (
     <Link href={href} className="btn-primary inline-flex items-center gap-2 text-sm w-full sm:w-auto justify-center">
-      <Plus size={16} /> {label}
+      <Plus size={16} /> {emoji && <span aria-hidden>{emoji}</span>} {label}
     </Link>
+  );
+}
+
+export function SectionTitle({ emoji, children }: { emoji?: string; children: React.ReactNode }) {
+  return (
+    <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-3">
+      {emoji && <span aria-hidden>{emoji}</span>}
+      {children}
+    </h2>
   );
 }

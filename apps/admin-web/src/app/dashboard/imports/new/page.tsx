@@ -8,6 +8,7 @@ import { FormField } from '../../../../components/FormField';
 import { ProductPicker, PickedLine, PickerProduct } from '../../../../components/ProductPicker';
 import { apiFetch } from '../../../../lib/api';
 import { formatCurrency } from '../../../../lib/currency';
+import { PAGE } from '../../../../lib/page-titles';
 
 type Supplier = { id: string; name: string; country?: string };
 
@@ -94,7 +95,7 @@ export default function NewImportPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Nueva importación" subtitle="Registre un contenedor en camino" />
+      <PageHeader emoji={PAGE.importsNew.emoji} title={PAGE.importsNew.title} subtitle={PAGE.importsNew.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
         <div className="grid sm:grid-cols-2 gap-4">

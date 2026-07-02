@@ -115,15 +115,17 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
   return (
     <div className="animate-fade-in">
       <Link href={backHref} className="text-blue-700 text-sm font-medium hover:underline inline-flex items-center gap-1">
-        ← Volver a facturas
+        ← 🧾 Volver a facturas
       </Link>
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide">
-            {invoice.clientName ?? invoice.client?.name}
+          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide flex items-center gap-1">
+            <span aria-hidden>👤</span> {invoice.clientName ?? invoice.client?.name}
           </p>
-          <h2 className="text-2xl font-bold text-slate-900 mt-1">{invoice.ncf ?? invoice.reference}</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mt-1 flex items-center gap-2">
+            <span aria-hidden>🧾</span> {invoice.ncf ?? invoice.reference}
+          </h2>
           <p className="text-slate-500 text-sm">
             {fiscalDocumentTitle(invoice)} · {invoiceTypeLabel(invoice.invoiceType)} · {formatDate(invoice.issuedAt)}
           </p>
@@ -230,7 +232,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       </div>
 
       <div className="card mt-6 overflow-hidden">
-        <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">Detalle de productos</div>
+        <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">📦 Detalle de productos</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[500px]">
             <thead className="text-slate-500 text-xs uppercase">
@@ -260,7 +262,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
 
       {invoice.payments && invoice.payments.length > 0 && (
         <div className="card mt-6 overflow-hidden">
-          <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">Abonos</div>
+          <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">💰 Abonos</div>
           <ul className="divide-y divide-slate-100">
             {invoice.payments.map((p) => (
               <li key={p.id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm hover:bg-slate-50/80">

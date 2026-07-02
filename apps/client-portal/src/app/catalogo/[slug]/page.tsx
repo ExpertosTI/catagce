@@ -109,8 +109,10 @@ export default function CatalogPage({ params }: { params: { slug: string } }) {
 
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <span className="badge-blue">{data?.catalog.isPresale ? 'Preventa' : 'Catálogo'}</span>
-          <h1 className="text-3xl font-bold mt-2">{data?.catalog.name || 'Catálogo'}</h1>
+          <span className="badge-blue">{data?.catalog.isPresale ? '🛒 Preventa' : '📚 Catálogo'}</span>
+          <h1 className="text-3xl font-bold mt-2 flex items-center gap-2">
+            <span aria-hidden>📚</span> {data?.catalog.name || 'Catálogo'}
+          </h1>
           <p className="text-slate-600 mt-2">{data?.catalog.description}</p>
         </div>
 
@@ -133,7 +135,7 @@ export default function CatalogPage({ params }: { params: { slug: string } }) {
 
           {showCart && (
             <div className="card p-6 h-fit sticky top-24">
-              <h2 className="font-bold text-lg">Su pedido</h2>
+              <h2 className="font-bold text-lg">🛒 Su pedido</h2>
               {!cart.length ? (
                 <p className="text-slate-500 text-sm mt-4">Carrito vacío</p>
               ) : (

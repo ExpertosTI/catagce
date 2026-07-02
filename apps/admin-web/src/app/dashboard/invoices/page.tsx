@@ -5,7 +5,8 @@ import { Search } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
 import { InvoiceCard } from '../../../components/InvoiceCard';
 import { apiFetch } from '../../../lib/api';
-import { formatUsd, InvoiceListItem, invoiceBalance } from '../../../lib/invoice-utils';
+import { PAGE } from '../../../lib/page-titles';
+import { InvoiceListItem, invoiceBalance, formatUsd } from '../../../lib/invoice-utils';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
@@ -34,9 +35,10 @@ export default function InvoicesPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Facturas"
-        subtitle="Gestión, compartir e imprimir"
-        action={<ActionButton href="/dashboard/invoices/new" label="Nueva factura" />}
+        emoji={PAGE.invoices.emoji}
+        title={PAGE.invoices.title}
+        subtitle={PAGE.invoices.subtitle}
+        action={<ActionButton href="/dashboard/invoices/new" emoji="📝" label="Nueva factura" />}
       />
 
       <div className="relative max-w-xl mb-5">
@@ -50,7 +52,7 @@ export default function InvoicesPage() {
       </div>
 
       <div className="space-y-3">
-        {loading && <p className="text-center text-slate-500 py-12">Cargando facturas...</p>}
+        {loading && <p className="text-center text-slate-500 py-12">🧾 Cargando facturas...</p>}
         {!loading && filtered.map((inv) => (
           <InvoiceCard
             key={inv.id}
@@ -61,6 +63,7 @@ export default function InvoicesPage() {
         ))}
         {!loading && !filtered.length && (
           <div className="text-center py-16 text-slate-500">
+            <p className="text-4xl mb-3" aria-hidden>🧾</p>
             <p className="font-medium">Sin facturas</p>
             <p className="text-sm mt-1">Cree una nueva factura para comenzar</p>
           </div>

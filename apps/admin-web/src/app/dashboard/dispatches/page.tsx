@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
+import DashboardLayout, { PageHeader, ActionButton, SectionTitle } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
 import { dispatchStatusLabel } from '../../../lib/labels';
+import { PAGE } from '../../../lib/page-titles';
 
 export default function DispatchesPage() {
   const [pending, setPending] = useState<any[]>([]);
@@ -19,10 +20,15 @@ export default function DispatchesPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Despachos" subtitle="Pendientes e historial" action={<ActionButton href="/dashboard/dispatches/new" label="Nuevo despacho" />} />
+      <PageHeader
+        emoji={PAGE.dispatches.emoji}
+        title={PAGE.dispatches.title}
+        subtitle={PAGE.dispatches.subtitle}
+        action={<ActionButton href="/dashboard/dispatches/new" emoji="📤" label="Nuevo despacho" />}
+      />
 
-      <h2 className="font-semibold text-lg mb-3">Pendientes de despacho</h2>
-      <div className="card overflow-hidden mb-8">
+      <SectionTitle emoji="⏳">Pendientes de despacho</SectionTitle>
+      <div className="executive-card overflow-hidden mb-8 !p-0">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 border-b">
             <tr>
@@ -35,10 +41,10 @@ export default function DispatchesPage() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={5} className="p-8 text-center text-slate-400">Cargando...</td></tr>
+              <tr><td colSpan={5} className="p-8 text-center text-slate-400">🚚 Cargando...</td></tr>
             )}
             {!loading && pending.map((item, i) => (
-              <tr key={i} className="border-b border-slate-100">
+              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50/60">
                 <td className="p-4">{item.clientName}</td>
                 <td className="p-4">{item.productName}</td>
                 <td className="p-4 text-right">{item.allocatedQty}</td>
@@ -46,32 +52,37 @@ export default function DispatchesPage() {
                 <td className="p-4 text-right font-medium text-amber-700">{item.pendingQty}</td>
               </tr>
             ))}
-            {!loading && !pending.length && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Sin pendientes</td></tr>}
+            {!loading && !pending.length && (
+              <tr><td colSpan={5} className="p-8 text-center text-slate-500">✅ Sin pendientes de despacho</td></tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      <h2 className="font-semibold text-lg mb-3">Historial de despachos</h2>
+      <SectionTitle emoji="📋">Historial de despachos</SectionTitle>
       <div className="space-y-3">
-        {loading && <div className="card p-8 text-center text-slate-400">Cargando...</div>}
+        {loading && <div className="executive-card p-8 text-center text-slate-400">🚚 Cargando historial...</div>}
         {!loading && history.map((d) => (
-          <div key={d.id} className="card p-5">
-            <div className="flex justify-between">
+          <article key={d.id} className="executive-card">
+            <div className="flex justify-between gap-3">
               <div>
-                <p className="font-bold">{d.reference}</p>
+                <p className="font-bold text-slate-900">📦 {d.reference}</p>
                 <p className="text-sm text-slate-500">{d.clientName} · {d.invoiceReference && `Factura ${d.invoiceReference}`}</p>
               </div>
-              <span className="badge-green">{dispatchStatusLabel[d.status] ?? d.status}</span>
+              <span className="badge-green shrink-0">{dispatchStatusLabel[d.status] ?? d.status}</span>
             </div>
-            <ul className="mt-3 text-sm space-y-1">
+            <ul className="mt-3 text-sm space-y-1 text-slate-600">
               {d.items?.map((item: any, i: number) => (
-                <li key={i}>{item.productName} — {item.quantity} un.</li>
+                <li key={i}>• {item.productName} — {item.quantity} un.</li>
               ))}
             </ul>
-          </div>
+          </article>
         ))}
         {!loading && !history.length && (
-          <div className="card p-8 text-center text-slate-500">Sin despachos registrados todavía</div>
+          <div className="executive-card p-8 text-center text-slate-500">
+            <p className="text-3xl mb-2" aria-hidden>🚚</p>
+            Sin despachos registrados todavía
+          </div>
         )}
       </div>
     </DashboardLayout>

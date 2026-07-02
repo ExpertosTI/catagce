@@ -5,6 +5,7 @@ import { Ship, PackageCheck } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
 import { importStatusLabel } from '../../../lib/labels';
+import { PAGE } from '../../../lib/page-titles';
 
 type ImportShipment = {
   id: string;
@@ -41,16 +42,17 @@ export default function ImportsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Importaciones"
-        subtitle="Contenedores y recepción de mercancía"
-        action={<ActionButton href="/dashboard/imports/new" label="Nueva importación" />}
+        emoji={PAGE.imports.emoji}
+        title={PAGE.imports.title}
+        subtitle={PAGE.imports.subtitle}
+        action={<ActionButton href="/dashboard/imports/new" emoji="📥" label="Nueva importación" />}
       />
 
-      {loading && <p className="text-center text-slate-500 py-12">Cargando importaciones...</p>}
+      {loading && <p className="text-center text-slate-500 py-12">🚢 Cargando importaciones...</p>}
 
       {!loading && imports.length === 0 && (
         <div className="text-center py-16 text-slate-500">
-          <Ship className="mx-auto mb-3 text-slate-300" size={40} />
+          <p className="text-4xl mb-3" aria-hidden>🚢</p>
           <p className="font-medium">Sin importaciones registradas</p>
           <p className="text-sm mt-1">Registre un contenedor en camino</p>
         </div>
@@ -58,7 +60,7 @@ export default function ImportsPage() {
 
       <div className="space-y-3">
         {imports.map((imp) => (
-          <div key={imp.id} className="invoice-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div key={imp.id} className="executive-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
                 <Ship size={20} />
@@ -78,7 +80,7 @@ export default function ImportsPage() {
                 {importStatusLabel[imp.status] ?? imp.status}
               </span>
               {imp.status !== 'received' && (
-                <button type="button" onClick={() => receive(imp.id)} className="btn-action btn-action-primary">
+                <button type="button" onClick={() => receive(imp.id)} className="btn-subtle btn-subtle-success">
                   <PackageCheck size={15} /> Recibir
                 </button>
               )}

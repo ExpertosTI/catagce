@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { publicFetch, setAuth } from '../../lib/api';
 import { COMPANY_SLUG } from '../../lib/site';
+import { PORTAL_PAGE } from '../../lib/page-titles';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -54,8 +55,10 @@ export default function LoginForm() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md card p-6 sm:p-8 shadow-sm">
         <Link href="/" className="text-blue-700 font-bold text-sm">← Volver al inicio</Link>
-        <h1 className="text-2xl font-bold mt-4">{mode === 'login' ? 'Portal de clientes' : 'Registro de cliente'}</h1>
-        <p className="text-slate-500 text-sm mt-1">Acceda a facturas, despachos y catálogos</p>
+        <h1 className="text-2xl font-bold mt-4">
+          {mode === 'login' ? `${PORTAL_PAGE.login.emoji} ${PORTAL_PAGE.login.title}` : PORTAL_PAGE.login.registerTitle}
+        </h1>
+        <p className="text-slate-500 text-sm mt-1">{PORTAL_PAGE.login.subtitle}</p>
 
         <div className="flex gap-2 mt-6">
           <button type="button" onClick={() => setMode('login')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${mode === 'login' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'}`}>Iniciar sesión</button>

@@ -7,6 +7,7 @@ import DashboardLayout, { PageHeader } from '../../../../components/DashboardLay
 import { FormField } from '../../../../components/FormField';
 import { apiFetch } from '../../../../lib/api';
 import { formatCurrency } from '../../../../lib/currency';
+import { PAGE } from '../../../../lib/page-titles';
 
 type Product = { id: string; name: string; sku?: string; salePrice?: string };
 
@@ -60,7 +61,7 @@ export default function NewCatalogPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Nuevo catálogo" subtitle="Cree un catálogo público de preventa para compartir con sus clientes" />
+      <PageHeader emoji={PAGE.catalogsNew.emoji} title={PAGE.catalogsNew.title} subtitle={PAGE.catalogsNew.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         <FormField label="Nombre del catálogo">
           <input

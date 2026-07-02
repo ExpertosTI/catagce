@@ -8,6 +8,7 @@ import { FormField } from '../../../../components/FormField';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
 import { apiFetch } from '../../../../lib/api';
+import { PAGE } from '../../../../lib/page-titles';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function NewProductPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Nuevo producto" subtitle="Agregue mercancía al catálogo" />
+      <PageHeader emoji={PAGE.productsNew.emoji} title={PAGE.productsNew.title} subtitle={PAGE.productsNew.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         <ImageUploadField value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} label="Foto del producto" />
 

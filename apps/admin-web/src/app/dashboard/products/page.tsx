@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Pencil, Trash2 } from 'lucide-react';
 import DashboardLayout, { PageHeader, ActionButton } from '../../../components/DashboardLayout';
 import { apiFetch } from '../../../lib/api';
+import { PAGE } from '../../../lib/page-titles';
 import { formatCurrency } from '../../../lib/currency';
 
 type Product = {
@@ -38,13 +39,18 @@ export default function ProductsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Mercancía" subtitle="Catálogo de productos importados" action={<ActionButton href="/dashboard/products/new" label="Nuevo producto" />} />
+      <PageHeader
+        emoji={PAGE.products.emoji}
+        title={PAGE.products.title}
+        subtitle={PAGE.products.subtitle}
+        action={<ActionButton href="/dashboard/products/new" emoji="➕" label="Nuevo producto" />}
+      />
 
-      {loading && <p className="text-center text-slate-500 py-12">Cargando productos...</p>}
+      {loading && <p className="text-center text-slate-500 py-12">📦 Cargando productos...</p>}
 
       {!loading && products.length === 0 && (
         <div className="text-center py-16 text-slate-500">
-          <p className="font-medium">Sin productos</p>
+          <p className="text-4xl mb-3" aria-hidden>📦</p>
           <p className="text-sm mt-1">Agregue su primera mercancía</p>
         </div>
       )}

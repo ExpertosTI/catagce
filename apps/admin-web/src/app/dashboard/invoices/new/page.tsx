@@ -9,6 +9,7 @@ import { SegmentedControl } from '../../../../components/SegmentedControl';
 import { ProductPicker, PickedLine, PickerProduct } from '../../../../components/ProductPicker';
 import { apiFetch } from '../../../../lib/api';
 import { formatCurrency } from '../../../../lib/currency';
+import { PAGE } from '../../../../lib/page-titles';
 import { SALE_COMPROBANTE_OPTIONS, comprobanteTypeLabel } from '../../../../lib/labels';
 
 const ITBIS_RATE = 18;
@@ -95,7 +96,7 @@ export default function NewInvoicePage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Nueva factura" subtitle="Comprobante fiscal DGII con NCF e ITBIS" />
+      <PageHeader emoji={PAGE.invoicesNew.emoji} title={PAGE.invoicesNew.title} subtitle={PAGE.invoicesNew.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
         <FormField label="Cliente">

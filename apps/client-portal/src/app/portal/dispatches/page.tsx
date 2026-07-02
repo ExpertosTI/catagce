@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PortalLayout from '../../../components/PortalLayout';
 import { apiFetch } from '../../../lib/api';
 import { dispatchStatusLabel } from '../../../lib/labels';
+import { PORTAL_PAGE } from '../../../lib/page-titles';
 
 type Dispatch = {
   id: string;
@@ -26,8 +27,10 @@ export default function ClientDispatchesPage() {
 
   return (
     <PortalLayout>
-      <h2 className="text-2xl font-bold">Historial de despachos</h2>
-      <p className="text-slate-500 mt-1">Todas las entregas de mercancía realizadas a su negocio</p>
+      <h2 className="text-2xl font-bold flex items-center gap-2">
+        <span aria-hidden>{PORTAL_PAGE.dispatches.emoji}</span> {PORTAL_PAGE.dispatches.title}
+      </h2>
+      <p className="text-slate-500 mt-1">{PORTAL_PAGE.dispatches.subtitle}</p>
 
       <div className="mt-6 space-y-4">
         {loading && (

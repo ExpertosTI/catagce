@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { publicFetch, setAuth } from '../../lib/api';
 import { SITE_URL } from '../../lib/site';
+import { PAGE } from '../../lib/page-titles';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,19 +35,22 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 flex items-center justify-center p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md bg-white rounded-2xl p-8 shadow-xl">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-2">
           <div className="w-12 h-12 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-xl">G</div>
           <div>
-            <p className="font-bold text-lg">GHome Admin</p>
-            <p className="text-sm text-slate-500">Panel de importación</p>
+            <p className="font-bold text-lg flex items-center gap-2">
+              <span aria-hidden>{PAGE.login.emoji}</span> GHome Admin
+            </p>
+            <p className="text-sm text-slate-500">{PAGE.login.subtitle}</p>
           </div>
         </div>
-        {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>}
+        <h1 className="text-xl font-bold text-slate-900 mb-6">{PAGE.login.title}</h1>
+        {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-lg mb-4">❌ {error}</p>}
         <div className="space-y-4">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo electrónico" className="input" />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" className="input" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="📧 Correo electrónico" className="input" />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="🔑 Contraseña" className="input" />
           <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
-            {loading ? 'Entrando...' : 'Iniciar sesión'}
+            {loading ? '⏳ Entrando...' : '🚀 Iniciar sesión'}
           </button>
         </div>
         <Link href={SITE_URL} className="block text-center text-sm text-blue-700 mt-6 hover:underline">

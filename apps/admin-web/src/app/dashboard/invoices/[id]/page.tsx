@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { InvoiceDetailView } from '../../../../components/InvoiceDetailView';
 import { apiFetch } from '../../../../lib/api';
+import { PAGE } from '../../../../lib/page-titles';
 import { InvoiceDetail } from '../../../../lib/invoice-utils';
 
 export default function AdminInvoiceDetailPage({ params }: { params: { id: string } }) {
@@ -27,7 +28,7 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
   if (error) {
     return (
       <DashboardLayout>
-        <PageHeader title="Factura no encontrada" />
+        <PageHeader emoji={PAGE.invoicesNotFound.emoji} title={PAGE.invoicesNotFound.title} />
         <div className="card p-8 text-center text-slate-500">{error}</div>
       </DashboardLayout>
     );

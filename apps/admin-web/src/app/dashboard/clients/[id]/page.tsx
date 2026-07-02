@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { apiFetch } from '../../../../lib/api';
+import { PAGE } from '../../../../lib/page-titles';
 
 const fields: Array<{ key: keyof typeof defaultForm; label: string; type?: string; required?: boolean }> = [
   { key: 'name', label: 'Nombre', required: true },
@@ -54,7 +55,7 @@ export default function EditClientPage({ params }: { params: { id: string } }) {
   if (notFound) {
     return (
       <DashboardLayout>
-        <PageHeader title="Cliente no encontrado" />
+        <PageHeader emoji={PAGE.clientsNotFound.emoji} title={PAGE.clientsNotFound.title} />
         <div className="card p-8 text-center text-slate-500">No se pudo cargar este cliente.</div>
       </DashboardLayout>
     );
@@ -70,7 +71,7 @@ export default function EditClientPage({ params }: { params: { id: string } }) {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Editar cliente" subtitle="Actualice los datos del cliente" />
+      <PageHeader emoji={PAGE.clientsEdit.emoji} title={PAGE.clientsEdit.title} subtitle={PAGE.clientsEdit.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         {fields.map(({ key, label, type, required }) => (
           <FormField key={key} label={label}>

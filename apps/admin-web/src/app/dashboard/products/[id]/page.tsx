@@ -9,6 +9,7 @@ import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
 import { SegmentedControl } from '../../../../components/SegmentedControl';
 import { apiFetch } from '../../../../lib/api';
+import { PAGE } from '../../../../lib/page-titles';
 
 type Movement = {
   id: string;
@@ -147,7 +148,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   return (
     <DashboardLayout>
-      <PageHeader title="Editar producto" subtitle="Modifique datos, precio e inventario" />
+      <PageHeader emoji={PAGE.productsEdit.emoji} title={PAGE.productsEdit.title} subtitle={PAGE.productsEdit.subtitle} />
       <div className="grid lg:grid-cols-2 gap-6 items-start">
         <form onSubmit={submit} className="form-card space-y-4">
           <ImageUploadField value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} label="Foto del producto" />

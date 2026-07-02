@@ -9,9 +9,9 @@ import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
 
 const baseNav = [
-  { href: '/portal/invoices', label: 'Mis facturas', icon: FileText },
-  { href: '/portal/dispatches', label: 'Mis despachos', icon: Truck },
-  { href: '/portal/pending', label: 'Mercancía pendiente', icon: Package },
+  { href: '/portal/invoices', label: '🧾 Mis facturas', icon: FileText },
+  { href: '/portal/dispatches', label: '🚚 Mis despachos', icon: Truck },
+  { href: '/portal/pending', label: '📦 Mercancía pendiente', icon: Package },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -36,7 +36,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   }
 
   const nav = catalogSlug
-    ? [...baseNav, { href: `/catalogo/${catalogSlug}`, label: 'Catálogo', icon: BookOpen }]
+    ? [...baseNav, { href: `/catalogo/${catalogSlug}`, label: '📚 Catálogo', icon: BookOpen }]
     : baseNav;
 
   const navLinks = (onNavigate?: () => void) => nav.map(({ href, label, icon: Icon }) => (
@@ -78,7 +78,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/" className="text-sm text-slate-500 hover:text-blue-700 hidden sm:flex items-center gap-1">
-              <Home size={16} /> Inicio
+              <Home size={16} /> 🏠 Inicio
             </Link>
             <NotificationBell />
             <button type="button" onClick={logout} className="text-sm text-slate-500 hover:text-red-600 flex items-center gap-1">

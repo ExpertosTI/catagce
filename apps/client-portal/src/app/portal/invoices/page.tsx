@@ -6,6 +6,7 @@ import PortalLayout from '../../../components/PortalLayout';
 import { InvoiceCard } from '../../../components/InvoiceCard';
 import { apiFetch } from '../../../lib/api';
 import { formatUsd, InvoiceListItem, invoiceBalance } from '../../../lib/invoice-utils';
+import { PORTAL_PAGE } from '../../../lib/page-titles';
 
 export default function ClientInvoicesPage() {
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
@@ -34,8 +35,10 @@ export default function ClientInvoicesPage() {
   return (
     <PortalLayout>
       <div className="mb-5">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Facturas</h2>
-        <p className="text-slate-500 text-sm mt-1">Consulte, comparta y descargue en PDF</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <span aria-hidden>{PORTAL_PAGE.invoices.emoji}</span> {PORTAL_PAGE.invoices.title}
+        </h2>
+        <p className="text-slate-500 text-sm mt-1">{PORTAL_PAGE.invoices.subtitle}</p>
       </div>
 
       <div className="relative max-w-xl mb-5">
@@ -49,7 +52,7 @@ export default function ClientInvoicesPage() {
       </div>
 
       <div className="space-y-3">
-        {loading && <p className="text-center text-slate-500 py-12">Cargando facturas...</p>}
+        {loading && <p className="text-center text-slate-500 py-12">🧾 Cargando facturas...</p>}
         {!loading && filtered.map((inv) => (
           <InvoiceCard
             key={inv.id}

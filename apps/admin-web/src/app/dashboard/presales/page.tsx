@@ -5,6 +5,7 @@ import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout
 import { apiFetch } from '../../../lib/api';
 import { formatCurrency } from '../../../lib/currency';
 import { presaleStatusLabel } from '../../../lib/labels';
+import { PAGE } from '../../../lib/page-titles';
 
 export default function PresalesPage() {
   const [presales, setPresales] = useState<any[]>([]);
@@ -20,8 +21,9 @@ export default function PresalesPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Preventas" subtitle="Pedidos de clientes desde catálogos" />
-      <div className="card overflow-hidden">
+      <PageHeader emoji={PAGE.presales.emoji} title={PAGE.presales.title} subtitle={PAGE.presales.subtitle} />
+
+      <div className="executive-card overflow-hidden !p-0">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 border-b">
             <tr>
@@ -33,10 +35,10 @@ export default function PresalesPage() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={4} className="p-8 text-center text-slate-400">Cargando...</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-slate-400">🛒 Cargando preventas...</td></tr>
             )}
             {!loading && error && (
-              <tr><td colSpan={4} className="p-8 text-center text-red-600">{error}</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-red-600">❌ {error}</td></tr>
             )}
             {!loading && !error && presales.map((p) => (
               <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
@@ -47,7 +49,12 @@ export default function PresalesPage() {
               </tr>
             ))}
             {!loading && !error && !presales.length && (
-              <tr><td colSpan={4} className="p-10 text-center text-slate-500">Aún no hay preventas registradas. Se crean desde el catálogo público que comparta con sus clientes.</td></tr>
+              <tr>
+                <td colSpan={4} className="p-10 text-center text-slate-500">
+                  <p className="text-3xl mb-2" aria-hidden>🛒</p>
+                  Aún no hay preventas. Se crean desde el catálogo público que comparta con sus clientes.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

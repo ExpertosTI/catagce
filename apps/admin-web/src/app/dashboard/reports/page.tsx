@@ -7,6 +7,7 @@ import { apiFetch } from '../../../lib/api';
 import { formatCurrency } from '../../../lib/currency';
 import { exportCsv, printReportTable } from '../../../lib/report-utils';
 import { useCompany } from '../../../lib/useCompany';
+import { REPORT_TABS, PAGE } from '../../../lib/page-titles';
 
 type Tab = 'ar' | 'sales' | 'inventory';
 
@@ -31,11 +32,7 @@ type InventoryData = {
   totalValuacionCosto: number; totalValuacionVenta: number; lowStockCount: number;
 };
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'ar', label: 'Cuentas por cobrar' },
-  { id: 'sales', label: 'Ventas' },
-  { id: 'inventory', label: 'Inventario' },
-];
+const TABS = REPORT_TABS;
 
 export default function ReportsPage() {
   const company = useCompany();
@@ -77,7 +74,7 @@ export default function ReportsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Reportes" subtitle="Cuentas por cobrar, ventas e inventario" />
+      <PageHeader emoji={PAGE.reports.emoji} title={PAGE.reports.title} subtitle={PAGE.reports.subtitle} />
 
       <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto">
         {TABS.map((t) => (
@@ -89,7 +86,7 @@ export default function ReportsPage() {
               tab === t.id ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            {t.label}
+            {t.emoji} {t.label}
           </button>
         ))}
       </div>

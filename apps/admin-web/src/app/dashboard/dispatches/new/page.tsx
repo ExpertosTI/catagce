@@ -7,6 +7,7 @@ import { FormField } from '../../../../components/FormField';
 import { ClientPicker, PickerClient } from '../../../../components/ClientPicker';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
 import { apiFetch } from '../../../../lib/api';
+import { PAGE } from '../../../../lib/page-titles';
 
 export default function NewDispatchPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function NewDispatchPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Registrar despacho" subtitle="Entrega parcial de mercancía al cliente" />
+      <PageHeader emoji={PAGE.dispatchesNew.emoji} title={PAGE.dispatchesNew.title} subtitle={PAGE.dispatchesNew.subtitle} />
 
       {fetching ? (
         <div className="form-card max-w-2xl animate-pulse h-40 bg-slate-100" />

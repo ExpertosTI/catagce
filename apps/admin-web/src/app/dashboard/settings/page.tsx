@@ -7,6 +7,7 @@ import { ImageUploadField } from '../../../components/ImageUploadField';
 import { apiFetch } from '../../../lib/api';
 import { SITE_URL, ADMIN_URL } from '../../../lib/site';
 import { comprobanteTypeLabel } from '../../../lib/labels';
+import { PAGE } from '../../../lib/page-titles';
 
 type FiscalSequence = {
   id: string;
@@ -55,7 +56,7 @@ function FiscalSequencesPanel() {
   return (
     <div className="form-card max-w-2xl space-y-4 mt-6">
       <div>
-        <p className="text-sm font-semibold text-slate-700">Secuencias NCF (DGII)</p>
+        <p className="text-sm font-semibold text-slate-700">🧾 Secuencias NCF (DGII)</p>
         <p className="text-xs text-slate-500 mt-1">Configure los rangos autorizados por la DGII para cada tipo de comprobante.</p>
       </div>
 
@@ -178,7 +179,7 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader title="Configuración" subtitle="Datos y marca de su empresa" />
+      <PageHeader emoji={PAGE.settings.emoji} title={PAGE.settings.title} subtitle={PAGE.settings.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         <ImageUploadField
@@ -217,7 +218,7 @@ export default function SettingsPage() {
       <FiscalSequencesPanel />
 
       <div className="form-card max-w-lg space-y-3 mt-6">
-        <p className="text-sm font-semibold text-slate-700">Enlaces de la plataforma</p>
+        <p className="text-sm font-semibold text-slate-700">🔗 Enlaces de la plataforma</p>
         <div>
           <p className="text-xs text-slate-500">Identificador del portal (slug)</p>
           <p className="font-mono text-blue-700">{form.slug}</p>

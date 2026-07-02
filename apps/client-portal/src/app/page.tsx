@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { publicFetch } from '../lib/api';
 import { ADMIN_URL, COMPANY_SLUG } from '../lib/site';
+import { PORTAL_PAGE } from '../lib/page-titles';
 
 type Company = { name: string; phone?: string; email?: string };
 
@@ -27,7 +28,9 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1 max-w-lg mx-auto w-full px-6 py-16 flex flex-col justify-center">
-        <h1 className="text-2xl font-bold text-slate-900">Acceso a su cuenta</h1>
+        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <span aria-hidden>{PORTAL_PAGE.home.emoji}</span> {PORTAL_PAGE.home.title}
+        </h1>
         <p className="text-slate-600 mt-2 text-sm leading-relaxed">
           Consulte facturas, inventario y pedidos. Sin distracciones — directo a lo que necesita.
         </p>
