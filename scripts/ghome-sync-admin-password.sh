@@ -36,7 +36,7 @@ SQL_HASH="${HASH//\'/\'\'}"
 SQL_EMAIL="${ADMIN_EMAIL//\'/\'\'}"
 
 COUNT=$(docker exec "$DB_CONTAINER" psql -U ghome_admin -d ghome_prod -t -A -v ON_ERROR_STOP=1 \
-  -c "UPDATE staff_users SET password_hash = '${SQL_HASH}', updated_at = NOW() WHERE email = '${SQL_EMAIL}'; SELECT COUNT(*) FROM staff_users WHERE email = '${SQL_EMAIL}';")
+  -c "UPDATE staff_users SET password_hash = '${SQL_HASH}' WHERE email = '${SQL_EMAIL}'; SELECT COUNT(*) FROM staff_users WHERE email = '${SQL_EMAIL}';")
 
 if [ "${COUNT:-0}" -lt 1 ]; then
   echo "⚠️  No existe staff con email ${ADMIN_EMAIL} — ejecute seed si es instalación nueva:"
