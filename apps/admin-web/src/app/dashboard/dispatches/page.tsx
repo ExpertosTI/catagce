@@ -116,7 +116,7 @@ export default function DispatchesPage() {
         </div>
       </div>
 
-      {loading && <LoadingState emoji="🚚" message="Cargando despachos..." />}
+      {loading && <LoadingState message="Cargando despachos..." />}
 
       {!loading && (
         <ReportTableCard

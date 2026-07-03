@@ -163,7 +163,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   if (!ready) {
     return (
       <DashboardLayout>
-        <LoadingState emoji="📦" message="Cargando producto..." />
+        <LoadingState message="Cargando producto..." />
       </DashboardLayout>
     );
   }

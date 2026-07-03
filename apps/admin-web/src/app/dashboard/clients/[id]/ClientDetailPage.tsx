@@ -107,7 +107,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   if (loading || !client) {
     return (
       <DashboardLayout>
-        <LoadingState emoji="👤" message="Cargando cliente..." />
+        <LoadingState message="Cargando cliente..." />
       </DashboardLayout>
     );
   }

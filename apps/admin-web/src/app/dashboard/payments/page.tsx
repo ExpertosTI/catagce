@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Receipt, MessageCircle, Ban, Search, Printer, FileDown, Wallet } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
+import { EmptyState } from '../../../components/EmptyState';
 import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { formatCurrency } from '../../../lib/currency';
@@ -175,7 +176,7 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {loading && <LoadingState emoji="💰" message="Cargando pagos..." />}
+      {loading && <LoadingState message="Cargando pagos..." />}
       {!loading && error && <p className="text-center text-red-600 py-8 executive-card">{error}</p>}
 
       <div className="space-y-3">
@@ -208,12 +209,12 @@ export default function PaymentsPage() {
           </article>
         ))}
         {!loading && !error && !filtered.length && (
-          <div className="executive-card text-center py-16 text-slate-500">
-            <p className="text-4xl mb-3" aria-hidden>💰</p>
-            <p className="font-semibold text-slate-700">Sin pagos registrados</p>
-            <p className="text-sm mt-1">Los abonos aparecen al registrarlos desde una factura</p>
-            <Link href="/dashboard/invoices" className="btn-primary text-sm mt-4 inline-flex">Ir a facturas</Link>
-          </div>
+          <EmptyState
+            icon={Wallet}
+            title="Sin pagos registrados"
+            subtitle="Los abonos aparecen al registrarlos desde una factura"
+            action={{ href: '/dashboard/invoices', label: 'Ir a facturas' }}
+          />
         )}
       </div>
     </DashboardLayout>

@@ -7,6 +7,7 @@ import {
   Package, TrendingUp, DollarSign, Boxes,
 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
+import { EmptyState } from '../../../components/EmptyState';
 import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { PAGE } from '../../../lib/page-titles';
@@ -209,17 +210,15 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {loading && <LoadingState emoji="📦" message="Cargando mercancía..." />}
+      {loading && <LoadingState message="Cargando mercancía..." />}
 
       {!loading && filtered.length === 0 && (
-        <div className="text-center py-16 text-slate-500 executive-card">
-          <p className="text-4xl mb-3" aria-hidden>📦</p>
-          <p className="font-semibold text-slate-700">{query || filterLow ? 'Sin resultados' : 'Sin productos'}</p>
-          <p className="text-sm mt-1">{query || filterLow ? 'Pruebe otro filtro' : 'Agregue su primera mercancía'}</p>
-          {!query && !filterLow && (
-            <Link href="/dashboard/products/new" className="btn-primary text-sm mt-4 inline-flex">Nuevo producto</Link>
-          )}
-        </div>
+        <EmptyState
+          icon={Package}
+          title={query || filterLow ? 'Sin resultados' : 'Sin productos'}
+          subtitle={query || filterLow ? 'Pruebe otro filtro' : 'Agregue su primera mercancía'}
+          action={!query && !filterLow ? { href: '/dashboard/products/new', label: 'Nuevo producto' } : undefined}
+        />
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -233,7 +232,9 @@ export default function ProductsPage() {
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl text-slate-300" aria-hidden>📦</div>
+                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <Package size={40} />
+                  </div>
                 )}
                 {stock && (
                   <span className={`absolute top-2 right-2 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm ${

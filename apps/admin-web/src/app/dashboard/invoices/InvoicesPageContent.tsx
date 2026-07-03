@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Search, FileText, AlertCircle, Wallet, Plus } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { InvoiceCard } from '../../../components/InvoiceCard';
+import { EmptyState } from '../../../components/EmptyState';
 import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { PAGE } from '../../../lib/page-titles';
@@ -118,7 +119,7 @@ export default function InvoicesPageContent() {
         </div>
       </div>
 
-      {loading && <LoadingState emoji="🧾" message="Cargando facturas..." />}
+      {loading && <LoadingState message="Cargando facturas..." />}
 
       <div className="space-y-3">
         {!loading && filtered.map((inv) => (
@@ -130,12 +131,12 @@ export default function InvoicesPageContent() {
           />
         ))}
         {!loading && !filtered.length && (
-          <div className="executive-card text-center py-16 text-slate-500">
-            <p className="text-4xl mb-3" aria-hidden>🧾</p>
-            <p className="font-semibold text-slate-700">Sin facturas</p>
-            <p className="text-sm mt-1">Cree una nueva factura para comenzar</p>
-            <Link href="/dashboard/invoices/new" className="btn-primary text-sm mt-4 inline-flex">Nueva factura</Link>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Sin facturas"
+            subtitle="Cree una nueva factura para comenzar"
+            action={{ href: '/dashboard/invoices/new', label: 'Nueva factura' }}
+          />
         )}
       </div>
 

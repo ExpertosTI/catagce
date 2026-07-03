@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ExternalLink, Plus, Search, Globe, ShoppingBag, Copy, Check, Pencil, BookOpen } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { LoadingState } from '../../../components/LoadingState';
+import { EmptyState } from '../../../components/EmptyState';
 import { apiFetch } from '../../../lib/api';
 import { SITE_URL } from '../../../lib/site';
 import { PAGE } from '../../../lib/page-titles';
@@ -79,12 +80,12 @@ export default function CatalogsPage() {
       {loading && <LoadingState message="Cargando catálogos..." />}
 
       {!loading && catalogs.length === 0 && (
-        <div className="executive-card text-center py-16 text-slate-500">
-          <p className="text-4xl mb-3" aria-hidden>📚</p>
-          <p className="font-semibold text-slate-700">Sin catálogos</p>
-          <p className="text-sm mt-1">Publique su primer catálogo de preventa</p>
-          <Link href="/dashboard/catalogs/new" className="btn-primary text-sm mt-4 inline-flex">Nuevo catálogo</Link>
-        </div>
+        <EmptyState
+          icon={BookOpen}
+          title="Sin catálogos"
+          subtitle="Publique su primer catálogo de preventa"
+          action={{ href: '/dashboard/catalogs/new', label: 'Nuevo catálogo' }}
+        />
       )}
 
       <div className="grid md:grid-cols-2 gap-4">

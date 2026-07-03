@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Package, Truck } from 'lucide-react';
+import { ArrowLeft, Loader2, Package, Truck, CheckCircle } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { EmptyState } from '../../../../components/EmptyState';
 import { LoadingState } from '../../../../components/LoadingState';
@@ -74,9 +74,9 @@ export default function NewDispatchPage() {
       <PageHeader emoji={PAGE.dispatchesNew.emoji} title={PAGE.dispatchesNew.title} subtitle={PAGE.dispatchesNew.subtitle} />
 
       {fetching ? (
-        <LoadingState emoji="🚚" message="Cargando mercancía pendiente..." />
+        <LoadingState message="Cargando mercancía pendiente..." />
       ) : !clientOptions.length ? (
-        <EmptyState emoji="✅" title="Sin pendientes de despacho" subtitle="Toda la mercancía facturada ya fue entregada" />
+        <EmptyState icon={CheckCircle} title="Sin pendientes de despacho" subtitle="Toda la mercancía facturada ya fue entregada" />
       ) : (
         <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
           <FormField label="Cliente">

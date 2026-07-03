@@ -29,7 +29,7 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
   if (error) {
     return (
       <DashboardLayout>
-        <div className="executive-card p-8 text-center text-slate-500">❌ {error}</div>
+        <div className="executive-card p-8 text-center text-slate-500">{error}</div>
       </DashboardLayout>
     );
   }
@@ -37,7 +37,7 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
   if (!invoice) {
     return (
       <DashboardLayout>
-        <LoadingState emoji="🧾" message="Cargando factura..." />
+        <LoadingState message="Cargando factura..." />
       </DashboardLayout>
     );
   }

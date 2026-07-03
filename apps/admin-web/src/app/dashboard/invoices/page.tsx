@@ -8,7 +8,7 @@ export default function InvoicesPage() {
     <Suspense
       fallback={(
         <DashboardLayout>
-          <LoadingState emoji="🧾" message="Cargando facturas..." />
+          <LoadingState message="Cargando facturas..." />
         </DashboardLayout>
       )}
     >

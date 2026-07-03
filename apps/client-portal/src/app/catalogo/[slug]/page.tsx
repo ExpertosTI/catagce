@@ -314,6 +314,17 @@ export default function CatalogPage({ params }: { params: { slug: string } }) {
           className="cart-panel-desktop hidden lg:flex"
         />
       )}
+
+      {cartCount > 0 && !showCart && (
+        <button
+          type="button"
+          onClick={() => setShowCart(true)}
+          className="fixed bottom-5 left-1/2 -translate-x-1/2 lg:hidden z-30 btn-primary shadow-xl shadow-blue-600/30 flex items-center gap-2 px-6 py-3.5 rounded-2xl"
+        >
+          <ShoppingCart size={18} />
+          Ver carrito ({cartCount})
+        </button>
+      )}
     </div>
   );
 }

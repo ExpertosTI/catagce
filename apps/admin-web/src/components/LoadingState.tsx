@@ -1,13 +1,14 @@
+import { Loader2 } from 'lucide-react';
+
 type Props = {
-  emoji?: string;
   message?: string;
 };
 
-export function LoadingState({ emoji = '⏳', message = 'Cargando...' }: Props) {
+export function LoadingState({ message = 'Cargando...' }: Props) {
   return (
-    <p className="text-center text-slate-400 py-12">
-      <span className="text-2xl block mb-2" aria-hidden>{emoji}</span>
-      {message}
-    </p>
+    <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+      <Loader2 size={28} className="animate-spin text-blue-600 mb-3" />
+      <p className="text-sm font-medium">{message}</p>
+    </div>
   );
 }

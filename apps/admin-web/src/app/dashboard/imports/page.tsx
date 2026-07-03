@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Ship, PackageCheck, Plus, Search, Anchor, CheckCircle } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
+import { EmptyState } from '../../../components/EmptyState';
 import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { importStatusLabel } from '../../../lib/labels';
@@ -114,15 +115,15 @@ export default function ImportsPage() {
         </div>
       </div>
 
-      {loading && <LoadingState emoji="🚢" message="Cargando importaciones..." />}
+      {loading && <LoadingState message="Cargando importaciones..." />}
 
       {!loading && imports.length === 0 && (
-        <div className="executive-card text-center py-16 text-slate-500">
-          <p className="text-4xl mb-3" aria-hidden>🚢</p>
-          <p className="font-semibold text-slate-700">Sin importaciones registradas</p>
-          <p className="text-sm mt-1">Registre un contenedor en camino</p>
-          <Link href="/dashboard/imports/new" className="btn-primary text-sm mt-4 inline-flex">Nueva importación</Link>
-        </div>
+        <EmptyState
+          icon={Ship}
+          title="Sin importaciones registradas"
+          subtitle="Registre un contenedor en camino"
+          action={{ href: '/dashboard/imports/new', label: 'Nueva importación' }}
+        />
       )}
 
       <div className="space-y-3">

@@ -68,7 +68,6 @@ export default function ClientsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        emoji={PAGE.clients.emoji}
         title={PAGE.clients.title}
         subtitle="Toque un cliente para ver facturas y registrar pagos"
         action={(
@@ -93,7 +92,7 @@ export default function ClientsPage() {
             <p className="report-kpi-value text-amber-600">{stats.pending}</p>
           </div>
           <div className="report-kpi">
-            <p className="text-xs text-slate-500 font-medium">💳 Crédito total</p>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Wallet size={14} /> Crédito total</p>
             <p className="report-kpi-value text-blue-700 text-lg">{formatCurrency(stats.creditTotal)}</p>
           </div>
         </div>
@@ -123,11 +122,11 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      {loading && <LoadingState emoji="👥" message="Cargando clientes..." />}
+      {loading && <LoadingState message="Cargando clientes..." />}
 
       {!loading && filtered.length === 0 && (
         <EmptyState
-          emoji="👥"
+          icon={Users}
           title="Sin clientes"
           subtitle="Cree un cliente para comenzar"
           action={{ href: '/dashboard/clients/new', label: 'Nuevo cliente' }}
