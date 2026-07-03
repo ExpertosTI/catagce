@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Receipt, MessageCircle, Ban, Search, Printer, FileDown, Wallet } from 'lucide-react';
+import { Receipt, MessageCircle, Ban, Search, Printer, FileDown, Wallet, CheckCircle2, Calendar } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { EmptyState } from '../../../components/EmptyState';
 import { LoadingState } from '../../../components/LoadingState';
@@ -125,7 +125,6 @@ export default function PaymentsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        emoji={PAGE.payments.emoji}
         title={PAGE.payments.title}
         subtitle={PAGE.payments.subtitle}
         action={(
@@ -138,15 +137,15 @@ export default function PaymentsPage() {
       {!loading && !error && (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
           <div className="report-kpi">
-            <p className="text-xs text-slate-500 font-medium">💰 Abonos</p>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Wallet size={14} /> Abonos</p>
             <p className="report-kpi-value text-slate-800">{filtered.length}</p>
           </div>
           <div className="report-kpi">
-            <p className="text-xs text-slate-500 font-medium">✅ Total cobrado</p>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><CheckCircle2 size={14} className="text-emerald-500" /> Total cobrado</p>
             <p className="report-kpi-value text-emerald-700">{formatCurrency(total)}</p>
           </div>
           <div className="report-kpi col-span-2 lg:col-span-1">
-            <p className="text-xs text-slate-500 font-medium">📅 Cobrado hoy</p>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Calendar size={14} /> Cobrado hoy</p>
             <p className="report-kpi-value text-blue-700">{formatCurrency(todayTotal)}</p>
           </div>
         </div>

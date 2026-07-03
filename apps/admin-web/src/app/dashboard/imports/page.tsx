@@ -74,7 +74,6 @@ export default function ImportsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        emoji={PAGE.imports.emoji}
         title={PAGE.imports.title}
         subtitle={PAGE.imports.subtitle}
         action={(

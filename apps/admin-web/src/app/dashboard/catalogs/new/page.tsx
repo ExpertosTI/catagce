@@ -74,7 +74,6 @@ export default function NewCatalogPage() {
       <Link href="/dashboard/catalogs" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
         <ArrowLeft size={16} /> Volver a catálogos
       </Link>
-      <PageHeader emoji={PAGE.catalogsNew.emoji} title={PAGE.catalogsNew.title} subtitle={PAGE.catalogsNew.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-lg space-y-5">
         <FormField label="Nombre del catálogo">

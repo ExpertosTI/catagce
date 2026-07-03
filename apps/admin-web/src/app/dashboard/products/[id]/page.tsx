@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Loader2, Plus, Minus, ArrowLeft, Package, History } from 'lucide-react';
+import { Sparkles, Loader2, Plus, Minus, ArrowLeft, Package, History, DollarSign, Banknote, ClipboardList } from 'lucide-react';
 import DashboardLayout, { PageHeader, SectionTitle } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
@@ -174,7 +174,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         <ArrowLeft size={16} /> Volver a mercancía
       </Link>
 
-      <PageHeader emoji={PAGE.productsEdit.emoji} title={form.name || PAGE.productsEdit.title} subtitle={form.sku} />
+      <PageHeader title={form.name || PAGE.productsEdit.title} subtitle={form.sku} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <div className="report-kpi">
@@ -182,15 +182,15 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           <p className={`report-kpi-value ${availableQty <= form.minStock ? 'text-amber-600' : 'text-emerald-700'}`}>{availableQty}</p>
         </div>
         <div className="report-kpi">
-          <p className="text-xs text-slate-500 font-medium">💰 Precio venta</p>
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><DollarSign size={14} /> Precio venta</p>
           <p className="report-kpi-value text-blue-700 text-lg">{formatCurrency(form.salePrice)}</p>
         </div>
         <div className="report-kpi">
-          <p className="text-xs text-slate-500 font-medium">📦 Valor en stock</p>
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Package size={14} /> Valor en stock</p>
           <p className="report-kpi-value text-emerald-700 text-lg">{formatCurrency(stockValue)}</p>
         </div>
         <div className="report-kpi">
-          <p className="text-xs text-slate-500 font-medium">💵 Costo en stock</p>
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Banknote size={14} /> Costo en stock</p>
           <p className="report-kpi-value text-slate-700 text-lg">{formatCurrency(stockCost)}</p>
         </div>
       </div>
@@ -245,7 +245,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         <div className="space-y-5">
           <div className="executive-card p-5">
             <div className="flex items-center justify-between mb-4">
-              <SectionTitle emoji="📦">Ajustar inventario</SectionTitle>
+              <SectionTitle icon={<Package size={16} className="text-slate-500" />}>Ajustar inventario</SectionTitle>
               {availableQty <= form.minStock && <span className="badge-amber shrink-0">Bajo stock</span>}
             </div>
 
@@ -275,7 +275,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </form>
           </div>
 
-          <ReportTableCard emoji="📋" title="Historial de movimientos" subtitle={`${movements.length} movimientos`}>
+          <ReportTableCard icon={<ClipboardList size={16} className="text-slate-500" />} title="Historial de movimientos" subtitle={`${movements.length} movimientos`}>
             <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
               {movements.map((m) => (
                 <li key={m.id} className="px-4 py-3 text-sm">

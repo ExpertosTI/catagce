@@ -145,7 +145,6 @@ export default function ProductsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        emoji={PAGE.products.emoji}
         title={PAGE.products.title}
         subtitle={PAGE.products.subtitle}
         action={(

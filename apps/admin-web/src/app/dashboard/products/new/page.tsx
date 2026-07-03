@@ -71,7 +71,6 @@ export default function NewProductPage() {
       <Link href="/dashboard/products" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
         <ArrowLeft size={16} /> Volver a mercancía
       </Link>
-      <PageHeader emoji={PAGE.productsNew.emoji} title={PAGE.productsNew.title} subtitle={PAGE.productsNew.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         <ImageUploadField value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} label="Foto del producto" />
 

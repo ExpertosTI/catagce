@@ -53,7 +53,6 @@ export default function PresalesPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader emoji={PAGE.presales.emoji} title={PAGE.presales.title} subtitle={PAGE.presales.subtitle} />
 
       {!loading && !error && presales.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">

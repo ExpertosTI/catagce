@@ -47,7 +47,6 @@ export default function CatalogsPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        emoji={PAGE.catalogs.emoji}
         title={PAGE.catalogs.title}
         subtitle={PAGE.catalogs.subtitle}
         action={(

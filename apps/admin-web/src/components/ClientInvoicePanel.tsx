@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Wallet, Loader2 } from 'lucide-react';
+import { Plus, Wallet, Loader2, FileText } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { InvoiceListItem, invoiceBalance, formatUsd } from '../lib/invoice-utils';
 import { invoiceStatusText } from '../lib/labels';
@@ -37,8 +37,9 @@ export function ClientInvoicePanel({ clientId, clientName, expanded }: Props) {
   return (
     <div className="mt-4 pt-4 border-t border-slate-200 animate-fade-in" onClick={(e) => e.stopPropagation()}>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <p className="text-sm font-semibold text-slate-700">
-          🧾 Facturas de {clientName}
+        <p className="text-sm font-semibold text-slate-700 flex items-center gap-2 flex-wrap">
+          <FileText size={16} className="text-blue-600 shrink-0" />
+          Facturas de {clientName}
           {totalPending > 0 && (
             <span className="ml-2 text-red-600">· Pendiente {formatUsd(totalPending)}</span>
           )}

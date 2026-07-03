@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Truck, Package, Printer, FileDown, Plus, Search } from 'lucide-react';
+import { Truck, Package, Printer, FileDown, Plus, Search, Clock, ClipboardList, CheckCircle2 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { ReportTableCard } from '../../../components/ReportTableCard';
 import { LoadingState } from '../../../components/LoadingState';
@@ -74,7 +74,6 @@ export default function DispatchesPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        emoji={PAGE.dispatches.emoji}
         title={PAGE.dispatches.title}
         subtitle={PAGE.dispatches.subtitle}
         action={(
@@ -95,7 +94,7 @@ export default function DispatchesPage() {
             <p className="report-kpi-value text-orange-600">{stats.units}</p>
           </div>
           <div className="report-kpi">
-            <p className="text-xs text-slate-500 font-medium">✅ Despachos hechos</p>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><CheckCircle2 size={14} className="text-emerald-500" /> Despachos hechos</p>
             <p className="report-kpi-value text-emerald-700">{stats.dispatched}</p>
           </div>
         </div>
@@ -120,7 +119,7 @@ export default function DispatchesPage() {
 
       {!loading && (
         <ReportTableCard
-          emoji="⏳"
+          icon={<Clock size={16} className="text-amber-500" />}
           title="Pendientes de despacho"
           subtitle={filteredPending.length ? `${stats.units} unidades por entregar` : 'Todo despachado'}
         >
@@ -145,7 +144,11 @@ export default function DispatchesPage() {
                 </tr>
               ))}
               {!filteredPending.length && (
-                <tr><td colSpan={5} className="p-10 text-center text-slate-500">✅ Sin pendientes de despacho</td></tr>
+                <tr>
+                  <td colSpan={5} className="p-10 text-center text-slate-500">
+                    <span className="inline-flex items-center gap-2 justify-center"><CheckCircle2 size={16} className="text-emerald-500" /> Sin pendientes de despacho</span>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -153,7 +156,7 @@ export default function DispatchesPage() {
       )}
 
       <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 mt-8 mb-3">
-        <span aria-hidden>📋</span> Historial de despachos
+        <ClipboardList size={16} className="text-slate-500" /> Historial de despachos
       </h2>
 
       <div className="space-y-3">
@@ -183,7 +186,7 @@ export default function DispatchesPage() {
         ))}
         {!loading && !history.length && (
           <div className="executive-card p-10 text-center text-slate-500">
-            <p className="text-3xl mb-2" aria-hidden>🚚</p>
+            <Truck size={32} className="mx-auto mb-2 text-slate-300" />
             Sin despachos registrados todavía
           </div>
         )}

@@ -71,7 +71,6 @@ export default function NewDispatchPage() {
       <Link href="/dashboard/dispatches" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
         <ArrowLeft size={16} /> Volver a despachos
       </Link>
-      <PageHeader emoji={PAGE.dispatchesNew.emoji} title={PAGE.dispatchesNew.title} subtitle={PAGE.dispatchesNew.subtitle} />
 
       {fetching ? (
         <LoadingState message="Cargando mercancía pendiente..." />

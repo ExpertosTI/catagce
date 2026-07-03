@@ -130,7 +130,6 @@ export default function NewInvoiceForm() {
       <Link href="/dashboard/invoices" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
         <ArrowLeft size={16} /> Volver a facturas
       </Link>
-      <PageHeader emoji={PAGE.invoicesNew.emoji} title={PAGE.invoicesNew.title} subtitle={PAGE.invoicesNew.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
         <FormField label="Cliente">

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X, Receipt, Ban, FileMinus, Wallet } from 'lucide-react';
+import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X, Receipt, Ban, FileMinus, Wallet, ArrowLeft, User, FileText, Package, PenLine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   InvoiceDetail, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
@@ -211,17 +211,18 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
 
   return (
     <div className="animate-fade-in pb-24 sm:pb-0">
-      <Link href={backHref} className="text-blue-700 text-sm font-medium hover:underline inline-flex items-center gap-1">
-        ← 🧾 Volver a facturas
+      <Link href={backHref} className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5">
+        <ArrowLeft size={16} /> Volver a facturas
       </Link>
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide flex items-center gap-1">
-            <span aria-hidden>👤</span> {invoice.clientName ?? invoice.client?.name}
+        <div className="min-w-0">
+          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide flex items-center gap-1.5">
+            <User size={12} /> {invoice.clientName ?? invoice.client?.name}
           </p>
           <h2 className="text-2xl font-bold text-slate-900 mt-1 flex items-center gap-2">
-            <span aria-hidden>🧾</span> {invoice.ncf ?? invoice.reference}
+            <FileText size={22} className="text-blue-600 shrink-0" />
+            {invoice.ncf ?? invoice.reference}
           </h2>
           <p className="text-slate-500 text-sm">
             {fiscalDocumentTitle(invoice)} · {invoiceTypeLabel(invoice.invoiceType)} · {formatDate(invoice.issuedAt)}
@@ -344,7 +345,7 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       )}
 
       <div className="card p-4 mt-4 space-y-3 max-w-lg">
-        <p className="font-semibold text-sm text-slate-800">✍️ Recibido por / Despachado por</p>
+        <p className="font-semibold text-sm text-slate-800 flex items-center gap-2"><PenLine size={16} className="text-slate-500" /> Recibido por / Despachado por</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <label className="form-label">Recibido por</label>
@@ -361,21 +362,30 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-        {[
-          { label: 'Total', value: formatUsd(invoice.totalAmount), cls: 'text-blue-700' },
-          { label: 'Pagado', value: formatUsd(invoice.paidAmount ?? 0), cls: 'text-emerald-700' },
-          { label: 'Saldo pendiente', value: formatUsd(balance), cls: 'text-red-600' },
-          { label: 'ITBIS', value: formatUsd(invoice.taxAmount ?? 0), cls: 'text-slate-700' },
-        ].map((s) => (
-          <div key={s.label} className="stat-card">
-            <p className="text-xs text-slate-500">{s.label}</p>
-            <p className={`text-lg font-bold mt-1 ${s.cls}`}>{s.value}</p>
-          </div>
-        ))}
+        <div className="report-kpi border-blue-200/80 bg-gradient-to-br from-blue-50/80 to-white">
+          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide flex items-center gap-1"><Wallet size={14} /> Total</p>
+          <p className="report-kpi-value text-blue-700">{formatUsd(invoice.totalAmount)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1"><Check size={14} className="text-emerald-500" /> Pagado</p>
+          <p className="report-kpi-value text-emerald-700">{formatUsd(invoice.paidAmount ?? 0)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Saldo pendiente</p>
+          <p className={`report-kpi-value ${balance > 0 ? 'text-red-600' : 'text-emerald-700'}`}>{formatUsd(balance)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1"><Receipt size={14} /> ITBIS</p>
+          <p className="report-kpi-value text-slate-700">{formatUsd(invoice.taxAmount ?? 0)}</p>
+        </div>
       </div>
 
-      <div className="card mt-6 overflow-hidden">
-        <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">📦 Detalle de productos</div>
+      <div className="executive-card mt-6 overflow-hidden !p-0">
+        <div className="px-4 py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50/90 to-white flex items-center gap-2">
+          <Package size={16} className="text-slate-500" />
+          <p className="font-bold text-sm text-slate-900">Detalle de productos</p>
+          <span className="text-xs text-slate-400 ml-auto">{invoice.items?.length ?? 0} líneas</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[500px]">
             <thead className="text-slate-500 text-xs uppercase">
@@ -406,8 +416,11 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       </div>
 
       {invoice.payments && invoice.payments.length > 0 && (
-        <div className="card mt-6 overflow-hidden">
-          <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">💰 Pagos</div>
+        <div className="executive-card mt-6 overflow-hidden !p-0">
+          <div className="px-4 py-3.5 border-b border-slate-100 bg-gradient-to-r from-emerald-50/80 to-white flex items-center gap-2">
+            <Wallet size={16} className="text-emerald-600" />
+            <p className="font-bold text-sm text-slate-900">Pagos registrados</p>
+          </div>
           <ul className="divide-y divide-slate-100">
             {invoice.payments.map((p) => (
               <li key={p.id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm hover:bg-slate-50/80">

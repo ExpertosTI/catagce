@@ -58,7 +58,6 @@ export default function InvoicesPageContent() {
   return (
     <DashboardLayout>
       <PageHeader
-        emoji={PAGE.invoices.emoji}
         title={PAGE.invoices.title}
         subtitle={PAGE.invoices.subtitle}
         action={(

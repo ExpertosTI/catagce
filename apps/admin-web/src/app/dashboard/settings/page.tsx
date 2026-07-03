@@ -66,7 +66,7 @@ function FiscalSequencesPanel() {
       <ReportTableCard
         title="Secuencias NCF (DGII)"
         subtitle="Rangos autorizados por tipo de comprobante"
-        emoji="🧾"
+        icon={<Receipt size={16} className="text-blue-600" />}
       >
         {loading ? (
           <p className="text-sm text-slate-400 p-6 text-center">Cargando secuencias...</p>
@@ -204,7 +204,6 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader emoji={PAGE.settings.emoji} title={PAGE.settings.title} subtitle={PAGE.settings.subtitle} />
 
       <SectionTitle icon={<Building2 size={16} className="text-blue-600" />}>Datos de la empresa</SectionTitle>
       <form onSubmit={submit} className="form-card max-w-lg space-y-4 mb-6">

@@ -100,7 +100,6 @@ export default function NewImportPage() {
       <Link href="/dashboard/imports" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
         <ArrowLeft size={16} /> Volver a importaciones
       </Link>
-      <PageHeader emoji={PAGE.importsNew.emoji} title={PAGE.importsNew.title} subtitle={PAGE.importsNew.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
         <div className="grid sm:grid-cols-2 gap-4">

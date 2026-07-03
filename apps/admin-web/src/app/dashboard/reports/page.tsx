@@ -100,7 +100,6 @@ export default function ReportsPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader emoji={PAGE.reports.emoji} title={PAGE.reports.title} subtitle={PAGE.reports.subtitle} />
 
       <div className="report-tabs">
         {TAB_CONFIG.map((t) => {

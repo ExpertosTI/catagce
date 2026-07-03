@@ -36,7 +36,6 @@ export default function NewClientPage() {
       <Link href="/dashboard/clients" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
         <ArrowLeft size={16} /> Volver a clientes
       </Link>
-      <PageHeader emoji={PAGE.clientsNew.emoji} title={PAGE.clientsNew.title} subtitle={PAGE.clientsNew.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         <FormField label="Nombre *">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />

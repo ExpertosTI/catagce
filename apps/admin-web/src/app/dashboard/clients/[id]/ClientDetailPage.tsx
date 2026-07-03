@@ -172,7 +172,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       {tab === 'invoices' && (
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <SectionTitle emoji="🧾">Facturas del cliente</SectionTitle>
+            <SectionTitle icon={<FileText size={16} className="text-blue-600" />}>Facturas del cliente</SectionTitle>
             <Link href={`/dashboard/invoices/new?clientId=${client.id}`} className="btn-primary text-sm">
               <Plus size={16} /> Nueva factura
             </Link>
@@ -203,7 +203,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
 
       {tab === 'edit' && (
         <form onSubmit={submit} className="form-card max-w-lg space-y-4">
-          <SectionTitle emoji="✏️">Editar datos del cliente</SectionTitle>
+          <SectionTitle icon={<Pencil size={16} className="text-slate-500" />}>Editar datos del cliente</SectionTitle>
           {fields.map(({ key, label, type, required }) => (
             <FormField key={key} label={label}>
               <input
