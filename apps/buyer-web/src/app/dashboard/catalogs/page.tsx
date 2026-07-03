@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Copy, Check, Share2, Plus, ExternalLink } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { LoadingState } from '@/components/LoadingState';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -54,7 +55,7 @@ export default function CatalogsPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64 text-gray-400">Cargando...</div>
+        <LoadingState message="Cargando catálogos..." />
       </DashboardLayout>
     );
   }

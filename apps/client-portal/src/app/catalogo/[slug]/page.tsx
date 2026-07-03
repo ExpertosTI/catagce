@@ -223,8 +223,9 @@ export default function CatalogPage({ params }: { params: { slug: string } }) {
             )}
             {data && <span className="text-xs text-slate-400 self-center">{data.items.length} productos</span>}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            {loading ? 'Cargando...' : data?.catalog.name || 'Catálogo'}
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2">
+            {loading && <Loader2 size={22} className="animate-spin text-blue-600 shrink-0" />}
+            {!loading && (data?.catalog.name || 'Catálogo')}
           </h1>
           {data?.catalog.description && (
             <p className="text-slate-600 mt-2 text-sm sm:text-base max-w-2xl">{data.catalog.description}</p>

@@ -66,7 +66,7 @@ export function buildInvoiceWhatsAppMessage(inv: InvoiceDetail, companyName = 'G
     (i) => `• ${i.productName} x${i.quantity} — ${formatUsd(i.lineTotal)}`,
   );
   const balance = invoiceBalance(inv);
-  let msg = `*${companyName}*\n📄 *${inv.reference}*\n`;
+  let msg = `*${companyName}*\n*${inv.reference}*\n`;
   msg += `${invoiceTypeLabel(inv.invoiceType)}\n`;
   msg += `Fecha: ${formatDate(inv.issuedAt)}\n\n`;
   if (inv.clientName || inv.client?.name) {

@@ -38,5 +38,5 @@ export function buildSellerNewOrderMessage(opts: {
   orderId: string;
   itemCount: number;
 }): string {
-  return `🛒 *Nuevo pedido Catagce*\n\nCliente: ${opts.buyerName}\nWhatsApp: ${opts.buyerPhone}\nProductos: ${opts.itemCount}\nTotal: ${formatCurrency(opts.total)}\nRef: #${opts.orderId.slice(0, 8)}`;
+  return `*Nuevo pedido Catagce*\n\nCliente: ${opts.buyerName}\nWhatsApp: ${opts.buyerPhone}\nProductos: ${opts.itemCount}\nTotal: ${formatCurrency(opts.total)}\nRef: #${opts.orderId.slice(0, 8)}`;
 }

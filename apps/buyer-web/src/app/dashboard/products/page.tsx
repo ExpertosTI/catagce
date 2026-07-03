@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { LayoutGrid, Plus } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { LoadingState } from '@/components/LoadingState';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -30,7 +31,7 @@ export default function ProductsPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64 text-gray-400">Cargando productos...</div>
+        <LoadingState message="Cargando productos..." />
       </DashboardLayout>
     );
   }

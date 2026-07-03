@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Phone, User, Clock, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { LoadingState } from '@/components/LoadingState';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -45,7 +46,7 @@ export default function OrdersPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64 text-gray-400">Cargando pedidos...</div>
+        <LoadingState message="Cargando pedidos..." />
       </DashboardLayout>
     );
   }

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Trash2, Save } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { LoadingState } from '@/components/LoadingState';
 import { ImageUpload } from '@/components/ImageUpload';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
@@ -76,7 +77,7 @@ export default function EditProductPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="text-center py-20 text-gray-400">Cargando...</div>
+        <LoadingState message="Cargando producto..." />
       </DashboardLayout>
     );
   }

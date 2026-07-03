@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { LoadingState } from '@/components/LoadingState';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -134,7 +135,7 @@ export default function AccountingPage() {
   if (loading && !summary) {
     return (
       <DashboardLayout>
-        <div className="text-center py-20 text-gray-400">Cargando contabilidad...</div>
+        <LoadingState message="Cargando contabilidad..." />
       </DashboardLayout>
     );
   }

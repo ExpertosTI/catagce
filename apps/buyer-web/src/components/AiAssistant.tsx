@@ -57,7 +57,7 @@ export function AiAssistant() {
         actions: res.actionsPerformed?.length ? res.actionsPerformed : undefined,
       }]);
     } catch (err: any) {
-      setMessages((m) => [...m, { role: 'assistant', content: `⚠️ ${err.message}` }]);
+      setMessages((m) => [...m, { role: 'assistant', content: `Error: ${err.message}` }]);
       if (err.message?.includes('API Key')) setAiReady(false);
     } finally {
       setLoading(false);

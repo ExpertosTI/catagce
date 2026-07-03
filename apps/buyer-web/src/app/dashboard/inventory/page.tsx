@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { LoadingState } from '@/components/LoadingState';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -30,7 +31,7 @@ export default function InventoryPage() {
       .finally(() => setLoading(false));
   }, [router, ensureAuth, onApiError]);
 
-  if (loading) return <DashboardLayout><div className="text-center py-20 text-gray-400">Cargando inventario...</div></DashboardLayout>;
+  if (loading) return <DashboardLayout><LoadingState message="Cargando inventario..." /></DashboardLayout>;
 
   return (
     <DashboardLayout>

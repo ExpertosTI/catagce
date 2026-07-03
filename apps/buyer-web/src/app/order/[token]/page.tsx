@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ShoppingCart, Send, User, Phone, CheckCircle2, MessageCircle, Minus, Plus } from 'lucide-react';
 import { publicFetch } from '@/lib/api';
 import { buildOrderMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
+import { LoadingState } from '@/components/LoadingState';
 
 function OrderContent({ token }: { token: string }) {
   const searchParams = useSearchParams();
@@ -238,7 +239,7 @@ function OrderContent({ token }: { token: string }) {
 
 export default function OrderPage({ params }: { params: { token: string } }) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-gray-400">Cargando...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A]"><LoadingState /></div>}>
       <OrderContent token={params.token} />
     </Suspense>
   );

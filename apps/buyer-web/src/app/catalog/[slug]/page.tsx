@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Minus, Plus, Send } from 'lucide-react';
 import { publicFetch } from '@/lib/api';
+import { LoadingState } from '@/components/LoadingState';
 
 export default function PublicCatalogPage({ params }: { params: { slug: string } }) {
   const [data, setData] = useState<any>(null);
@@ -32,7 +33,7 @@ export default function PublicCatalogPage({ params }: { params: { slug: string }
   const token = data?.publications?.[0]?.token;
 
   if (loading) {
-    return <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-gray-400">Cargando catálogo...</div>;
+    return <div className="min-h-screen bg-[#0A0A0A]"><LoadingState message="Cargando catálogo..." /></div>;
   }
 
   if (!data) {

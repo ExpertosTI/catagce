@@ -69,7 +69,7 @@ function FiscalSequencesPanel() {
         icon={<Receipt size={16} className="text-blue-600" />}
       >
         {loading ? (
-          <p className="text-sm text-slate-400 p-6 text-center">Cargando secuencias...</p>
+          <LoadingState message="Cargando secuencias..." />
         ) : (
           <table className="w-full text-sm">
             <thead className="text-slate-500 border-b bg-slate-50/50">

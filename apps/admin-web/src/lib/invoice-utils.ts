@@ -88,7 +88,7 @@ export function buildInvoiceWhatsAppMessage(inv: InvoiceDetail, companyName = 'G
     (i) => `• ${i.productName} x${i.quantity} ${unitLabelText(i.unitLabel)} — ${formatUsd(i.lineTotal)}`,
   );
   const balance = invoiceBalance(inv);
-  let msg = `*${companyName}*\n📄 *${inv.ncf ?? inv.reference}*\n`;
+  let msg = `*${companyName}*\n*${inv.ncf ?? inv.reference}*\n`;
   msg += `${fiscalDocumentTitle(inv)}\n`;
   if (inv.ncf) msg += `NCF: ${inv.ncf}\n`;
   msg += `Fecha: ${formatDate(inv.issuedAt)}\n\n`;
@@ -277,7 +277,7 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = {
 };
 
 export function buildPaymentReceiptMessage(p: PaymentReceipt, companyName = 'General Home') {
-  let msg = `*${companyName}*\n🧾 *Recibo de pago*\n\n`;
+  let msg = `*${companyName}*\n*Recibo de pago*\n\n`;
   msg += `Factura: *${p.invoiceReference}*\n`;
   if (p.clientName) msg += `Cliente: ${p.clientName}\n`;
   msg += `Fecha: ${formatDate(p.paidAt)}\n`;

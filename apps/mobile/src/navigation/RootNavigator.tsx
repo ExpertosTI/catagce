@@ -1,7 +1,7 @@
 import React from 'react';
-import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { CatalogScreen } from '../screens/client/CatalogScreen';
 import { InventoryScreen } from '../screens/client/InventoryScreen';
 import { CartScreen } from '../screens/client/CartScreen';
@@ -50,6 +50,13 @@ function InvoicesNavigator() {
   );
 }
 
+type TabIconProps = { color: string; size: number };
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function tabIcon(name: IoniconName) {
+  return ({ color, size }: TabIconProps) => <Ionicons name={name} size={size} color={color} />;
+}
+
 export function ClientNavigator() {
   const { totalUnits } = useCart();
 
@@ -62,16 +69,16 @@ export function ClientNavigator() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
-      <ClientTab.Screen name="Catálogo" component={CatalogScreen} options={{ tabBarIcon: () => <Text>📄</Text> }} />
-      <ClientTab.Screen name="Inventario" component={InventoryScreen} options={{ tabBarIcon: () => <Text>📦</Text> }} />
+      <ClientTab.Screen name="Catálogo" component={CatalogScreen} options={{ tabBarIcon: tabIcon('document-text-outline') }} />
+      <ClientTab.Screen name="Inventario" component={InventoryScreen} options={{ tabBarIcon: tabIcon('cube-outline') }} />
       <ClientTab.Screen
         name="Pedido"
         component={CartScreen}
-        options={{ tabBarBadge: totalUnits > 0 ? totalUnits : undefined, tabBarIcon: () => <Text>🛒</Text> }}
+        options={{ tabBarBadge: totalUnits > 0 ? totalUnits : undefined, tabBarIcon: tabIcon('cart-outline') }}
       />
-      <ClientTab.Screen name="Pedidos" component={ClientOrdersNavigator} options={{ tabBarIcon: () => <Text>📋</Text> }} />
-      <ClientTab.Screen name="Facturas" component={InvoicesNavigator} options={{ tabBarIcon: () => <Text>🧾</Text> }} />
-      <ClientTab.Screen name="Cuenta" component={ProfileScreen} options={{ tabBarIcon: () => <Text>👤</Text> }} />
+      <ClientTab.Screen name="Pedidos" component={ClientOrdersNavigator} options={{ tabBarIcon: tabIcon('list-outline') }} />
+      <ClientTab.Screen name="Facturas" component={InvoicesNavigator} options={{ tabBarIcon: tabIcon('receipt-outline') }} />
+      <ClientTab.Screen name="Cuenta" component={ProfileScreen} options={{ tabBarIcon: tabIcon('person-outline') }} />
     </ClientTab.Navigator>
   );
 }
@@ -85,15 +92,15 @@ export function AdminNavigator() {
         tabBarStyle: { height: 60, paddingBottom: 8 },
       }}
     >
-      <AdminTab.Screen name="Catálogo PDF" component={UploadCatalogScreen} options={{ tabBarIcon: () => <Text>📤</Text> }} />
-      <AdminTab.Screen name="Precios" component={AdminOrdersNavigator} options={{ tabBarIcon: () => <Text>💰</Text> }} />
-      <AdminTab.Screen name="Facturas" component={InvoicesNavigator} options={{ tabBarIcon: () => <Text>🧾</Text> }} />
+      <AdminTab.Screen name="Catálogo PDF" component={UploadCatalogScreen} options={{ tabBarIcon: tabIcon('cloud-upload-outline') }} />
+      <AdminTab.Screen name="Precios" component={AdminOrdersNavigator} options={{ tabBarIcon: tabIcon('cash-outline') }} />
+      <AdminTab.Screen name="Facturas" component={InvoicesNavigator} options={{ tabBarIcon: tabIcon('receipt-outline') }} />
       <AdminTab.Screen
         name="Inventario"
         component={() => <InventoryScreen showAddToCart={false} />}
-        options={{ tabBarIcon: () => <Text>📦</Text> }}
+        options={{ tabBarIcon: tabIcon('cube-outline') }}
       />
-      <AdminTab.Screen name="Cuenta" component={ProfileScreen} options={{ tabBarIcon: () => <Text>👤</Text> }} />
+      <AdminTab.Screen name="Cuenta" component={ProfileScreen} options={{ tabBarIcon: tabIcon('person-outline') }} />
     </AdminTab.Navigator>
   );
 }
