@@ -7,8 +7,8 @@ import {
   FileText, Users, AlertCircle, ArrowRight, Zap, FilePlus, Boxes,
 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../components/DashboardLayout';
-import { LoadingState } from '../../components/LoadingState';
-import { apiFetch } from '../../lib/api';
+import { DashboardSkeleton } from '../../components/Skeleton';
+import { apiFetch, isUnauthorized } from '../../lib/api';
 import { formatCurrency } from '../../lib/currency';
 import { invoiceStatusText, importStatusLabel } from '../../lib/labels';
 import { PAGE } from '../../lib/page-titles';
@@ -16,6 +16,14 @@ import { useCompany } from '../../lib/useCompany';
 import type { DashboardSummary } from '../../lib/dashboard-types';
 
 const POLL_MS = 30_000;
+
+type LowStockRow = {
+  productId: string;
+  sku: string;
+  name: string;
+  availableQty: number;
+  minStock: number;
+};
 
 const QUICK_ACTIONS = [
   { href: '/dashboard/invoices/new', label: 'Nueva factura', color: 'from-blue-600 to-indigo-700', icon: FilePlus },
@@ -58,6 +66,7 @@ function KpiHero({ label, value, sub, icon: Icon, gradient }: {
 export default function DashboardPage() {
   const company = useCompany();
   const [data, setData] = useState<DashboardSummary | null>(null);
+  const [lowStock, setLowStock] = useState<LowStockRow[]>([]);
   const [aiBrief, setAiBrief] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,8 +79,8 @@ export default function DashboardPage() {
       const summary = await apiFetch<DashboardSummary>('/dashboard/summary');
       setData(summary);
       setLastUpdate(new Date());
-    } catch {
-      if (!silent) window.location.href = '/login';
+    } catch (err) {
+      if (!silent && isUnauthorized(err)) window.location.href = '/login';
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -83,6 +92,12 @@ export default function DashboardPage() {
     const id = setInterval(() => load(true), POLL_MS);
     return () => clearInterval(id);
   }, [load]);
+
+  useEffect(() => {
+    apiFetch<{ products: Array<LowStockRow & { bajoStock: boolean }> }>('/reports/inventory')
+      .then((inv) => setLowStock(inv.products.filter((p) => p.bajoStock).slice(0, 6)))
+      .catch(() => setLowStock([]));
+  }, []);
 
   useEffect(() => {
     if (!data || aiBrief) return;
@@ -105,7 +120,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <LoadingState message="Cargando panel..." />
+        <DashboardSkeleton />
       </DashboardLayout>
     );
   }
@@ -297,6 +312,32 @@ export default function DashboardPage() {
           </ul>
         </div>
       </div>
+
+      {lowStock.length > 0 && (
+        <div className="dashboard-feed-card mt-4">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <AlertCircle size={16} className="text-amber-600" /> Stock bajo
+            </h3>
+            <Link href="/dashboard/products" className="text-xs text-blue-700 font-medium hover:underline">Ver mercancía</Link>
+          </div>
+          <ul className="divide-y divide-slate-50">
+            {lowStock.map((p) => (
+              <li key={p.productId}>
+                <Link href={`/dashboard/products/${p.productId}`} className="px-4 py-3 flex items-center justify-between gap-2 text-sm hover:bg-slate-50/80 transition">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{p.name}</p>
+                    <p className="text-xs text-slate-400">{p.sku}</p>
+                  </div>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${p.availableQty === 0 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
+                    {p.availableQty} / mín. {p.minStock}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {(data?.recentImports ?? []).length > 0 && (
         <div className="dashboard-feed-card mt-4">

@@ -75,6 +75,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     Promise.all([loadProduct(), loadMovements()]).then(() => setReady(true)).catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   async function generateDescription() {

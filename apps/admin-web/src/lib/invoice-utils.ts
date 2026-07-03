@@ -113,6 +113,30 @@ export function shareInvoiceWhatsApp(inv: InvoiceDetail, phone?: string | null) 
   window.open(url, '_blank');
 }
 
+export function buildPaymentReminderMessage(inv: InvoiceDetail, companyName = 'General Home') {
+  const balance = invoiceBalance(inv);
+  const clientName = inv.clientName ?? inv.client?.name ?? '';
+  let msg = `*${companyName}*\n*Recordatorio de pago*\n\n`;
+  if (clientName) msg += `Estimado(a) ${clientName},\n\n`;
+  msg += `Le recordamos que la factura *${inv.ncf ?? inv.reference}* `;
+  msg += inv.status === 'overdue' ? 'se encuentra *vencida*' : 'tiene saldo pendiente';
+  if (inv.dueDate) msg += ` (vencimiento: ${formatDate(inv.dueDate)})`;
+  msg += `.\n\n*Saldo pendiente: ${formatUsd(balance)}*\n`;
+  msg += `Total factura: ${formatUsd(inv.totalAmount)}\n`;
+  if (parseFloat(inv.paidAmount || '0') > 0) msg += `Abonado: ${formatUsd(inv.paidAmount!)}\n`;
+  msg += '\nAgradecemos su pronto pago. Quedamos a su disposición para coordinar el mismo.\n';
+  msg += '\n_Generado desde GHome · renace.tech_';
+  return msg;
+}
+
+export function sharePaymentReminderWhatsApp(inv: InvoiceDetail, phone?: string | null, companyName?: string) {
+  const msg = buildPaymentReminderMessage(inv, companyName);
+  const url = phone
+    ? `https://wa.me/${phone.replace(/\D/g, '').replace(/^(\d{10})$/, '1$1')}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
 export function printInvoicePdf(
   inv: InvoiceDetail,
   companyName = 'General Home',

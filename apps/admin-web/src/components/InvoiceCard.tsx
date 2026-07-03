@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { MessageCircle, FileDown, Eye, Copy, Check, Loader2, Wallet } from 'lucide-react';
+import { MessageCircle, FileDown, Eye, Copy, Check, Loader2, Wallet, BellRing } from 'lucide-react';
 import {
   InvoiceListItem, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
-  shareInvoiceWhatsApp, printInvoicePdf, copyInvoiceSummary, InvoiceDetail,
-  fiscalDocumentTitle,
+  shareInvoiceWhatsApp, sharePaymentReminderWhatsApp, printInvoicePdf,
+  copyInvoiceSummary, InvoiceDetail, fiscalDocumentTitle,
 } from '../lib/invoice-utils';
 import { apiFetch } from '../lib/api';
 import { useCompany } from '../lib/useCompany';
@@ -19,7 +19,7 @@ type Props = {
 };
 
 export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
-  const [loading, setLoading] = useState<'wa' | 'pdf' | null>(null);
+  const [loading, setLoading] = useState<'wa' | 'pdf' | 'reminder' | null>(null);
   const [copied, setCopied] = useState(false);
   const company = useCompany();
 
@@ -41,6 +41,14 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
     setLoading(null);
     if (!detail) return;
     shareInvoiceWhatsApp(detail, detail.client?.phone);
+  }
+
+  async function handleReminder() {
+    setLoading('reminder');
+    const detail = await loadDetail();
+    setLoading(null);
+    if (!detail) return;
+    sharePaymentReminderWhatsApp(detail, detail.client?.phone, company?.name);
   }
 
   async function handlePdf() {
@@ -90,6 +98,17 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
         </div>
       </div>
 
+      {totalAmt > 0 && (
+        <div className="flex items-center gap-2.5 mt-3">
+          <div className="pay-progress-track flex-1">
+            <div className="pay-progress-fill" style={{ width: `${Math.min(100, Math.round(((totalAmt - balance) / totalAmt) * 100))}%` }} />
+          </div>
+          <span className="text-[11px] font-semibold text-slate-500 tabular-nums shrink-0">
+            {Math.min(100, Math.round(((totalAmt - balance) / totalAmt) * 100))}% cobrado
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 mt-4">
         {balance > 0 && (
           <Link href={`${detailPath}?abono=1`} className="btn-primary w-full sm:w-auto justify-center order-first sm:order-none">
@@ -103,6 +122,18 @@ export function InvoiceCard({ invoice, detailPath, fetchPath }: Props) {
           {loading === 'wa' ? <Loader2 size={15} className="animate-spin" /> : <MessageCircle size={15} />}
           <span className="!inline">WhatsApp</span>
         </button>
+        {balance > 0 && (
+          <button
+            type="button"
+            onClick={handleReminder}
+            disabled={loading === 'reminder'}
+            className="action-chip !text-amber-700 !border-amber-200 hover:!bg-amber-50 disabled:opacity-50"
+            title="Enviar recordatorio de pago por WhatsApp"
+          >
+            {loading === 'reminder' ? <Loader2 size={15} className="animate-spin" /> : <BellRing size={15} />}
+            <span className="!inline">Recordar</span>
+          </button>
+        )}
         <button type="button" onClick={handlePdf} disabled={loading === 'pdf'} className="action-chip disabled:opacity-50">
           {loading === 'pdf' ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
           <span className="!inline">PDF</span>

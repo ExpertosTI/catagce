@@ -6,11 +6,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, Package, FileText, Truck, ShoppingBag,
   Ship, BookOpen, Settings, LogOut, Plus, Menu, X, Wallet, BarChart3,
+  Search as SearchIcon,
 } from 'lucide-react';
 import { clearAuth, getUser, getToken } from '../lib/api';
 import { SITE_URL } from '../lib/site';
 import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
+import { GlobalSearch, GlobalSearchTrigger, openGlobalSearch } from './GlobalSearch';
+import { ScrollTopButton } from './ScrollTopButton';
 import { NAV_ITEMS } from '../lib/page-titles';
 
 const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
@@ -123,7 +126,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Menu size={22} />
         </button>
         <p className="font-bold text-sm tracking-tight">GHome Admin</p>
-        <NotificationBell />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Buscar"
+            onClick={openGlobalSearch}
+            className="p-2 rounded-xl hover:bg-white/10 transition"
+          >
+            <SearchIcon size={20} />
+          </button>
+          <NotificationBell />
+        </div>
       </header>
 
       {menuOpen && (
@@ -161,6 +174,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <SidebarBrand userName={userName} />
               <NotificationBell />
             </div>
+            <div className="mt-4">
+              <GlobalSearchTrigger />
+            </div>
           </div>
           <SidebarNav pathname={pathname} />
           <div className="p-3 border-t border-white/10 mt-auto">
@@ -173,10 +189,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 overflow-auto">
+        <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 overflow-auto animate-fade-in">
           {children}
         </main>
       </div>
+      <GlobalSearch />
+      <ScrollTopButton />
       <AiChatWidget />
     </div>
   );

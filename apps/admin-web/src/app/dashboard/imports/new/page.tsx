@@ -42,6 +42,7 @@ export default function NewImportPage() {
     Promise.all([loadSuppliers(), apiFetch<PickerProduct[]>('/products')])
       .then(([, p]) => setProducts(p))
       .catch(() => setPageError('No se pudo cargar la información inicial'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function createSupplier() {

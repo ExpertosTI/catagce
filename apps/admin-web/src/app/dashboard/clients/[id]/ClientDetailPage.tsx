@@ -76,6 +76,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       .finally(() => setLoading(false));
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [params.id]);
 
   async function submit(e: React.FormEvent) {

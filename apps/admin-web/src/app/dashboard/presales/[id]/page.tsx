@@ -54,6 +54,7 @@ export default function PresaleDetailPage({ params }: { params: { id: string } }
       .finally(() => setLoading(false));
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [params.id]);
 
   async function handleConfirm() {

@@ -1,5 +1,16 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+export function isUnauthorized(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === 401 || err.status === 403);
+}
+
 export function getToken(): string {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem('ghome_token') || '';
@@ -32,7 +43,8 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Error ${response.status}`);
+    const message = Array.isArray(error.message) ? error.message.join(', ') : error.message;
+    throw new ApiError(message || `Error ${response.status}`, response.status);
   }
   return response.json();
 }

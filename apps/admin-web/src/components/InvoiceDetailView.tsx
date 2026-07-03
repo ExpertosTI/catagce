@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X, Receipt, Ban, FileMinus, Wallet, ArrowLeft, User, FileText, Package, PenLine } from 'lucide-react';
+import { MessageCircle, FileDown, Printer, Copy, Check, Plus, X, Receipt, Ban, FileMinus, Wallet, ArrowLeft, User, FileText, Package, PenLine, CopyPlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   InvoiceDetail, formatUsd, formatDate, invoiceTypeLabel, invoiceBalance,
@@ -260,6 +260,11 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
           {copied ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
           <span>{copied ? 'Copiado' : 'Copiar'}</span>
         </button>
+        {canManagePayments && (
+          <Link href={`/dashboard/invoices/new?duplicate=${invoice.id}`} className="action-chip" title="Crear una nueva factura con los mismos productos">
+            <CopyPlus size={16} /> <span>Duplicar</span>
+          </Link>
+        )}
         {canIssueCreditNote && (
           <button type="button" onClick={() => setShowCreditNoteForm(true)} disabled={creditNoteSaving} className="action-chip ml-auto disabled:opacity-50">
             <FileMinus size={16} /> <span>{creditNoteSaving ? 'Emitiendo...' : 'Nota de crédito'}</span>

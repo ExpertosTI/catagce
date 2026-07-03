@@ -37,6 +37,7 @@ export default function NewDispatchPage() {
 
   const clientOptions: PickerClient[] = useMemo(
     () => Object.keys(byClient).map((cid) => ({ id: cid, name: byClient[cid][0].clientName })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [pending],
   );
 

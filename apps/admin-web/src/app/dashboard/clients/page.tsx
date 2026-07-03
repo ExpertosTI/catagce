@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Pencil, CheckCircle, FileText, ChevronDown, ChevronUp, Wallet, Search, Users, UserCheck, Clock } from 'lucide-react';
+import { Pencil, CheckCircle, FileText, ChevronDown, ChevronUp, Wallet, Search, Users, UserCheck, Clock, FileDown } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { ClientInvoicePanel } from '../../../components/ClientInvoicePanel';
 import { EmptyState } from '../../../components/EmptyState';
-import { LoadingState } from '../../../components/LoadingState';
+import { ListPageSkeleton } from '../../../components/Skeleton';
+import { useToast } from '../../../components/ToastProvider';
 import { apiFetch } from '../../../lib/api';
 import { clientStatusLabel } from '../../../lib/labels';
 import { formatCurrency } from '../../../lib/currency';
 import { PAGE } from '../../../lib/page-titles';
+import { exportCsv } from '../../../lib/report-utils';
+import { avatarGradient } from '../../../lib/avatar-colors';
 
 type Client = {
   id: string;
@@ -30,6 +33,7 @@ export default function ClientsPage() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   function load() {
     setLoading(true);
@@ -64,6 +68,22 @@ export default function ClientsPage() {
       return c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.phone?.includes(q);
     });
   }, [clients, query, statusFilter]);
+
+  function exportClientsCsv() {
+    exportCsv(
+      'clientes',
+      ['Código', 'Nombre', 'Email', 'Teléfono', 'Estado', 'Límite de crédito'],
+      filtered.map((c) => [
+        c.code ?? '',
+        c.name,
+        c.email ?? '',
+        c.phone ?? '',
+        clientStatusLabel[c.status] ?? c.status,
+        parseFloat(c.creditLimit || '0').toFixed(2),
+      ]),
+    );
+    showToast(`CSV exportado (${filtered.length} clientes)`);
+  }
 
   return (
     <DashboardLayout>
@@ -108,21 +128,31 @@ export default function ClientsPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <div className="report-tabs !mb-0 shrink-0">
-          {([['all', 'Todos'], ['active', 'Activos'], ['pending', 'Pendientes']] as const).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setStatusFilter(id)}
-              className={`report-tab ${statusFilter === id ? 'report-tab-active' : ''}`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="report-tabs !mb-0">
+            {([['all', 'Todos'], ['active', 'Activos'], ['pending', 'Pendientes']] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setStatusFilter(id)}
+                className={`report-tab ${statusFilter === id ? 'report-tab-active' : ''}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={exportClientsCsv}
+            disabled={!filtered.length}
+            className="report-toolbar-btn disabled:opacity-40"
+          >
+            <FileDown size={14} /> CSV
+          </button>
         </div>
       </div>
 
-      {loading && <LoadingState message="Cargando clientes..." />}
+      {loading && <ListPageSkeleton />}
 
       {!loading && filtered.length === 0 && (
         <EmptyState
@@ -148,8 +178,8 @@ export default function ClientsPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-lg font-bold shrink-0 shadow-sm">
-                    {c.name.charAt(0)}
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${avatarGradient(c.name)} text-white flex items-center justify-center text-lg font-bold shrink-0 shadow-sm`}>
+                    {c.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-slate-900 truncate">{c.name}</p>

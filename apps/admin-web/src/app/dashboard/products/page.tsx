@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { EmptyState } from '../../../components/EmptyState';
-import { LoadingState } from '../../../components/LoadingState';
+import { CardGridSkeleton } from '../../../components/Skeleton';
 import { apiFetch } from '../../../lib/api';
 import { PAGE } from '../../../lib/page-titles';
 import { useAppDialog } from '../../../components/AppDialogProvider';
@@ -209,7 +209,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {loading && <LoadingState message="Cargando mercancía..." />}
+      {loading && <CardGridSkeleton />}
 
       {!loading && filtered.length === 0 && (
         <EmptyState
@@ -258,6 +258,22 @@ export default function ProductsPage() {
                     </div>
                   )}
                 </div>
+                {stock && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 mb-1">
+                      <span>Stock: {available} un.</span>
+                      {stock.minStock > 0 && <span>Mín. {stock.minStock}</span>}
+                    </div>
+                    <div className="stock-meter-track">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          available === 0 ? 'bg-red-500' : bajoStock ? 'bg-amber-500' : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.round((available / Math.max(stock.minStock * 2, available, 1)) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 {stock && stock.valuacionVenta > 0 && (
                   <p className="text-xs text-slate-400 mt-2">
                     En stock: {formatCurrency(stock.valuacionCosto)} costo · {formatCurrency(stock.valuacionVenta)} venta

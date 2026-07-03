@@ -9,6 +9,7 @@ import { EmptyState } from '../../../components/EmptyState';
 import { apiFetch } from '../../../lib/api';
 import { SITE_URL } from '../../../lib/site';
 import { PAGE } from '../../../lib/page-titles';
+import { useToast } from '../../../components/ToastProvider';
 
 type Catalog = {
   id: string;
@@ -24,6 +25,7 @@ export default function CatalogsPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     apiFetch<Catalog[]>('/catalogs').then(setCatalogs).catch(console.error).finally(() => setLoading(false));
@@ -40,8 +42,11 @@ export default function CatalogsPage() {
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(c.id);
+      showToast('Enlace del catálogo copiado');
       setTimeout(() => setCopiedId(null), 2000);
-    } catch { /* noop */ }
+    } catch {
+      showToast('No se pudo copiar el enlace', 'error');
+    }
   }
 
   return (

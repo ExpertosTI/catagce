@@ -11,8 +11,8 @@ import { SegmentedControl } from '../../../../components/SegmentedControl';
 import { ProductPicker, PickedLine, PickerProduct } from '../../../../components/ProductPicker';
 import { apiFetch } from '../../../../lib/api';
 import { formatCurrency } from '../../../../lib/currency';
-import { PAGE } from '../../../../lib/page-titles';
 import { SALE_COMPROBANTE_OPTIONS, comprobanteTypeLabel } from '../../../../lib/labels';
+import type { InvoiceDetail } from '../../../../lib/invoice-utils';
 
 const ITBIS_RATE = 18;
 
@@ -25,6 +25,7 @@ export default function NewInvoiceForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const presetClientId = searchParams.get('clientId') ?? '';
+  const duplicateId = searchParams.get('duplicate') ?? '';
   const [clients, setClients] = useState<PickerClient[]>([]);
   const [products, setProducts] = useState<PickerProduct[]>([]);
   const [clientId, setClientId] = useState('');
@@ -55,8 +56,30 @@ export default function NewInvoiceForm() {
     if (presetClientId) setClientId(presetClientId);
   }, [presetClientId]);
 
+  // Duplicar factura: precarga cliente, condición y líneas de la factura origen
+  const [duplicatedFrom, setDuplicatedFrom] = useState('');
+  useEffect(() => {
+    if (!duplicateId) return;
+    apiFetch<InvoiceDetail>(`/invoices/${duplicateId}`)
+      .then((src) => {
+        setClientId((prev) => prev || (src as InvoiceDetail & { clientId?: string }).clientId || '');
+        if (src.invoiceType === 'cash' || src.invoiceType === 'credit') setInvoiceType(src.invoiceType);
+        if (typeof src.isFiscal === 'boolean') setIsFiscal(src.isFiscal);
+        setLines((src.items ?? []).map((item, idx) => ({
+          lineId: `dup-${idx}-${item.id}`,
+          productId: (item as typeof item & { productId?: string }).productId ?? '',
+          quantity: Number(item.quantity) || 1,
+          unitPrice: parseFloat(item.unitPrice || '0'),
+          unitLabel: item.unitLabel ?? 'un',
+        })).filter((l) => l.productId));
+        setDuplicatedFrom(src.ncf ?? src.reference);
+      })
+      .catch(() => setError('No se pudo cargar la factura a duplicar'));
+  }, [duplicateId]);
+
   useEffect(() => {
     if (isFiscal) setComprobanteType(suggestComprobante(selectedClient, invoiceType));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, invoiceType, selectedClient?.taxId, isFiscal]);
 
   useEffect(() => {
@@ -130,6 +153,12 @@ export default function NewInvoiceForm() {
       <Link href="/dashboard/invoices" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
         <ArrowLeft size={16} /> Volver a facturas
       </Link>
+
+      {duplicatedFrom && (
+        <p className="max-w-2xl text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 mb-4 animate-fade-in">
+          Duplicando la factura <strong>{duplicatedFrom}</strong>. Revise cliente, precios y cantidades antes de emitir; se generará un NCF nuevo.
+        </p>
+      )}
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
         <FormField label="Cliente">

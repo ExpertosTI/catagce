@@ -75,6 +75,7 @@ export default function ReportsPage() {
     Promise.all([loadAr(), loadSales(), loadInventory()])
       .catch(() => setError('No se pudieron cargar los reportes'))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function refreshSales() {
