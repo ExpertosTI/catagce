@@ -92,7 +92,7 @@ export default function PresalesPage() {
       {!loading && error && <div className="executive-card p-8 text-center text-red-600">{error}</div>}
 
       {!loading && !error && presales.length === 0 && (
-        <EmptyState emoji="🛒" title="Sin preventas" subtitle="Se crean cuando los clientes piden desde el catálogo público" />
+        <EmptyState icon={ShoppingCart} title="Sin preventas" subtitle="Se crean cuando los clientes piden desde el catálogo público" />
       )}
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">

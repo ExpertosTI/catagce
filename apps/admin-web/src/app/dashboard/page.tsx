@@ -19,7 +19,7 @@ const POLL_MS = 30_000;
 
 const QUICK_ACTIONS = [
   { href: '/dashboard/invoices/new', label: 'Nueva factura', color: 'from-blue-600 to-indigo-700', icon: FilePlus },
-  { href: '/dashboard/invoices', label: 'Registrar pago', color: 'from-emerald-600 to-teal-700', icon: Wallet },
+  { href: '/dashboard/payments', label: 'Registrar pago', color: 'from-emerald-600 to-teal-700', icon: Wallet },
   { href: '/dashboard/dispatches/new', label: 'Despacho', color: 'from-orange-500 to-amber-600', icon: Truck },
   { href: '/dashboard/products/new', label: 'Nuevo producto', color: 'from-violet-600 to-purple-700', icon: Boxes },
 ];
@@ -105,7 +105,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <LoadingState emoji="🏠" message="Cargando panel..." />
+        <LoadingState message="Cargando panel..." />
       </DashboardLayout>
     );
   }
@@ -119,9 +119,8 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 -mb-2">
         <div>
-          <p className="text-sm text-slate-500 mb-1">{greeting} 👋</p>
+          <p className="text-sm text-slate-500 mb-1">{greeting}</p>
           <PageHeader
-            emoji={PAGE.dashboard.emoji}
             title={PAGE.dashboard.title}
             subtitle={PAGE.dashboard.subtitle}
             action={

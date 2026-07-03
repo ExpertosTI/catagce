@@ -102,6 +102,10 @@ body {
   @apply text-[#128C7E] border-[#25D366]/30 bg-gradient-to-br from-[#25D366]/10 to-white hover:border-[#25D366]/50;
 }
 
+.action-chip-success {
+  @apply text-emerald-800 border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white hover:border-emerald-300;
+}
+
 .product-card {
   @apply card overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
 }
