@@ -52,6 +52,15 @@ bash scripts/deploy-ghome.sh
 bash scripts/ghome-db-init.sh all
 ```
 
+**Actualizar después de cambios en `ghome`:**
+
+```bash
+cd /opt/ghome
+bash scripts/ghome-deploy-latest.sh
+```
+
+El script valida `JWT_SECRET` y `DB_PASSWORD`, reconstruye imágenes y verifica `/api/health`.
+
 > No necesita `pnpm` en el servidor — la DB se inicializa con Docker.
 
 
