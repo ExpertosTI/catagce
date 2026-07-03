@@ -178,7 +178,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-export function PageHeader({ title, subtitle, action }: { emoji?: string; title: string; subtitle?: string; action?: React.ReactNode }) {
+export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-3 sm:gap-4 mb-6">
       <div className="min-w-0">
@@ -190,7 +190,7 @@ export function PageHeader({ title, subtitle, action }: { emoji?: string; title:
   );
 }
 
-export function ActionButton({ href, label }: { href: string; label: string; emoji?: string }) {
+export function ActionButton({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href} className="btn-primary inline-flex items-center gap-2 text-sm w-full sm:w-auto justify-center">
       <Plus size={16} />
@@ -199,10 +199,10 @@ export function ActionButton({ href, label }: { href: string; label: string; emo
   );
 }
 
-export function SectionTitle({ emoji, icon, children }: { emoji?: string; icon?: React.ReactNode; children: React.ReactNode }) {
+export function SectionTitle({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-3">
-      {icon ?? (emoji && <span aria-hidden>{emoji}</span>)}
+      {icon}
       {children}
     </h2>
   );

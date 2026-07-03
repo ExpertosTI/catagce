@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Search, FileText, AlertCircle, Wallet, Plus } from 'lucide-react';
+import { Search, FileText, AlertCircle, Wallet, Plus, TrendingUp } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { InvoiceCard } from '../../../components/InvoiceCard';
 import { EmptyState } from '../../../components/EmptyState';
@@ -75,7 +75,7 @@ export default function InvoicesPageContent() {
             <p className="text-[11px] text-slate-400">{stats.open} con saldo</p>
           </div>
           <div className="report-kpi">
-            <p className="text-xs text-slate-500 font-medium">📈 Facturado</p>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><TrendingUp size={14} /> Facturado</p>
             <p className="report-kpi-value text-blue-700 text-lg">{formatCurrency(stats.total)}</p>
           </div>
           <div className="report-kpi">

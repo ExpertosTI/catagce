@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import LoginForm from './LoginForm';
+import { LoadingState } from '../../components/LoadingState';
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Cargando...</div>}>
+    <Suspense fallback={<LoadingState message="Cargando..." />}>
       <LoginForm />
     </Suspense>
   );

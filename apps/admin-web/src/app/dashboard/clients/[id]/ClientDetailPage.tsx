@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Pencil, ArrowLeft, Plus, Phone, Mail, MapPin, FileText, Wallet } from 'lucide-react';
+import { Pencil, ArrowLeft, Plus, Phone, Mail, MapPin, FileText, Wallet, CreditCard, TrendingUp } from 'lucide-react';
 import DashboardLayout, { SectionTitle } from '../../../../components/DashboardLayout';
 import { InvoiceCard } from '../../../../components/InvoiceCard';
 import { FormField } from '../../../../components/FormField';
@@ -142,7 +142,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <div className="report-kpi">
-          <p className="text-xs text-slate-500 font-medium">💳 Límite crédito</p>
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><CreditCard size={14} /> Límite crédito</p>
           <p className="report-kpi-value text-blue-700 text-lg">{formatCurrency(client.creditLimit)}</p>
         </div>
         <div className="report-kpi">
@@ -150,7 +150,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           <p className={`report-kpi-value ${totalBalance > 0 ? 'text-red-600' : 'text-emerald-700'}`}>{formatUsd(totalBalance)}</p>
         </div>
         <div className="report-kpi">
-          <p className="text-xs text-slate-500 font-medium">📈 Facturado</p>
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><TrendingUp size={14} /> Facturado</p>
           <p className="report-kpi-value text-slate-800 text-lg">{formatUsd(totalInvoiced)}</p>
         </div>
         <div className="report-kpi">
