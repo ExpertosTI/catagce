@@ -35,8 +35,10 @@ HASH=$(docker run --rm -e "ADMIN_PW=${ADMIN_PASSWORD}" node:20-alpine sh -c '
 SQL_HASH="${HASH//\'/\'\'}"
 SQL_EMAIL="${ADMIN_EMAIL//\'/\'\'}"
 
-COUNT=$(docker exec "$DB_CONTAINER" psql -U ghome_admin -d ghome_prod -t -A -v ON_ERROR_STOP=1 \
-  -c "UPDATE staff_users SET password_hash = '${SQL_HASH}' WHERE email = '${SQL_EMAIL}'; SELECT COUNT(*) FROM staff_users WHERE email = '${SQL_EMAIL}';")
+RESULT=$(docker exec "$DB_CONTAINER" psql -U ghome_admin -d ghome_prod -t -A -v ON_ERROR_STOP=1 \
+  -c "UPDATE staff_users SET password_hash = '${SQL_HASH}' WHERE email = '${SQL_EMAIL}'; SELECT COUNT(*)::int FROM staff_users WHERE email = '${SQL_EMAIL}';")
+
+COUNT=$(printf '%s\n' "$RESULT" | tail -1 | tr -cd '0-9')
 
 if [ "${COUNT:-0}" -lt 1 ]; then
   echo "⚠️  No existe staff con email ${ADMIN_EMAIL} — ejecute seed si es instalación nueva:"
