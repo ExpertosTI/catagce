@@ -64,16 +64,22 @@ El script valida `JWT_SECRET` y `DB_PASSWORD`, reconstruye imágenes y verifica 
 > No necesita `pnpm` en el servidor — la DB se inicializa con Docker.
 
 
-### Credenciales demo (solo desarrollo local)
+### Credenciales (producción)
 
-Tras `pnpm --filter @ghome/db seed` en local, sin `ADMIN_PASSWORD` en `.env`:
+En el servidor no hace falta escribir contraseñas a mano:
 
-| Rol | Email | Password |
-|-----|-------|----------|
-| Admin | `admin@generalhome.tech` | `demo1234` |
-| Cliente | `cliente@demo.com` | `demo1234` |
+```bash
+cd /opt/ghome
+bash scripts/ghome-ensure-secrets.sh    # genera secretos débiles/faltantes
+bash scripts/ghome-sync-admin-password.sh
+bash scripts/ghome-deploy-latest.sh
+```
 
-En **producción** defina `ADMIN_PASSWORD` (mín. 12 caracteres) y `JWT_SECRET` (`openssl rand -base64 32`). No use `demo1234`.
+Las credenciales se muestran **una sola vez** y se guardan en `/root/.ghome-credentials-*.txt` (fuera del repo, `chmod 600`). Cópielas a un gestor de contraseñas y elimine ese archivo del servidor.
+
+### Desarrollo local
+
+Tras `pnpm --filter @ghome/db seed` sin `ADMIN_PASSWORD`, el seed imprime una contraseña temporal en consola (no se usa `demo1234`).
 
 ## Arquitectura
 

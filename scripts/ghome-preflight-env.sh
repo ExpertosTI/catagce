@@ -49,9 +49,8 @@ fi
 
 if [ "$errors" -gt 0 ]; then
   echo ""
-  echo "Corrija .env y vuelva a ejecutar. Ejemplo:"
-  echo "  nano $REPO_DIR/.env"
-  echo "  JWT_SECRET=\$(openssl rand -base64 32)"
+  echo "Corrija .env automáticamente:"
+  echo "  bash $REPO_DIR/scripts/ghome-ensure-secrets.sh"
   exit 1
 fi
 

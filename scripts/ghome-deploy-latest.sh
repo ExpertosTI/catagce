@@ -8,10 +8,21 @@ cd "$REPO_DIR"
 echo "═══ GHome deploy latest ═══"
 git pull origin ghome
 
+# Renueva secretos débiles automáticamente (sin hardcodear en el repo)
+if bash scripts/ghome-ensure-secrets.sh; then
+  :
+else
+  echo "❌ No se pudieron asegurar los secretos — revise .env"
+  exit 1
+fi
+
 bash scripts/ghome-preflight-env.sh
 
 # shellcheck disable=SC1091
 set -a && source .env && set +a
+
+echo "═══ Sincronizar admin en BD (si aplica) ═══"
+bash scripts/ghome-sync-admin-password.sh || echo "⚠️  Sync admin omitido (¿BD sin seed aún?)"
 
 echo "═══ Build imágenes ═══"
 docker build -t ghome-api:latest -f apps/api/Dockerfile .

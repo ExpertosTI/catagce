@@ -12,9 +12,15 @@ import {
 async function seed() {
   const db = createClientFromEnv();
   const adminEmail = process.env.ADMIN_EMAIL?.trim() || 'admin@generalhome.tech';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'demo1234';
   const isProd = process.env.NODE_ENV === 'production';
-
+  let adminPassword = process.env.ADMIN_PASSWORD?.trim();
+  if (!adminPassword) {
+    if (isProd) {
+      throw new Error('ADMIN_PASSWORD es obligatorio en producción. Ejecute: bash scripts/ghome-ensure-secrets.sh');
+    }
+    adminPassword = `Dev-${Math.random().toString(36).slice(2, 10)}!9x`;
+    console.warn(`[dev] ADMIN_PASSWORD no definido — temporal: ${adminPassword}`);
+  }
   if (isProd && (adminPassword === 'demo1234' || adminPassword.length < 12)) {
     throw new Error('ADMIN_PASSWORD debe ser una contraseña fuerte (mín. 12 caracteres) en producción');
   }
