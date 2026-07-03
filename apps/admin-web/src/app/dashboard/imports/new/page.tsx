@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Truck } from 'lucide-react';
+import { ArrowLeft, Loader2, Package, Plus, Ship } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { ProductPicker, PickedLine, PickerProduct } from '../../../../components/ProductPicker';
@@ -64,6 +65,7 @@ export default function NewImportPage() {
   }
 
   const totalCost = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+  const totalUnits = lines.reduce((s, l) => s + l.quantity, 0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -95,6 +97,9 @@ export default function NewImportPage() {
 
   return (
     <DashboardLayout>
+      <Link href="/dashboard/imports" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
+        <ArrowLeft size={16} /> Volver a importaciones
+      </Link>
       <PageHeader emoji={PAGE.importsNew.emoji} title={PAGE.importsNew.title} subtitle={PAGE.importsNew.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
@@ -114,12 +119,12 @@ export default function NewImportPage() {
                 <option value="">Sin proveedor</option>
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <button type="button" onClick={() => setShowSupplierForm(true)} className="btn-secondary shrink-0 px-3">
-                <Truck size={18} />
+              <button type="button" onClick={() => setShowSupplierForm(true)} className="btn-secondary shrink-0 px-3" title="Agregar proveedor">
+                <Plus size={18} />
               </button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
               <div className="flex gap-2">
                 <input
                   value={newSupplierName}
@@ -148,23 +153,33 @@ export default function NewImportPage() {
         </div>
 
         <FormField label="Notas">
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="input" rows={2} />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="input" rows={2} placeholder="Observaciones del contenedor..." />
         </FormField>
 
         {lines.length > 0 && (
-          <div className="invoice-summary-footer">
-            <div className="flex justify-between font-bold text-lg">
-              <span>Costo total estimado</span>
-              <span className="text-blue-700">{formatCurrency(totalCost)}</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="report-kpi">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                <Package size={14} /> Unidades
+              </p>
+              <p className="report-kpi-value text-slate-800 tabular-nums">{totalUnits}</p>
+            </div>
+            <div className="report-kpi border-blue-200/80 bg-gradient-to-br from-blue-50/80 to-white">
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Costo estimado</p>
+              <p className="report-kpi-value text-blue-700">{formatCurrency(totalCost)}</p>
             </div>
           </div>
         )}
 
-        {pageError && <p className="text-sm text-red-600">❌ {pageError}</p>}
+        {pageError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{pageError}</p>}
 
-        <button type="submit" disabled={loading || !reference} className="btn-primary w-full sm:w-auto disabled:opacity-50">
-          {loading ? '⏳ Registrando...' : '🚢 Registrar importación'}
-        </button>
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={() => router.back()} className="btn-secondary flex-1 sm:flex-none sm:min-w-[120px]">Cancelar</button>
+          <button type="submit" disabled={loading || !reference} className="btn-primary flex-1 disabled:opacity-50">
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Ship size={16} />}
+            {loading ? 'Registrando...' : 'Registrar importación'}
+          </button>
+        </div>
       </form>
     </DashboardLayout>
   );

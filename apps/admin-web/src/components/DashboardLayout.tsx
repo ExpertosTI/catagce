@@ -13,22 +13,24 @@ import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
 import { NAV_ITEMS } from '../lib/page-titles';
 
+const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
+  '/dashboard': LayoutDashboard,
+  '/dashboard/clients': Users,
+  '/dashboard/products': Package,
+  '/dashboard/invoices': FileText,
+  '/dashboard/payments': Wallet,
+  '/dashboard/dispatches': Truck,
+  '/dashboard/presales': ShoppingBag,
+  '/dashboard/imports': Ship,
+  '/dashboard/catalogs': BookOpen,
+  '/dashboard/reports': BarChart3,
+  '/dashboard/settings': Settings,
+};
+
 const nav = NAV_ITEMS.map((item) => ({
   href: item.href,
-  label: `${item.emoji} ${item.label}`,
-  icon: {
-    '/dashboard': LayoutDashboard,
-    '/dashboard/clients': Users,
-    '/dashboard/products': Package,
-    '/dashboard/invoices': FileText,
-    '/dashboard/payments': Wallet,
-    '/dashboard/dispatches': Truck,
-    '/dashboard/presales': ShoppingBag,
-    '/dashboard/imports': Ship,
-    '/dashboard/catalogs': BookOpen,
-    '/dashboard/reports': BarChart3,
-    '/dashboard/settings': Settings,
-  }[item.href] ?? LayoutDashboard,
+  label: item.label,
+  icon: NAV_ICONS[item.href] ?? LayoutDashboard,
 }));
 
 function SidebarNav({
@@ -47,15 +49,34 @@ function SidebarNav({
             key={href}
             href={href}
             onClick={onNavigate}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
-              active ? 'bg-white text-blue-900 font-medium' : 'text-blue-100 hover:bg-blue-800'
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 ${
+              active
+                ? 'bg-white/95 text-blue-900 font-semibold shadow-md shadow-black/10'
+                : 'text-blue-100/90 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <Icon size={18} /> {label}
+            <Icon size={18} className={active ? 'text-blue-700' : 'opacity-90'} />
+            {label}
           </Link>
         );
       })}
     </nav>
+  );
+}
+
+function SidebarBrand({ userName }: { userName: string | null }) {
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-white to-blue-100 text-blue-900 flex items-center justify-center font-extrabold shrink-0 shadow-sm">
+        G
+      </div>
+      <div className="min-w-0">
+        <p className="font-bold text-sm tracking-tight">GHome Admin</p>
+        <p className="text-xs text-blue-200/80 truncate" suppressHydrationWarning>
+          {userName ?? 'Administrador'}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -84,20 +105,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const closeMenu = () => setMenuOpen(false);
+  const sidebarClass = 'bg-gradient-to-b from-slate-900 via-blue-950 to-indigo-950 text-white flex flex-col';
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* Móvil: barra superior */}
-      <header className="flex lg:hidden sticky top-0 z-30 bg-blue-900 text-white items-center justify-between px-4 py-3 shadow">
+    <div className="min-h-screen">
+      <header className="flex lg:hidden sticky top-0 z-30 bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white items-center justify-between px-4 py-3 shadow-lg shadow-blue-950/30">
         <button
           type="button"
           aria-label="Abrir menú"
           onClick={() => setMenuOpen(true)}
-          className="p-2 -ml-2 rounded-lg hover:bg-blue-800"
+          className="p-2 -ml-2 rounded-xl hover:bg-white/10 transition"
         >
           <Menu size={22} />
         </button>
-        <p className="font-bold text-sm">GHome Admin</p>
+        <p className="font-bold text-sm tracking-tight">GHome Admin</p>
         <NotificationBell />
       </header>
 
@@ -106,30 +127,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button
             type="button"
             aria-label="Cerrar menú"
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-sm"
             onClick={closeMenu}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-[min(280px,88vw)] bg-blue-900 text-white flex flex-col lg:hidden animate-fade-in">
-            <div className="p-5 border-b border-blue-800 flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-white text-blue-900 flex items-center justify-center font-bold shrink-0">G</div>
-                <div className="min-w-0">
-                  <p className="font-bold text-sm">GHome Admin</p>
-                  <p className="text-xs text-blue-300 truncate" suppressHydrationWarning>
-                    {userName ?? 'Administrador'}
-                  </p>
-                </div>
-              </div>
-              <button type="button" aria-label="Cerrar menú" onClick={closeMenu} className="p-1 rounded hover:bg-blue-800">
+          <aside className={`fixed inset-y-0 left-0 z-50 w-[min(280px,88vw)] ${sidebarClass} lg:hidden animate-fade-in shadow-2xl`}>
+            <div className="p-5 border-b border-white/10 flex items-start justify-between gap-2">
+              <SidebarBrand userName={userName} />
+              <button type="button" aria-label="Cerrar menú" onClick={closeMenu} className="p-1.5 rounded-lg hover:bg-white/10 transition">
                 <X size={20} />
               </button>
             </div>
             <SidebarNav pathname={pathname} onNavigate={closeMenu} />
-            <div className="p-3 border-t border-blue-800">
-              <Link href={SITE_URL} onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 text-xs text-blue-300 hover:text-white mb-1">
+            <div className="p-3 border-t border-white/10">
+              <Link href={SITE_URL} onClick={closeMenu} className="flex items-center gap-2 px-3 py-2 text-xs text-blue-200/80 hover:text-white mb-1 rounded-lg hover:bg-white/5 transition">
                 Ver sitio público
               </Link>
-              <button type="button" onClick={logout} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-200 hover:text-white w-full">
+              <button type="button" onClick={logout} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-100 hover:text-white w-full rounded-lg hover:bg-white/5 transition">
                 <LogOut size={16} /> Cerrar sesión
               </button>
             </div>
@@ -138,28 +151,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       <div className="flex min-h-[calc(100dvh-52px)] lg:min-h-screen">
-        {/* Escritorio: sidebar fijo */}
-        <aside className="hidden lg:flex w-60 bg-blue-900 text-white flex-col shrink-0">
-          <div className="p-5 border-b border-blue-800">
+        <aside className={`hidden lg:flex w-60 shrink-0 ${sidebarClass} shadow-xl shadow-blue-950/20`}>
+          <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-2 justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-white text-blue-900 flex items-center justify-center font-bold">G</div>
-                <div className="min-w-0">
-                  <p className="font-bold text-sm">GHome Admin</p>
-                  <p className="text-xs text-blue-300 truncate" suppressHydrationWarning>
-                    {userName ?? 'Administrador'}
-                  </p>
-                </div>
-              </div>
+              <SidebarBrand userName={userName} />
               <NotificationBell />
             </div>
           </div>
           <SidebarNav pathname={pathname} />
-          <div className="p-3 border-t border-blue-800 mt-auto">
-            <Link href={SITE_URL} className="flex items-center gap-2 px-3 py-2 text-xs text-blue-300 hover:text-white mb-1">
+          <div className="p-3 border-t border-white/10 mt-auto">
+            <Link href={SITE_URL} className="flex items-center gap-2 px-3 py-2 text-xs text-blue-200/80 hover:text-white mb-1 rounded-lg hover:bg-white/5 transition">
               Ver sitio público
             </Link>
-            <button type="button" onClick={logout} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-200 hover:text-white w-full">
+            <button type="button" onClick={logout} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-100 hover:text-white w-full rounded-lg hover:bg-white/5 transition">
               <LogOut size={16} /> Cerrar sesión
             </button>
           </div>
@@ -198,10 +202,10 @@ export function ActionButton({ href, label, emoji }: { href: string; label: stri
   );
 }
 
-export function SectionTitle({ emoji, children }: { emoji?: string; children: React.ReactNode }) {
+export function SectionTitle({ emoji, icon, children }: { emoji?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-3">
-      {emoji && <span aria-hidden>{emoji}</span>}
+      {icon ?? (emoji && <span aria-hidden>{emoji}</span>)}
       {children}
     </h2>
   );

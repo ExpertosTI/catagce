@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import {
+  Building2, Check, ExternalLink, FileText, Link2, Loader2, Receipt, Sparkles,
+} from 'lucide-react';
 import DashboardLayout, { PageHeader, SectionTitle } from '../../../components/DashboardLayout';
 import { FormField } from '../../../components/FormField';
 import { ImageUploadField } from '../../../components/ImageUploadField';
+import { ReportTableCard } from '../../../components/ReportTableCard';
 import { apiFetch } from '../../../lib/api';
 import { SITE_URL, ADMIN_URL } from '../../../lib/site';
 import { comprobanteTypeLabel } from '../../../lib/labels';
@@ -58,42 +62,43 @@ function FiscalSequencesPanel() {
   }
 
   return (
-    <div className="executive-card max-w-2xl space-y-4 mt-6">
-      <SectionTitle emoji="🧾">Secuencias NCF (DGII)</SectionTitle>
-      <p className="text-xs text-slate-500 -mt-2">Configure los rangos autorizados por la DGII para cada tipo de comprobante.</p>
-
-      {loading ? (
-        <p className="text-sm text-slate-400">⏳ Cargando secuencias...</p>
-      ) : (
-        <div className="overflow-x-auto">
+    <div className="max-w-2xl space-y-4 mt-6">
+      <ReportTableCard
+        title="Secuencias NCF (DGII)"
+        subtitle="Rangos autorizados por tipo de comprobante"
+        emoji="🧾"
+      >
+        {loading ? (
+          <p className="text-sm text-slate-400 p-6 text-center">Cargando secuencias...</p>
+        ) : (
           <table className="w-full text-sm">
-            <thead className="text-slate-500 border-b">
+            <thead className="text-slate-500 border-b bg-slate-50/50">
               <tr>
-                <th className="text-left py-2">Tipo</th>
-                <th className="text-right py-2">Rango</th>
-                <th className="text-right py-2">Siguiente</th>
-                <th className="text-right py-2">Restantes</th>
+                <th className="text-left py-3 px-4 font-semibold">Tipo</th>
+                <th className="text-right py-3 px-4 font-semibold">Rango</th>
+                <th className="text-right py-3 px-4 font-semibold">Siguiente</th>
+                <th className="text-right py-3 px-4 font-semibold">Restantes</th>
               </tr>
             </thead>
             <tbody>
               {sequences.map((s) => (
-                <tr key={s.id} className="border-b border-slate-100">
-                  <td className="py-2">{comprobanteTypeLabel[s.comprobanteType] ?? s.comprobanteType}</td>
-                  <td className="py-2 text-right text-slate-500">{s.rangeFrom}–{s.rangeTo}</td>
-                  <td className="py-2 text-right font-mono">{s.comprobanteType}{String(s.currentNumber).padStart(8, '0')}</td>
-                  <td className="py-2 text-right">{Math.max(0, s.rangeTo - s.currentNumber + 1)}</td>
+                <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                  <td className="py-3 px-4">{comprobanteTypeLabel[s.comprobanteType] ?? s.comprobanteType}</td>
+                  <td className="py-3 px-4 text-right text-slate-500 tabular-nums">{s.rangeFrom}–{s.rangeTo}</td>
+                  <td className="py-3 px-4 text-right font-mono text-xs">{s.comprobanteType}{String(s.currentNumber).padStart(8, '0')}</td>
+                  <td className="py-3 px-4 text-right tabular-nums font-medium">{Math.max(0, s.rangeTo - s.currentNumber + 1)}</td>
                 </tr>
               ))}
               {!sequences.length && (
-                <tr><td colSpan={4} className="py-4 text-center text-slate-400">📋 Sin secuencias configuradas</td></tr>
+                <tr><td colSpan={4} className="py-8 text-center text-slate-400">Sin secuencias configuradas</td></tr>
               )}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </ReportTableCard>
 
-      <form onSubmit={saveSequence} className="border-t border-slate-100 pt-4 space-y-3">
-        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Agregar / actualizar secuencia</p>
+      <form onSubmit={saveSequence} className="form-card space-y-4">
+        <SectionTitle icon={<FileText size={16} className="text-blue-600" />}>Agregar o actualizar secuencia</SectionTitle>
         <div className="grid sm:grid-cols-2 gap-3">
           <FormField label="Tipo de comprobante">
             <select value={form.comprobanteType} onChange={(e) => setForm({ ...form, comprobanteType: e.target.value })} className="input text-sm">
@@ -116,7 +121,8 @@ function FiscalSequencesPanel() {
           </FormField>
         </div>
         <button type="submit" disabled={saving} className="btn-primary text-sm disabled:opacity-50">
-          {saving ? '⏳ Guardando...' : '💾 Guardar secuencia NCF'}
+          {saving && <Loader2 size={16} className="animate-spin" />}
+          {saving ? 'Guardando...' : 'Guardar secuencia NCF'}
         </button>
       </form>
     </div>
@@ -191,7 +197,7 @@ export default function SettingsPage() {
   if (!ready) {
     return (
       <DashboardLayout>
-        <LoadingState emoji="⚙️" message="Cargando configuración..." />
+        <LoadingState message="Cargando configuración..." />
       </DashboardLayout>
     );
   }
@@ -200,7 +206,7 @@ export default function SettingsPage() {
     <DashboardLayout>
       <PageHeader emoji={PAGE.settings.emoji} title={PAGE.settings.title} subtitle={PAGE.settings.subtitle} />
 
-      <SectionTitle emoji="🏢">Datos de la empresa</SectionTitle>
+      <SectionTitle icon={<Building2 size={16} className="text-blue-600" />}>Datos de la empresa</SectionTitle>
       <form onSubmit={submit} className="form-card max-w-lg space-y-4 mb-6">
         <ImageUploadField
           value={form.logoUrl ?? ''}
@@ -227,9 +233,12 @@ export default function SettingsPage() {
           <input value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" />
         </FormField>
 
-        <div className="pt-2 border-t border-slate-100">
-          <p className="text-sm font-semibold text-slate-800 mb-1 flex items-center gap-2">✨ Super AI (Google Gemini)</p>
-          <p className="text-xs text-slate-500 mb-3">
+        <div className="pt-4 border-t border-slate-100 space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-violet-600" />
+            <p className="text-sm font-semibold text-slate-800">Super AI (Google Gemini)</p>
+          </div>
+          <p className="text-xs text-slate-500">
             Conecte su API de Google para análisis inteligente, descripciones de productos y recordatorios más naturales.
           </p>
           <FormField label="API Key de Google Gemini">
@@ -243,15 +252,19 @@ export default function SettingsPage() {
             />
             <p className="form-hint">
               Obtenga su clave en{' '}
-              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">
-                Google AI Studio
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline inline-flex items-center gap-1">
+                Google AI Studio <ExternalLink size={12} />
               </a>
-              . {hasGeminiKey && <span className="text-emerald-600 font-medium">✓ Clave configurada</span>}
+              . {hasGeminiKey && (
+                <span className="text-emerald-600 font-medium inline-flex items-center gap-1 ml-1">
+                  <Check size={14} /> Clave configurada
+                </span>
+              )}
             </p>
           </FormField>
         </div>
 
-        <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+        <label className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 cursor-pointer">
           <input
             type="checkbox"
             checked={autoReceipt}
@@ -259,34 +272,47 @@ export default function SettingsPage() {
             className="w-4 h-4 mt-0.5 rounded border-slate-300 text-blue-600"
           />
           <div>
-            <p className="text-sm font-semibold text-slate-800">🧾 Generar recibo al registrar pago</p>
+            <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <Receipt size={16} className="text-slate-500" /> Generar recibo al registrar pago
+            </p>
             <p className="text-xs text-slate-500 mt-0.5">Imprime automáticamente el recibo cuando se confirma un pago en facturas.</p>
           </div>
         </label>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 pt-1">
           <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
-            {loading ? '⏳ Guardando...' : '💾 Guardar cambios'}
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {loading ? 'Guardando...' : 'Guardar cambios'}
           </button>
-          {saved && <span className="text-sm text-emerald-600 font-medium">✅ Guardado</span>}
+          {saved && (
+            <span className="text-sm text-emerald-600 font-medium inline-flex items-center gap-1">
+              <Check size={16} /> Guardado
+            </span>
+          )}
         </div>
       </form>
 
       <FiscalSequencesPanel />
 
-      <div className="executive-card max-w-lg space-y-3 mt-6">
-        <SectionTitle emoji="🔗">Enlaces de la plataforma</SectionTitle>
-        <div>
-          <p className="text-xs text-slate-500">Identificador del portal (slug)</p>
-          <p className="font-mono text-blue-700">{form.slug}</p>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500">Panel de administración</p>
-          <a href={ADMIN_URL} className="text-blue-700 hover:underline text-sm">{ADMIN_URL}</a>
-        </div>
-        <div>
-          <p className="text-xs text-slate-500">Portal de clientes</p>
-          <a href={SITE_URL} className="text-blue-700 hover:underline text-sm">{SITE_URL}</a>
+      <div className="executive-card max-w-lg space-y-4 mt-6">
+        <SectionTitle icon={<Link2 size={16} className="text-blue-600" />}>Enlaces de la plataforma</SectionTitle>
+        <div className="space-y-3">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Identificador del portal</p>
+            <p className="font-mono text-blue-700 mt-1">{form.slug}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Panel de administración</p>
+            <a href={ADMIN_URL} className="text-blue-700 hover:underline text-sm inline-flex items-center gap-1 mt-1">
+              {ADMIN_URL} <ExternalLink size={12} />
+            </a>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Portal de clientes</p>
+            <a href={SITE_URL} className="text-blue-700 hover:underline text-sm inline-flex items-center gap-1 mt-1">
+              {SITE_URL} <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
       </div>
     </DashboardLayout>

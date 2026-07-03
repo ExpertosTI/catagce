@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Banknote, Loader2 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { ClientPicker, PickerClient } from '../../../../components/ClientPicker';
@@ -125,6 +127,9 @@ export default function NewInvoiceForm() {
 
   return (
     <DashboardLayout>
+      <Link href="/dashboard/invoices" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
+        <ArrowLeft size={16} /> Volver a facturas
+      </Link>
       <PageHeader emoji={PAGE.invoicesNew.emoji} title={PAGE.invoicesNew.title} subtitle={PAGE.invoicesNew.subtitle} />
 
       <form onSubmit={submit} className="form-card max-w-2xl space-y-5">
@@ -171,11 +176,11 @@ export default function NewInvoiceForm() {
               </select>
             </FormField>
             <p className="text-xs text-slate-500 -mt-2">{comprobanteTypeLabel[comprobanteType]}</p>
-            {comprobanteWarning && <p className="text-xs text-amber-700">{comprobanteWarning}</p>}
+            {comprobanteWarning && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{comprobanteWarning}</p>}
           </>
         )}
         {!isFiscal && (
-          <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+          <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
             Proforma / factura interna sin comprobante fiscal. No consume secuencia NCF.
           </p>
         )}
@@ -206,22 +211,24 @@ export default function NewInvoiceForm() {
         </div>
 
         {invoiceType === 'cash' && (
-          <label className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/60 cursor-pointer">
+          <label className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/60 cursor-pointer">
             <input
               type="checkbox"
               checked={payOnIssue}
               onChange={(e) => setPayOnIssue(e.target.checked)}
               className="w-4 h-4 rounded border-emerald-300 text-emerald-600"
             />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-emerald-800">💰 Cobrar al emitir (contado)</p>
-              <p className="text-xs text-emerald-700/80">Registra el pago completo y genera recibo automáticamente</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+                <Banknote size={16} /> Cobrar al emitir (contado)
+              </p>
+              <p className="text-xs text-emerald-700/80 mt-0.5">Registra el pago completo y genera recibo automáticamente</p>
             </div>
             {payOnIssue && (
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="input !w-36 text-sm"
+                className="input !w-36 text-sm shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
                 <option value="cash">Efectivo</option>
@@ -233,26 +240,32 @@ export default function NewInvoiceForm() {
           </label>
         )}
 
-        <div className="invoice-summary-footer space-y-2">
-          <div className="flex justify-between text-sm text-slate-600">
-            <span>Subtotal</span>
-            <span>{formatCurrency(subtotal)}</span>
+        {lines.length > 0 && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="report-kpi">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Subtotal</p>
+              <p className="report-kpi-value text-slate-800">{formatCurrency(subtotal)}</p>
+            </div>
+            <div className="report-kpi">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">ITBIS ({ITBIS_RATE}%)</p>
+              <p className="report-kpi-value text-slate-700">{formatCurrency(itbis)}</p>
+            </div>
+            <div className="report-kpi border-blue-200/80 bg-gradient-to-br from-blue-50/80 to-white">
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Total</p>
+              <p className="report-kpi-value text-blue-700">{formatCurrency(total)}</p>
+            </div>
           </div>
-          <div className="flex justify-between text-sm text-slate-600">
-            <span>ITBIS ({ITBIS_RATE}%)</span>
-            <span>{formatCurrency(itbis)}</span>
-          </div>
-          <div className="flex justify-between font-bold text-lg border-t border-slate-200 pt-2">
-            <span>Total factura</span>
-            <span className="text-blue-700">{formatCurrency(total)}</span>
-          </div>
+        )}
+
+        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>}
+
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={() => router.back()} className="btn-secondary flex-1 sm:flex-none sm:min-w-[120px]">Cancelar</button>
+          <button type="submit" disabled={loading || !clientId} className="btn-primary flex-1 disabled:opacity-50">
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {submitLabel}
+          </button>
         </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <button type="submit" disabled={loading || !clientId} className="btn-primary w-full sm:w-auto disabled:opacity-50">
-          {submitLabel}
-        </button>
       </form>
     </DashboardLayout>
   );
