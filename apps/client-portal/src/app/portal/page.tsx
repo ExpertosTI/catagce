@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FileText, Truck, Package, ChevronRight, Wallet } from 'lucide-react';
 import PortalLayout from '../../components/PortalLayout';
+import { LoadingState } from '../../components/LoadingState';
 import { apiFetch } from '../../lib/api';
 import { formatUsd, InvoiceListItem, invoiceBalance } from '../../lib/invoice-utils';
 
@@ -47,7 +48,7 @@ export default function PortalHomePage() {
       </div>
 
       {loading ? (
-        <p className="text-slate-500 py-12 text-center">Cargando resumen...</p>
+        <LoadingState message="Cargando resumen..." />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

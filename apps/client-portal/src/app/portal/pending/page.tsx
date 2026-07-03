@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Package, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import PortalLayout from '../../../components/PortalLayout';
+import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { PORTAL_PAGE } from '../../../lib/page-titles';
 
@@ -70,7 +71,7 @@ export default function PendingMerchandisePage() {
       )}
 
       <div className="grid gap-3">
-        {loading && <p className="text-center text-slate-500 py-12">Cargando mercancía...</p>}
+        {loading && <LoadingState message="Cargando mercancía..." />}
 
         {!loading && filtered.map((item, i) => (
           <article key={i} className="executive-card flex justify-between items-center gap-4">

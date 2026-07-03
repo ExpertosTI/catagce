@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft, CheckCircle, FileText, Loader2, Phone, Mail, XCircle,
+  ArrowLeft, CheckCircle, FileText, Loader2, Phone, Mail, XCircle, Package,
 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { ReportTableCard } from '../../../../components/ReportTableCard';
@@ -191,7 +191,7 @@ export default function PresaleDetailPage({ params }: { params: { id: string } }
         )}
       </div>
 
-      <ReportTableCard title="Productos del pedido" subtitle={`${presale.items.length} líneas`}>
+      <ReportTableCard icon={<Package size={16} className="text-slate-500" />} title="Productos del pedido" subtitle={`${presale.items.length} líneas`}>
         <table className="w-full text-sm min-w-[400px]">
           <thead className="border-b bg-slate-50/50">
             <tr>

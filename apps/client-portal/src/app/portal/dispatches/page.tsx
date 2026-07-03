@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Truck, Package, FileText, Search, Calendar, CheckCircle } from 'lucide-react';
 import PortalLayout from '../../../components/PortalLayout';
+import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
 import { dispatchStatusLabel } from '../../../lib/labels';
 import { PORTAL_PAGE } from '../../../lib/page-titles';
@@ -70,7 +71,7 @@ export default function ClientDispatchesPage() {
       )}
 
       <div className="space-y-3">
-        {loading && <p className="text-center text-slate-500 py-12">Cargando despachos...</p>}
+        {loading && <LoadingState message="Cargando despachos..." />}
 
         {!loading && filtered.map((d) => (
           <article key={d.id} className="executive-card">
