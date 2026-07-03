@@ -7,6 +7,7 @@ export type InvoiceListItem = {
   taxAmount?: string | null;
   totalAmount: string;
   paidAmount?: string | null;
+  ncf?: string | null;
   issuedAt?: string | null;
   clientName?: string;
 };

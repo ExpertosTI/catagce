@@ -86,6 +86,26 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.action-bar {
+  @apply grid grid-cols-2 sm:flex sm:flex-wrap gap-2 p-3 bg-white/70 backdrop-blur-md border border-slate-200/70 rounded-2xl shadow-sm;
+}
+
+.action-chip {
+  @apply inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 hover:-translate-y-px transition-all duration-200 active:scale-[0.98];
+}
+
+.action-chip span {
+  @apply hidden sm:inline;
+}
+
+.action-chip-whatsapp {
+  @apply text-[#128C7E] border-[#25D366]/30 bg-gradient-to-br from-[#25D366]/10 to-white hover:border-[#25D366]/50;
+}
+
+.product-card {
+  @apply card overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+}
+
 .btn-subtle {
   @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 bg-white border border-slate-200/90 hover:bg-slate-50 transition;
 }
