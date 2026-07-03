@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ShoppingCart, Clock, CheckCircle } from 'lucide-react';
+import { Search, ShoppingCart, Clock, CheckCircle, ChevronRight } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { LoadingState } from '../../../components/LoadingState';
 import { EmptyState } from '../../../components/EmptyState';
@@ -19,7 +19,7 @@ type Presale = {
   totalAmount: string;
 };
 
-type StatusFilter = 'all' | 'pending' | 'confirmed';
+type StatusFilter = 'all' | 'open' | 'confirmed';
 
 export default function PresalesPage() {
   const [presales, setPresales] = useState<Presale[]>([]);
@@ -38,13 +38,13 @@ export default function PresalesPage() {
   const stats = useMemo(() => ({
     total: presales.length,
     amount: presales.reduce((s, p) => s + parseFloat(p.totalAmount || '0'), 0),
-    pending: presales.filter((p) => p.status === 'pending' || p.status === 'submitted').length,
+    pending: presales.filter((p) => p.status === 'open').length,
   }), [presales]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return presales.filter((p) => {
-      if (statusFilter === 'pending' && !['pending', 'submitted'].includes(p.status)) return false;
+      if (statusFilter === 'open' && p.status !== 'open') return false;
       if (statusFilter === 'confirmed' && p.status !== 'confirmed') return false;
       if (!q) return true;
       return p.reference.toLowerCase().includes(q) || p.clientName.toLowerCase().includes(q);
@@ -62,7 +62,7 @@ export default function PresalesPage() {
             <p className="report-kpi-value text-slate-800">{stats.total}</p>
           </div>
           <div className="report-kpi">
-            <p className="text-xs text-slate-500 font-medium">💰 Valor total</p>
+            <p className="text-xs text-slate-500 font-medium">Valor total</p>
             <p className="report-kpi-value text-blue-700">{formatCurrency(stats.amount)}</p>
           </div>
           <div className="report-kpi col-span-2 lg:col-span-1">
@@ -79,7 +79,7 @@ export default function PresalesPage() {
             <input className="input-search" placeholder="Buscar referencia o cliente..." value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <div className="report-tabs !mb-0 shrink-0">
-            {([['all', 'Todas'], ['pending', 'Pendientes'], ['confirmed', 'Confirmadas']] as const).map(([id, label]) => (
+            {([['all', 'Todas'], ['open', 'Abiertas'], ['confirmed', 'Confirmadas']] as const).map(([id, label]) => (
               <button key={id} type="button" onClick={() => setStatusFilter(id)} className={`report-tab ${statusFilter === id ? 'report-tab-active' : ''}`}>
                 {label}
               </button>
@@ -88,7 +88,7 @@ export default function PresalesPage() {
         </div>
       )}
 
-      {loading && <LoadingState emoji="🛒" message="Cargando preventas..." />}
+      {loading && <LoadingState message="Cargando preventas..." />}
       {!loading && error && <div className="executive-card p-8 text-center text-red-600">{error}</div>}
 
       {!loading && !error && presales.length === 0 && (
@@ -97,21 +97,26 @@ export default function PresalesPage() {
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {!loading && !error && filtered.map((p) => (
-          <article key={p.id} className="executive-card hover:shadow-md transition-shadow">
+          <Link key={p.id} href={`/dashboard/presales/${p.id}`} className="executive-card hover:shadow-md transition-all hover:-translate-y-px group block">
             <div className="flex justify-between gap-2 mb-2">
               <p className="font-bold text-slate-900">{p.reference}</p>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                p.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' : 'badge-amber'
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                p.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700' :
+                p.status === 'converted' ? 'bg-blue-50 text-blue-700' :
+                p.status === 'cancelled' ? 'bg-slate-100 text-slate-500' : 'badge-amber'
               }`}>
                 {presaleStatusLabel[p.status] ?? p.status}
               </span>
             </div>
             <p className="text-sm text-slate-600">{p.clientName}</p>
-            <p className="text-xl font-extrabold text-blue-700 mt-2 tabular-nums">{formatCurrency(p.totalAmount)}</p>
+            <div className="flex items-end justify-between mt-2">
+              <p className="text-xl font-extrabold text-blue-700 tabular-nums">{formatCurrency(p.totalAmount)}</p>
+              <ChevronRight size={18} className="text-slate-300 group-hover:text-blue-600 transition" />
+            </div>
             {p.status === 'confirmed' && (
-              <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1"><CheckCircle size={12} /> Confirmada</p>
+              <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1"><CheckCircle size={12} /> Lista para facturar</p>
             )}
-          </article>
+          </Link>
         ))}
       </div>
 

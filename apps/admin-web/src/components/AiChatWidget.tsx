@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, X, Send, Loader2, Bot } from 'lucide-react';
+import Link from 'next/link';
+import { Sparkles, X, Send, Loader2, Bot, Settings } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useCompany } from '../lib/useCompany';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -14,6 +16,8 @@ const SUGGESTIONS = [
 ];
 
 export function AiChatWidget() {
+  const company = useCompany();
+  const hasGeminiKey = company?.settings?.hasGeminiKey;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -37,7 +41,7 @@ export function AiChatWidget() {
         body: JSON.stringify({ message: content, history: nextMessages.slice(-8) }),
       });
       setMessages((prev) => [...prev, { role: 'assistant', content: res.reply }]);
-    } catch (err: unknown) {
+    } catch {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'No pude procesar su solicitud. Intente de nuevo.' }]);
     } finally {
       setLoading(false);
@@ -63,7 +67,7 @@ export function AiChatWidget() {
                 <Bot size={16} />
               </div>
               <div>
-                <p className="font-bold text-sm">Super AI ✨</p>
+                <p className="font-bold text-sm">Super AI</p>
                 <p className="text-[11px] opacity-80">Asistente GHome · datos en tiempo real</p>
               </div>
             </div>
@@ -71,6 +75,19 @@ export function AiChatWidget() {
               <X size={18} />
             </button>
           </div>
+
+          {company && !hasGeminiKey && (
+            <div className="mx-3 mt-3 p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/30 text-xs text-amber-50 flex items-start gap-2">
+              <Settings size={14} className="shrink-0 mt-0.5" />
+              <span>
+                Para respuestas inteligentes, configure su API de Google en{' '}
+                <Link href="/dashboard/settings" className="font-semibold underline hover:text-white" onClick={() => setOpen(false)}>
+                  Ajustes
+                </Link>
+                .
+              </span>
+            </div>
+          )}
 
           <div className="ai-chat-body">
             {messages.length === 0 && (

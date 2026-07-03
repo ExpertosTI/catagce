@@ -112,6 +112,7 @@ export class InvoicesService {
     relatedInvoiceId?: string;
     modificationReason?: string;
     initialPayment?: { amount: number; method?: string; reference?: string; notes?: string };
+    presaleId?: string;
   }) {
     const [client] = await this.db.select().from(clients)
       .where(and(eq(clients.id, data.clientId), eq(clients.companyId, user.companyId))).limit(1);
@@ -183,6 +184,7 @@ export class InvoicesService {
       dispatchedBy: data.dispatchedBy?.trim() || null,
       relatedInvoiceId: data.relatedInvoiceId ?? null,
       modificationReason: data.modificationReason ?? null,
+      presaleId: data.presaleId ?? null,
       createdById: user.userId,
     }).returning();
 

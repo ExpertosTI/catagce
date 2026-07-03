@@ -35,9 +35,7 @@ export default function ClientInvoicesPage() {
   return (
     <PortalLayout>
       <div className="mb-5">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <span aria-hidden>{PORTAL_PAGE.invoices.emoji}</span> {PORTAL_PAGE.invoices.title}
-        </h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{PORTAL_PAGE.invoices.title}</h2>
         <p className="text-slate-500 text-sm mt-1">{PORTAL_PAGE.invoices.subtitle}</p>
       </div>
 
@@ -52,7 +50,7 @@ export default function ClientInvoicesPage() {
       </div>
 
       <div className="space-y-3">
-        {loading && <p className="text-center text-slate-500 py-12">🧾 Cargando facturas...</p>}
+        {loading && <p className="text-center text-slate-500 py-12">Cargando facturas...</p>}
         {!loading && filtered.map((inv) => (
           <InvoiceCard
             key={inv.id}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body } from '@nestjs/common';
 import { CatalogsService, PresalesService } from './catalogs.service';
 import { StaffOnly } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/user.decorator';
@@ -40,5 +40,34 @@ export class CatalogsController {
   @Post('presales')
   createPresale(@CurrentUser() user: AuthUser, @Body() body: any) {
     return this.presalesService.create(user, body);
+  }
+
+  @StaffOnly()
+  @Get('presales/:id')
+  getPresale(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.presalesService.getById(user, id);
+  }
+
+  @StaffOnly()
+  @Patch('presales/:id/confirm')
+  confirmPresale(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.presalesService.confirm(user, id);
+  }
+
+  @StaffOnly()
+  @Patch('presales/:id/cancel')
+  cancelPresale(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.presalesService.cancel(user, id);
+  }
+
+  @StaffOnly()
+  @Post('presales/:id/convert-invoice')
+  convertPresale(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: {
+    invoiceType?: 'cash' | 'credit';
+    isFiscal?: boolean;
+    comprobanteType?: string;
+    issue?: boolean;
+  }) {
+    return this.presalesService.convertToInvoice(user, id, body);
   }
 }

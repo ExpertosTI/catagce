@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FileDown, Printer, AlertTriangle } from 'lucide-react';
+import { FileDown, Printer, AlertTriangle, Wallet, TrendingUp, Package, Users, Calendar, Search, CheckCircle, CircleDot } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { LoadingState } from '../../../components/LoadingState';
 import { ReportTableCard } from '../../../components/ReportTableCard';
@@ -10,7 +10,7 @@ import { apiFetch } from '../../../lib/api';
 import { formatCurrency } from '../../../lib/currency';
 import { exportCsv, printReportTable } from '../../../lib/report-utils';
 import { useCompany } from '../../../lib/useCompany';
-import { REPORT_TABS, PAGE } from '../../../lib/page-titles';
+import { PAGE } from '../../../lib/page-titles';
 
 type Tab = 'ar' | 'sales' | 'inventory';
 
@@ -34,14 +34,18 @@ type InventoryData = {
   totalValuacionCosto: number; totalValuacionVenta: number; lowStockCount: number;
 };
 
-const TABS = REPORT_TABS;
+const TAB_CONFIG = [
+  { id: 'ar' as const, label: 'Cuentas por cobrar', icon: Wallet },
+  { id: 'sales' as const, label: 'Ventas', icon: TrendingUp },
+  { id: 'inventory' as const, label: 'Inventario', icon: Package },
+];
 
 const AR_BUCKETS = [
-  { emoji: '✅', label: 'Corriente', key: 'corriente' as const, cls: 'text-emerald-700' },
-  { emoji: '🟡', label: '1-30 días', key: 'dias1a30' as const, cls: 'text-amber-600' },
-  { emoji: '🟠', label: '31-60 días', key: 'dias31a60' as const, cls: 'text-orange-600' },
-  { emoji: '🔴', label: '61-90 días', key: 'dias61a90' as const, cls: 'text-red-600' },
-  { emoji: '⛔', label: '90+ días', key: 'dias90mas' as const, cls: 'text-red-800' },
+  { icon: CheckCircle, label: 'Corriente', key: 'corriente' as const, cls: 'text-emerald-700', iconCls: 'text-emerald-500' },
+  { icon: CircleDot, label: '1-30 días', key: 'dias1a30' as const, cls: 'text-amber-600', iconCls: 'text-amber-500' },
+  { icon: CircleDot, label: '31-60 días', key: 'dias31a60' as const, cls: 'text-orange-600', iconCls: 'text-orange-500' },
+  { icon: CircleDot, label: '61-90 días', key: 'dias61a90' as const, cls: 'text-red-600', iconCls: 'text-red-500' },
+  { icon: AlertTriangle, label: '90+ días', key: 'dias90mas' as const, cls: 'text-red-800', iconCls: 'text-red-600' },
 ];
 
 export default function ReportsPage() {
@@ -99,38 +103,43 @@ export default function ReportsPage() {
       <PageHeader emoji={PAGE.reports.emoji} title={PAGE.reports.title} subtitle={PAGE.reports.subtitle} />
 
       <div className="report-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`report-tab ${tab === t.id ? 'report-tab-active' : 'hover:text-slate-700'}`}
-          >
-            {t.emoji} {t.label}
-          </button>
-        ))}
+        {TAB_CONFIG.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`report-tab ${tab === t.id ? 'report-tab-active' : 'hover:text-slate-700'}`}
+            >
+              <Icon size={15} className="inline -mt-0.5 mr-1" /> {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      {loading && <LoadingState emoji="📊" message="Cargando reportes..." />}
+      {loading && <LoadingState message="Cargando reportes..." />}
       {!loading && error && (
-        <div className="executive-card p-10 text-center text-red-600">❌ {error}</div>
+        <div className="executive-card p-10 text-center text-red-600">{error}</div>
       )}
 
       {!loading && !error && tab === 'ar' && ar && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {AR_BUCKETS.map((b) => (
-              <div key={b.key} className="report-kpi">
-                <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-                  <span aria-hidden>{b.emoji}</span> {b.label}
-                </p>
-                <p className={`report-kpi-value ${b.cls}`}>{formatCurrency(ar.buckets[b.key])}</p>
-              </div>
-            ))}
+            {AR_BUCKETS.map((b) => {
+              const Icon = b.icon;
+              return (
+                <div key={b.key} className="report-kpi">
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
+                    <Icon size={14} className={b.iconCls} /> {b.label}
+                  </p>
+                  <p className={`report-kpi-value ${b.cls}`}>{formatCurrency(ar.buckets[b.key])}</p>
+                </div>
+              );
+            })}
           </div>
 
           <ReportTableCard
-            emoji="💳"
             title="Saldo por cliente"
             subtitle={`Total pendiente: ${formatCurrency(ar.totalPending)}`}
             actions={(
@@ -172,7 +181,7 @@ export default function ReportsPage() {
                   </tr>
                 ))}
                 {!ar.clients.length && (
-                  <tr><td colSpan={4} className="p-8 text-center text-slate-500">🎉 Sin cuentas pendientes</td></tr>
+                  <tr><td colSpan={4} className="p-8 text-center text-slate-500">Sin cuentas pendientes</td></tr>
                 )}
               </tbody>
             </table>
@@ -184,34 +193,38 @@ export default function ReportsPage() {
         <div className="space-y-4">
           <div className="executive-card p-4 flex flex-wrap items-end gap-3">
             <div>
-              <label className="form-label">📅 Desde</label>
+              <label className="form-label flex items-center gap-1.5"><Calendar size={14} /> Desde</label>
               <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input text-sm" />
             </div>
             <div>
-              <label className="form-label">📅 Hasta</label>
+              <label className="form-label flex items-center gap-1.5"><Calendar size={14} /> Hasta</label>
               <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input text-sm" />
             </div>
-            <button type="button" onClick={refreshSales} className="btn-primary text-sm">🔍 Filtrar</button>
+            <button type="button" onClick={refreshSales} className="btn-primary text-sm">
+              <Search size={14} /> Filtrar
+            </button>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { emoji: '📈', label: 'Total facturado', value: sales.totalFacturado, cls: 'text-blue-700' },
-              { emoji: '✅', label: 'Total cobrado', value: sales.totalCobrado, cls: 'text-emerald-700' },
-              { emoji: '💳', label: 'Saldo pendiente', value: sales.totalPendiente, cls: 'text-red-600' },
-              { emoji: '🧾', label: `Facturas (${sales.cantidadFacturas})`, value: sales.totalCredito + sales.totalContado, cls: 'text-slate-700' },
-            ].map((s) => (
-              <div key={s.label} className="report-kpi">
-                <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-                  <span aria-hidden>{s.emoji}</span> {s.label}
-                </p>
-                <p className={`report-kpi-value ${s.cls}`}>{formatCurrency(s.value)}</p>
-              </div>
-            ))}
+              { icon: TrendingUp, label: 'Total facturado', value: sales.totalFacturado, cls: 'text-blue-700', iconCls: 'text-blue-500' },
+              { icon: CheckCircle, label: 'Total cobrado', value: sales.totalCobrado, cls: 'text-emerald-700', iconCls: 'text-emerald-500' },
+              { icon: Wallet, label: 'Saldo pendiente', value: sales.totalPendiente, cls: 'text-red-600', iconCls: 'text-red-500' },
+              { icon: Users, label: `Facturas (${sales.cantidadFacturas})`, value: sales.totalCredito + sales.totalContado, cls: 'text-slate-700', iconCls: 'text-slate-500' },
+            ].map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.label} className="report-kpi">
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
+                    <Icon size={14} className={s.iconCls} /> {s.label}
+                  </p>
+                  <p className={`report-kpi-value ${s.cls}`}>{formatCurrency(s.value)}</p>
+                </div>
+              );
+            })}
           </div>
 
           <ReportTableCard
-            emoji="👥"
             title="Principales clientes"
             actions={(
               <>
@@ -239,7 +252,7 @@ export default function ReportsPage() {
                   </tr>
                 ))}
                 {!sales.topClients.length && (
-                  <tr><td colSpan={3} className="p-8 text-center text-slate-500">📉 Sin ventas en este período</td></tr>
+                  <tr><td colSpan={3} className="p-8 text-center text-slate-500">Sin ventas en este período</td></tr>
                 )}
               </tbody>
             </table>
@@ -251,15 +264,15 @@ export default function ReportsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="report-kpi">
-              <p className="text-xs text-slate-500 font-medium">💵 Valorización (costo)</p>
+              <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5"><Wallet size={14} className="text-blue-500" /> Valorización (costo)</p>
               <p className="report-kpi-value text-blue-700">{formatCurrency(inventory.totalValuacionCosto)}</p>
             </div>
             <div className="report-kpi">
-              <p className="text-xs text-slate-500 font-medium">💰 Valorización (venta)</p>
+              <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5"><TrendingUp size={14} className="text-emerald-500" /> Valorización (venta)</p>
               <p className="report-kpi-value text-emerald-700">{formatCurrency(inventory.totalValuacionVenta)}</p>
             </div>
             <div className="report-kpi">
-              <p className="text-xs text-slate-500 font-medium">⚠️ Bajo stock mínimo</p>
+              <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5"><AlertTriangle size={14} className="text-amber-500" /> Bajo stock mínimo</p>
               <p className="report-kpi-value text-amber-600 flex items-center gap-1.5">
                 {inventory.lowStockCount > 0 && <AlertTriangle size={16} />} {inventory.lowStockCount}
               </p>
@@ -267,7 +280,6 @@ export default function ReportsPage() {
           </div>
 
           <ReportTableCard
-            emoji="📦"
             title="Inventario disponible"
             actions={(
               <>
@@ -309,7 +321,7 @@ export default function ReportsPage() {
                   </tr>
                 ))}
                 {!inventory.products.length && (
-                  <tr><td colSpan={5} className="p-8 text-center text-slate-500">📦 Sin productos en inventario</td></tr>
+                  <tr><td colSpan={5} className="p-8 text-center text-slate-500">Sin productos en inventario</td></tr>
                 )}
               </tbody>
             </table>
