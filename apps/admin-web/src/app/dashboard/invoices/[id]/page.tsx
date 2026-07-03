@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
+import DashboardLayout from '../../../../components/DashboardLayout';
 import { InvoiceDetailView } from '../../../../components/InvoiceDetailView';
+import { LoadingState } from '../../../../components/LoadingState';
 import { apiFetch } from '../../../../lib/api';
-import { PAGE } from '../../../../lib/page-titles';
 import { InvoiceDetail } from '../../../../lib/invoice-utils';
 
 export default function AdminInvoiceDetailPage({ params }: { params: { id: string } }) {
@@ -29,7 +29,6 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
   if (error) {
     return (
       <DashboardLayout>
-        <PageHeader emoji={PAGE.invoicesNotFound.emoji} title={PAGE.invoicesNotFound.title} />
         <div className="executive-card p-8 text-center text-slate-500">❌ {error}</div>
       </DashboardLayout>
     );
@@ -38,10 +37,7 @@ export default function AdminInvoiceDetailPage({ params }: { params: { id: strin
   if (!invoice) {
     return (
       <DashboardLayout>
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-200 rounded w-48" />
-          <div className="h-32 bg-slate-100 rounded-xl" />
-        </div>
+        <LoadingState emoji="🧾" message="Cargando factura..." />
       </DashboardLayout>
     );
   }

@@ -1,14 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Loader2, Plus, Minus } from 'lucide-react';
+import { Sparkles, Loader2, Plus, Minus, ArrowLeft, Package, History } from 'lucide-react';
 import DashboardLayout, { PageHeader, SectionTitle } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
 import { SegmentedControl } from '../../../../components/SegmentedControl';
+import { CurrencyInput } from '../../../../components/CurrencyInput';
+import { ReportTableCard } from '../../../../components/ReportTableCard';
+import { LoadingState } from '../../../../components/LoadingState';
 import { apiFetch } from '../../../../lib/api';
+import { formatAmount, formatCurrency } from '../../../../lib/currency';
 import { PAGE } from '../../../../lib/page-titles';
 import { useAppDialog } from '../../../../components/AppDialogProvider';
 
@@ -29,7 +34,9 @@ const MOVEMENT_TYPE_LABEL: Record<string, string> = {
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { confirm, alert } = useAppDialog();
-  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', minStock: 0 });
+  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: 0, costPrice: 0, imageUrl: '', minStock: 0 });
+  const [saleDisplay, setSaleDisplay] = useState('');
+  const [costDisplay, setCostDisplay] = useState('');
   const [availableQty, setAvailableQty] = useState(0);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -45,15 +52,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   function loadProduct() {
     return apiFetch<any>(`/products/${params.id}`).then((p) => {
       const stock = p.stock?.[0];
+      const sale = parseFloat(p.salePrice ?? '0');
+      const cost = parseFloat(p.costPrice ?? '0');
       setForm({
         sku: p.sku ?? '',
         name: p.name ?? '',
         description: p.description ?? '',
-        salePrice: p.salePrice ?? '',
-        costPrice: p.costPrice ?? '',
+        salePrice: sale,
+        costPrice: cost,
         imageUrl: p.media?.find((m: any) => m.isPrimary)?.url ?? p.media?.[0]?.url ?? '',
         minStock: p.minStock ?? 0,
       });
+      setSaleDisplay(formatAmount(sale));
+      setCostDisplay(cost ? formatAmount(cost) : '');
       setAvailableQty(stock?.availableQty ?? 0);
     });
   }
@@ -92,8 +103,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           sku: form.sku,
           name: form.name,
           description: form.description || undefined,
-          salePrice: parseFloat(form.salePrice),
-          costPrice: form.costPrice ? parseFloat(form.costPrice) : undefined,
+          salePrice: form.salePrice,
+          costPrice: form.costPrice || undefined,
           imageUrl: form.imageUrl || undefined,
           minStock: form.minStock,
         }),
@@ -146,17 +157,44 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
   }
 
+  const stockValue = availableQty * form.salePrice;
+  const stockCost = availableQty * form.costPrice;
+
   if (!ready) {
     return (
       <DashboardLayout>
-        <div className="animate-pulse h-64 bg-slate-100 rounded-2xl" />
+        <LoadingState emoji="📦" message="Cargando producto..." />
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <PageHeader emoji={PAGE.productsEdit.emoji} title={PAGE.productsEdit.title} subtitle={PAGE.productsEdit.subtitle} />
+      <Link href="/dashboard/products" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
+        <ArrowLeft size={16} /> Volver a mercancía
+      </Link>
+
+      <PageHeader emoji={PAGE.productsEdit.emoji} title={form.name || PAGE.productsEdit.title} subtitle={form.sku} />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Package size={14} /> Disponible</p>
+          <p className={`report-kpi-value ${availableQty <= form.minStock ? 'text-amber-600' : 'text-emerald-700'}`}>{availableQty}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium">💰 Precio venta</p>
+          <p className="report-kpi-value text-blue-700 text-lg">{formatCurrency(form.salePrice)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium">📦 Valor en stock</p>
+          <p className="report-kpi-value text-emerald-700 text-lg">{formatCurrency(stockValue)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium">💵 Costo en stock</p>
+          <p className="report-kpi-value text-slate-700 text-lg">{formatCurrency(stockCost)}</p>
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6 items-start">
         <form onSubmit={submit} className="form-card space-y-4">
           <ImageUploadField value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} label="Foto del producto" />
@@ -170,51 +208,48 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           <FormField label="Descripción">
             <div className="space-y-2">
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" rows={3} />
-              <button
-                type="button"
-                onClick={generateDescription}
-                disabled={generating}
-                className="btn-subtle btn-subtle-primary text-xs disabled:opacity-50"
-              >
+              <button type="button" onClick={generateDescription} disabled={generating} className="action-chip action-chip-success text-xs disabled:opacity-50">
                 {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {generating ? 'Generando...' : 'Generar con IA'}
+                <span className="!inline">{generating ? 'Generando...' : 'Generar con IA'}</span>
               </button>
             </div>
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Precio de venta">
-              <input type="number" step="0.01" min={0} value={form.salePrice} onChange={(e) => setForm({ ...form, salePrice: e.target.value })} className="input" required />
+              <CurrencyInput
+                value={saleDisplay}
+                onChange={(num, display) => { setForm({ ...form, salePrice: num }); setSaleDisplay(display); }}
+              />
             </FormField>
             <FormField label="Costo">
-              <input type="number" step="0.01" min={0} value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} className="input" />
+              <CurrencyInput
+                value={costDisplay}
+                onChange={(num, display) => { setForm({ ...form, costPrice: num }); setCostDisplay(display); }}
+              />
             </FormField>
           </div>
-          <FormField label="Stock mínimo (alerta de bajo inventario)">
+          <FormField label="Stock mínimo (alerta)">
             <QuantityStepper value={form.minStock} onChange={(v) => setForm({ ...form, minStock: v })} min={0} />
           </FormField>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             <button type="button" onClick={() => router.back()} className="btn-secondary">Cancelar</button>
             <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
               {loading ? 'Guardando...' : 'Guardar cambios'}
             </button>
-            <button type="button" onClick={remove} className="btn-secondary text-red-600 border-red-200 ml-auto">Eliminar producto</button>
+            <button type="button" onClick={remove} className="action-chip !text-red-600 !border-red-200 hover:!bg-red-50 ml-auto">
+              Eliminar
+            </button>
           </div>
         </form>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="executive-card p-5">
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <SectionTitle emoji="📦">Inventario disponible</SectionTitle>
-                <p className={`text-3xl font-bold mt-1 ${availableQty <= form.minStock ? 'text-amber-600' : 'text-emerald-700'}`}>{availableQty}</p>
-              </div>
-              {availableQty <= form.minStock && (
-                <span className="badge-amber shrink-0">⚠️ Bajo stock</span>
-              )}
+              <SectionTitle emoji="📦">Ajustar inventario</SectionTitle>
+              {availableQty <= form.minStock && <span className="badge-amber shrink-0">Bajo stock</span>}
             </div>
 
-            <form onSubmit={applyAdjustment} className="space-y-3 pt-4 border-t border-slate-100">
-              <p className="form-label">⚖️ Ajustar inventario</p>
+            <form onSubmit={applyAdjustment} className="space-y-3">
               <SegmentedControl<'in' | 'out'>
                 value={adjustDirection}
                 onChange={setAdjustDirection}
@@ -228,38 +263,42 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <input
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
-                  className="input flex-1"
-                  placeholder="Motivo (ej. conteo físico, daño, devolución)"
+                  className="input flex-1 text-sm"
+                  placeholder="Motivo (conteo, daño, devolución...)"
                 />
               </div>
               {adjustError && <p className="text-sm text-red-600">{adjustError}</p>}
-              <button type="submit" disabled={adjusting} className="btn-primary text-sm disabled:opacity-50">
+              <button type="submit" disabled={adjusting} className="btn-primary text-sm w-full disabled:opacity-50">
                 {adjustDirection === 'in' ? <Plus size={15} /> : <Minus size={15} />}
                 {adjusting ? 'Aplicando...' : 'Aplicar ajuste'}
               </button>
             </form>
           </div>
 
-          <div className="executive-card overflow-hidden !p-0">
-            <div className="px-4 py-3 border-b bg-slate-50 font-semibold text-sm">📋 Historial de movimientos</div>
+          <ReportTableCard emoji="📋" title="Historial de movimientos" subtitle={`${movements.length} movimientos`}>
             <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
               {movements.map((m) => (
                 <li key={m.id} className="px-4 py-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{MOVEMENT_TYPE_LABEL[m.type] ?? m.type}</span>
-                    <span className={`font-bold ${m.quantityChange >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                    <span className="font-semibold text-slate-800">{MOVEMENT_TYPE_LABEL[m.type] ?? m.type}</span>
+                    <span className={`font-bold tabular-nums ${m.quantityChange >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                       {m.quantityChange >= 0 ? '+' : ''}{m.quantityChange}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {new Date(m.createdAt).toLocaleString('es-DO', { dateStyle: 'medium', timeStyle: 'short' })} · Resultante: {m.resultingQty}
+                    {new Date(m.createdAt).toLocaleString('es-DO', { dateStyle: 'medium', timeStyle: 'short' })}
+                    {' · '}Queda: {m.resultingQty}
                     {m.reason ? ` · ${m.reason}` : ''}
                   </p>
                 </li>
               ))}
-              {!movements.length && <li className="p-6 text-center text-slate-400 text-sm">📋 Sin movimientos registrados</li>}
+              {!movements.length && (
+                <li className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
+                  <History size={24} className="opacity-40" /> Sin movimientos registrados
+                </li>
+              )}
             </ul>
-          </div>
+          </ReportTableCard>
         </div>
       </div>
     </DashboardLayout>

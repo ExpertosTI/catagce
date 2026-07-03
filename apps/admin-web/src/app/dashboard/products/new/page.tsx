@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, ArrowLeft } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
 import { ImageUploadField } from '../../../../components/ImageUploadField';
 import { QuantityStepper } from '../../../../components/QuantityStepper';
+import { CurrencyInput } from '../../../../components/CurrencyInput';
 import { apiFetch } from '../../../../lib/api';
 import { PAGE } from '../../../../lib/page-titles';
 import { useAppDialog } from '../../../../components/AppDialogProvider';
@@ -14,7 +16,9 @@ import { useAppDialog } from '../../../../components/AppDialogProvider';
 export default function NewProductPage() {
   const router = useRouter();
   const { alert } = useAppDialog();
-  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: '', costPrice: '', imageUrl: '', stockQty: 0, minStock: 0 });
+  const [form, setForm] = useState({ sku: '', name: '', description: '', salePrice: 0, costPrice: 0, imageUrl: '', stockQty: 0, minStock: 0 });
+  const [saleDisplay, setSaleDisplay] = useState('');
+  const [costDisplay, setCostDisplay] = useState('');
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
@@ -47,8 +51,8 @@ export default function NewProductPage() {
           sku: form.sku,
           name: form.name,
           description: form.description || undefined,
-          salePrice: parseFloat(form.salePrice),
-          costPrice: form.costPrice ? parseFloat(form.costPrice) : undefined,
+          salePrice: form.salePrice,
+          costPrice: form.costPrice || undefined,
           imageUrl: form.imageUrl || undefined,
           stockQty: form.stockQty || undefined,
           minStock: form.minStock || undefined,
@@ -64,6 +68,9 @@ export default function NewProductPage() {
 
   return (
     <DashboardLayout>
+      <Link href="/dashboard/products" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
+        <ArrowLeft size={16} /> Volver a mercancía
+      </Link>
       <PageHeader emoji={PAGE.productsNew.emoji} title={PAGE.productsNew.title} subtitle={PAGE.productsNew.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
         <ImageUploadField value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} label="Foto del producto" />
@@ -77,36 +84,40 @@ export default function NewProductPage() {
         <FormField label="Descripción">
           <div className="space-y-2">
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" rows={3} />
-            <button
-              type="button"
-              onClick={generateDescription}
-              disabled={generating}
-              className="btn-subtle btn-subtle-primary text-xs disabled:opacity-50"
-            >
+            <button type="button" onClick={generateDescription} disabled={generating} className="action-chip action-chip-success text-xs disabled:opacity-50">
               {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              {generating ? 'Generando...' : 'Generar con IA'}
+              <span className="!inline">{generating ? 'Generando...' : 'Generar con IA'}</span>
             </button>
           </div>
         </FormField>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Precio de venta">
-            <input type="number" step="0.01" min={0} value={form.salePrice} onChange={(e) => setForm({ ...form, salePrice: e.target.value })} className="input" required />
+            <CurrencyInput
+              value={saleDisplay}
+              onChange={(num, display) => { setForm({ ...form, salePrice: num }); setSaleDisplay(display); }}
+            />
           </FormField>
           <FormField label="Costo">
-            <input type="number" step="0.01" min={0} value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} className="input" />
+            <CurrencyInput
+              value={costDisplay}
+              onChange={(num, display) => { setForm({ ...form, costPrice: num }); setCostDisplay(display); }}
+            />
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Cantidad inicial en inventario">
+          <FormField label="Stock inicial">
             <QuantityStepper value={form.stockQty} onChange={(v) => setForm({ ...form, stockQty: v })} min={0} />
           </FormField>
-          <FormField label="Stock mínimo (alerta)">
+          <FormField label="Stock mínimo">
             <QuantityStepper value={form.minStock} onChange={(v) => setForm({ ...form, minStock: v })} min={0} />
           </FormField>
         </div>
-        <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
-          {loading ? 'Creando...' : 'Crear producto'}
-        </button>
+        <div className="flex gap-2 pt-2">
+          <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">Cancelar</button>
+          <button type="submit" disabled={loading} className="btn-primary flex-1 disabled:opacity-50">
+            {loading ? 'Creando...' : 'Crear producto'}
+          </button>
+        </div>
       </form>
     </DashboardLayout>
   );

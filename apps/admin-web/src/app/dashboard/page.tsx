@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Sparkles, RefreshCw, TrendingUp, Wallet, Truck, Package,
-  FileText, Users, AlertCircle, ArrowRight, Zap,
+  FileText, Users, AlertCircle, ArrowRight, Zap, FilePlus, Boxes,
 } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../components/DashboardLayout';
 import { LoadingState } from '../../components/LoadingState';
@@ -18,10 +18,10 @@ import type { DashboardSummary } from '../../lib/dashboard-types';
 const POLL_MS = 30_000;
 
 const QUICK_ACTIONS = [
-  { href: '/dashboard/invoices/new', emoji: '📝', label: 'Nueva factura', color: 'from-blue-600 to-indigo-700' },
-  { href: '/dashboard/payments', emoji: '💰', label: 'Registrar pago', color: 'from-emerald-600 to-teal-700' },
-  { href: '/dashboard/dispatches/new', emoji: '🚚', label: 'Despacho', color: 'from-orange-500 to-amber-600' },
-  { href: '/dashboard/products/new', emoji: '📦', label: 'Nuevo producto', color: 'from-violet-600 to-purple-700' },
+  { href: '/dashboard/invoices/new', label: 'Nueva factura', color: 'from-blue-600 to-indigo-700', icon: FilePlus },
+  { href: '/dashboard/invoices', label: 'Registrar pago', color: 'from-emerald-600 to-teal-700', icon: Wallet },
+  { href: '/dashboard/dispatches/new', label: 'Despacho', color: 'from-orange-500 to-amber-600', icon: Truck },
+  { href: '/dashboard/products/new', label: 'Nuevo producto', color: 'from-violet-600 to-purple-700', icon: Boxes },
 ];
 
 function LiveDot() {
@@ -181,43 +181,51 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Hero KPIs */}
+      {/* Hero KPIs — clicables */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <KpiHero
-          label="Ventas del mes"
-          value={formatCurrency(data?.salesMonth?.total ?? 0)}
-          sub={`${data?.salesMonth?.count ?? 0} facturas`}
-          icon={TrendingUp}
-          gradient="from-blue-600 to-blue-800"
-        />
-        <KpiHero
-          label="Cobrado hoy"
-          value={formatCurrency(data?.paymentsToday?.total ?? 0)}
-          sub={`${data?.paymentsToday?.count ?? 0} pagos`}
-          icon={Wallet}
-          gradient="from-emerald-600 to-teal-700"
-        />
-        <KpiHero
-          label="Por cobrar"
-          value={formatCurrency(data?.invoices?.creditPending ?? 0)}
-          sub={`${data?.invoices?.openCount ?? 0} abiertas`}
-          icon={FileText}
-          gradient="from-amber-500 to-orange-600"
-        />
-        <KpiHero
-          label="Vencidas"
-          value={String(data?.overdue?.count ?? 0)}
-          sub={data?.overdue?.count ? formatCurrency(data.overdue.total ?? 0) : 'Sin vencidas'}
-          icon={AlertCircle}
-          gradient="from-red-500 to-rose-600"
-        />
+        <Link href="/dashboard/reports" className="block">
+          <KpiHero
+            label="Ventas del mes"
+            value={formatCurrency(data?.salesMonth?.total ?? 0)}
+            sub={`${data?.salesMonth?.count ?? 0} facturas`}
+            icon={TrendingUp}
+            gradient="from-blue-600 to-blue-800"
+          />
+        </Link>
+        <Link href="/dashboard/payments" className="block">
+          <KpiHero
+            label="Cobrado hoy"
+            value={formatCurrency(data?.paymentsToday?.total ?? 0)}
+            sub={`${data?.paymentsToday?.count ?? 0} pagos`}
+            icon={Wallet}
+            gradient="from-emerald-600 to-teal-700"
+          />
+        </Link>
+        <Link href="/dashboard/invoices?filter=open" className="block">
+          <KpiHero
+            label="Por cobrar"
+            value={formatCurrency(data?.invoices?.creditPending ?? 0)}
+            sub={`${data?.invoices?.openCount ?? 0} abiertas`}
+            icon={FileText}
+            gradient="from-amber-500 to-orange-600"
+          />
+        </Link>
+        <Link href="/dashboard/invoices?filter=overdue" className="block">
+          <KpiHero
+            label="Vencidas"
+            value={String(data?.overdue?.count ?? 0)}
+            sub={data?.overdue?.count ? formatCurrency(data.overdue.total ?? 0) : 'Sin vencidas'}
+            icon={AlertCircle}
+            gradient="from-red-500 to-rose-600"
+          />
+        </Link>
       </div>
 
       {/* Quick actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
         {QUICK_ACTIONS.map((a) => (
           <Link key={a.href} href={a.href} className={`dashboard-quick-action bg-gradient-to-br ${a.color}`}>
-            <span className="text-xl" aria-hidden>{a.emoji}</span>
+            <a.icon size={20} className="opacity-90" />
             <span className="text-sm font-semibold">{a.label}</span>
             <ArrowRight size={14} className="ml-auto opacity-70" />
           </Link>
@@ -227,19 +235,19 @@ export default function DashboardPage() {
       {/* Secondary stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
         {[
-          { emoji: '🧾', label: 'Facturas emitidas', value: data?.invoices?.total ?? '—', color: 'text-blue-700' },
-          { emoji: '🚚', label: 'Despachos pendientes', value: data?.pendingDispatch?.count ?? '—', color: 'text-orange-700' },
-          { emoji: '📦', label: 'Unidades por despachar', value: data?.pendingDispatch?.units ?? '—', color: 'text-orange-700' },
-          { emoji: '🏭', label: 'En almacén', value: data?.stock?.inWarehouse ?? '—', color: 'text-emerald-700' },
-          { emoji: '🔒', label: 'Reservadas', value: data?.stock?.reserved ?? '—', color: 'text-slate-700' },
-          { emoji: '👥', label: 'Clientes activos', value: data?.activeClients ?? '—', color: 'text-blue-700' },
+          { href: '/dashboard/invoices', label: 'Facturas emitidas', value: data?.invoices?.total ?? '—', icon: FileText, color: 'text-blue-700' },
+          { href: '/dashboard/dispatches', label: 'Despachos pendientes', value: data?.pendingDispatch?.count ?? '—', icon: Truck, color: 'text-orange-700' },
+          { href: '/dashboard/dispatches', label: 'Unidades por despachar', value: data?.pendingDispatch?.units ?? '—', icon: Package, color: 'text-orange-700' },
+          { href: '/dashboard/products', label: 'En almacén', value: data?.stock?.inWarehouse ?? '—', icon: Boxes, color: 'text-emerald-700' },
+          { href: '/dashboard/products', label: 'Reservadas', value: data?.stock?.reserved ?? '—', icon: Package, color: 'text-slate-700' },
+          { href: '/dashboard/clients', label: 'Clientes activos', value: data?.activeClients ?? '—', icon: Users, color: 'text-blue-700' },
         ].map((card) => (
-          <div key={card.label} className="dashboard-stat-tile">
-            <p className="text-xs text-slate-500 flex items-center gap-1.5">
-              <span aria-hidden>{card.emoji}</span> {card.label}
+          <Link key={card.label} href={card.href} className="dashboard-stat-tile hover:shadow-md transition-shadow block">
+            <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
+              <card.icon size={14} className="text-slate-400" /> {card.label}
             </p>
-            <p className={`text-xl sm:text-2xl font-bold mt-1 ${card.color}`}>{card.value}</p>
-          </div>
+            <p className={`text-xl sm:text-2xl font-extrabold mt-1 tabular-nums ${card.color}`}>{card.value}</p>
+          </Link>
         ))}
       </div>
 
@@ -260,7 +268,7 @@ export default function DashboardPage() {
                   <p className="font-medium truncate">{p.clientName}</p>
                   <p className="text-xs text-slate-400">{p.invoiceReference}</p>
                 </div>
-                <span className="font-bold text-emerald-700 shrink-0">{formatCurrency(p.amount)}</span>
+                <span className="font-bold text-emerald-700 shrink-0 tabular-nums">{formatCurrency(p.amount)}</span>
               </li>
             ))}
           </ul>
@@ -283,7 +291,7 @@ export default function DashboardPage() {
                     <p className="font-medium truncate">{inv.ncf ?? inv.reference}</p>
                     <p className="text-xs text-slate-400">{inv.clientName} · {invoiceStatusText(inv.status)}</p>
                   </div>
-                  <span className="font-bold text-slate-800 shrink-0">{formatCurrency(inv.totalAmount)}</span>
+                  <span className="font-bold text-slate-800 shrink-0 tabular-nums">{formatCurrency(inv.totalAmount)}</span>
                 </Link>
               </li>
             ))}

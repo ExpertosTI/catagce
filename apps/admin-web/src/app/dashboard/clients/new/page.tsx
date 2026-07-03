@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../../components/DashboardLayout';
 import { FormField } from '../../../../components/FormField';
+import { CurrencyInput } from '../../../../components/CurrencyInput';
 import { apiFetch } from '../../../../lib/api';
 import { PAGE } from '../../../../lib/page-titles';
 import { useAppDialog } from '../../../../components/AppDialogProvider';
@@ -12,6 +15,7 @@ export default function NewClientPage() {
   const router = useRouter();
   const { alert } = useAppDialog();
   const [form, setForm] = useState({ name: '', email: '', phone: '', taxId: '', address: '', creditLimit: 50000, creditDays: 30 });
+  const [creditDisplay, setCreditDisplay] = useState('50,000.00');
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -29,16 +33,19 @@ export default function NewClientPage() {
 
   return (
     <DashboardLayout>
+      <Link href="/dashboard/clients" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
+        <ArrowLeft size={16} /> Volver a clientes
+      </Link>
       <PageHeader emoji={PAGE.clientsNew.emoji} title={PAGE.clientsNew.title} subtitle={PAGE.clientsNew.subtitle} />
       <form onSubmit={submit} className="form-card max-w-lg space-y-4">
-        <FormField label="Nombre">
+        <FormField label="Nombre *">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" required />
         </FormField>
-        <FormField label="Correo electrónico">
-          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" required />
+        <FormField label="Teléfono (WhatsApp) *">
+          <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder="8095551234" required />
         </FormField>
-        <FormField label="Teléfono (WhatsApp)">
-          <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder="8095551234" />
+        <FormField label="Correo electrónico">
+          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" placeholder="Opcional" />
         </FormField>
         <FormField label="RNC / Cédula">
           <input value={form.taxId} onChange={(e) => setForm({ ...form, taxId: e.target.value })} className="input" />
@@ -48,15 +55,21 @@ export default function NewClientPage() {
         </FormField>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Límite de crédito">
-            <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: Number(e.target.value) })} className="input" />
+            <CurrencyInput
+              value={creditDisplay}
+              onChange={(num, display) => { setForm({ ...form, creditLimit: num }); setCreditDisplay(display); }}
+            />
           </FormField>
           <FormField label="Días de crédito">
             <input type="number" value={form.creditDays} onChange={(e) => setForm({ ...form, creditDays: Number(e.target.value) })} className="input" />
           </FormField>
         </div>
-        <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
-          {loading ? 'Creando...' : 'Crear cliente'}
-        </button>
+        <div className="flex gap-2 pt-2">
+          <button type="button" onClick={() => router.back()} className="btn-secondary flex-1">Cancelar</button>
+          <button type="submit" disabled={loading} className="btn-primary flex-1 disabled:opacity-50">
+            {loading ? 'Creando...' : 'Crear cliente'}
+          </button>
+        </div>
       </form>
     </DashboardLayout>
   );

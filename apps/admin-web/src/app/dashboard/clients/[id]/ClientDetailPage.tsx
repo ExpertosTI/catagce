@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Pencil, ArrowLeft, Plus, Phone, Mail, MapPin } from 'lucide-react';
-import DashboardLayout, { PageHeader, SectionTitle, ActionButton } from '../../../../components/DashboardLayout';
+import { useSearchParams } from 'next/navigation';
+import { Pencil, ArrowLeft, Plus, Phone, Mail, MapPin, FileText, Wallet } from 'lucide-react';
+import DashboardLayout, { SectionTitle } from '../../../../components/DashboardLayout';
 import { InvoiceCard } from '../../../../components/InvoiceCard';
 import { FormField } from '../../../../components/FormField';
+import { CurrencyInput } from '../../../../components/CurrencyInput';
+import { LoadingState } from '../../../../components/LoadingState';
 import { apiFetch } from '../../../../lib/api';
 import { useAppDialog } from '../../../../components/AppDialogProvider';
-import { clientStatusLabel, formatMoney } from '../../../../lib/labels';
-import { PAGE } from '../../../../lib/page-titles';
+import { clientStatusLabel } from '../../../../lib/labels';
+import { formatCurrency, formatAmount } from '../../../../lib/currency';
 import { InvoiceListItem, invoiceBalance, formatUsd } from '../../../../lib/invoice-utils';
 
 type Client = {
@@ -38,12 +40,12 @@ const defaultForm = { name: '', email: '', phone: '', taxId: '', address: '', cr
 
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const { alert } = useAppDialog();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'edit' ? 'edit' : 'invoices';
   const [client, setClient] = useState<Client | null>(null);
   const [invoices, setInvoices] = useState<InvoiceListItem[]>([]);
   const [form, setForm] = useState(defaultForm);
+  const [creditDisplay, setCreditDisplay] = useState('');
   const [tab, setTab] = useState<'invoices' | 'edit'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,15 +60,17 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       .then(([c, inv]) => {
         setClient(c);
         setInvoices(inv);
+        const credit = parseFloat(c.creditLimit || '0');
         setForm({
           name: c.name ?? '',
           email: c.email ?? '',
           phone: c.phone ?? '',
           taxId: c.taxId ?? '',
           address: c.address ?? '',
-          creditLimit: parseFloat(c.creditLimit || '0'),
+          creditLimit: credit,
           creditDays: c.creditDays ?? 30,
         });
+        setCreditDisplay(formatAmount(credit));
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -89,11 +93,12 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   }
 
   const totalBalance = invoices.reduce((s, i) => s + invoiceBalance(i), 0);
+  const totalInvoiced = invoices.reduce((s, i) => s + parseFloat(i.totalAmount || '0'), 0);
+  const paidCount = invoices.filter((i) => invoiceBalance(i) <= 0.01).length;
 
   if (notFound) {
     return (
       <DashboardLayout>
-        <PageHeader emoji={PAGE.clientsNotFound.emoji} title={PAGE.clientsNotFound.title} />
         <div className="executive-card p-8 text-center text-slate-500">No se pudo cargar este cliente.</div>
       </DashboardLayout>
     );
@@ -102,64 +107,65 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   if (loading || !client) {
     return (
       <DashboardLayout>
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-200 rounded w-48" />
-          <div className="h-32 bg-slate-100 rounded-2xl" />
-          <div className="h-48 bg-slate-100 rounded-2xl" />
-        </div>
+        <LoadingState emoji="👤" message="Cargando cliente..." />
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <button type="button" onClick={() => router.push('/dashboard/clients')} className="text-blue-700 text-sm font-medium hover:underline inline-flex items-center gap-1 mb-4">
-        <ArrowLeft size={16} /> 👥 Volver a clientes
-      </button>
+      <Link href="/dashboard/clients" className="text-blue-700 text-sm font-semibold hover:underline inline-flex items-center gap-1.5 mb-4">
+        <ArrowLeft size={16} /> Volver a clientes
+      </Link>
 
       <div className="executive-card mb-5">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center text-2xl font-bold shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-2xl font-bold shrink-0 shadow-md">
             {client.name.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{client.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">{client.name}</h1>
               <span className={client.status === 'active' ? 'badge-green' : client.status === 'pending' ? 'badge-amber' : 'badge-blue'}>
                 {clientStatusLabel[client.status] ?? client.status}
               </span>
             </div>
-            <p className="text-sm text-slate-500 mt-1">{client.code}</p>
+            <p className="text-sm text-slate-500 font-medium mt-0.5">{client.code}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-sm text-slate-600">
-              {client.phone && <span className="flex items-center gap-1"><Phone size={14} /> {client.phone}</span>}
-              {client.email && <span className="flex items-center gap-1"><Mail size={14} /> {client.email}</span>}
-              {client.address && <span className="flex items-center gap-1"><MapPin size={14} /> {client.address}</span>}
+              {client.phone && <span className="flex items-center gap-1.5"><Phone size={14} className="text-slate-400" /> {client.phone}</span>}
+              {client.email && <span className="flex items-center gap-1.5"><Mail size={14} className="text-slate-400" /> {client.email}</span>}
+              {client.address && <span className="flex items-center gap-1.5"><MapPin size={14} className="text-slate-400" /> {client.address}</span>}
             </div>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-xs text-slate-500">💳 Crédito</p>
-            <p className="text-lg font-bold text-slate-900">{formatMoney(client.creditLimit)}</p>
-            {totalBalance > 0 && (
-              <p className="text-sm font-semibold text-red-600 mt-1">Pendiente: {formatUsd(totalBalance)}</p>
-            )}
           </div>
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-slate-200 mb-5 overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setTab('invoices')}
-          className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition ${tab === 'invoices' ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500'}`}
-        >
-          🧾 Facturas ({invoices.length})
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium">💳 Límite crédito</p>
+          <p className="report-kpi-value text-blue-700 text-lg">{formatCurrency(client.creditLimit)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><Wallet size={14} /> Pendiente</p>
+          <p className={`report-kpi-value ${totalBalance > 0 ? 'text-red-600' : 'text-emerald-700'}`}>{formatUsd(totalBalance)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium">📈 Facturado</p>
+          <p className="report-kpi-value text-slate-800 text-lg">{formatUsd(totalInvoiced)}</p>
+        </div>
+        <div className="report-kpi">
+          <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><FileText size={14} /> Facturas</p>
+          <p className="report-kpi-value text-slate-800">{invoices.length}</p>
+          <p className="text-[11px] text-slate-400">{paidCount} pagadas</p>
+        </div>
+      </div>
+
+      <div className="report-tabs mb-5">
+        <button type="button" onClick={() => setTab('invoices')} className={`report-tab ${tab === 'invoices' ? 'report-tab-active' : ''}`}>
+          <FileText size={14} className="inline mr-1.5 -mt-0.5" /> Facturas ({invoices.length})
         </button>
-        <button
-          type="button"
-          onClick={() => setTab('edit')}
-          className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition ${tab === 'edit' ? 'border-blue-700 text-blue-700' : 'border-transparent text-slate-500'}`}
-        >
-          ✏️ Editar datos
+        <button type="button" onClick={() => setTab('edit')} className={`report-tab ${tab === 'edit' ? 'report-tab-active' : ''}`}>
+          <Pencil size={14} className="inline mr-1.5 -mt-0.5" /> Editar datos
         </button>
       </div>
 
@@ -167,15 +173,16 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <SectionTitle emoji="🧾">Facturas del cliente</SectionTitle>
-            <ActionButton href={`/dashboard/invoices/new?clientId=${client.id}`} emoji="📝" label="Nueva factura" />
+            <Link href={`/dashboard/invoices/new?clientId=${client.id}`} className="btn-primary text-sm">
+              <Plus size={16} /> Nueva factura
+            </Link>
           </div>
 
           {invoices.length === 0 ? (
             <div className="executive-card p-10 text-center text-slate-500">
-              <p className="text-4xl mb-3" aria-hidden>🧾</p>
-              <p className="font-medium">Sin facturas</p>
+              <p className="font-semibold text-slate-700">Sin facturas</p>
               <p className="text-sm mt-1">Este cliente aún no tiene comprobantes emitidos</p>
-              <Link href={`/dashboard/invoices/new?clientId=${client.id}`} className="btn-subtle btn-subtle-primary mt-4 inline-flex">
+              <Link href={`/dashboard/invoices/new?clientId=${client.id}`} className="btn-primary text-sm mt-4 inline-flex">
                 <Plus size={15} /> Emitir primera factura
               </Link>
             </div>
@@ -210,15 +217,18 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           ))}
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Límite de crédito">
-              <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: Number(e.target.value) })} className="input" />
+              <CurrencyInput
+                value={creditDisplay}
+                onChange={(num, display) => { setForm({ ...form, creditLimit: num }); setCreditDisplay(display); }}
+              />
             </FormField>
             <FormField label="Días de crédito">
               <input type="number" value={form.creditDays} onChange={(e) => setForm({ ...form, creditDays: Number(e.target.value) })} className="input" />
             </FormField>
           </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setTab('invoices')} className="btn-secondary">Cancelar</button>
-            <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={() => setTab('invoices')} className="btn-secondary flex-1">Cancelar</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1 disabled:opacity-50">
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
           </div>
