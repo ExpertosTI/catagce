@@ -15,15 +15,17 @@ export default function PortalHomePage() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch<InvoiceListItem[]>('/portal/invoices').catch(() => []),
-      apiFetch<Array<{ pendingQty: number }>>('/portal/pending-merchandise').catch(() => []),
-      apiFetch<unknown[]>('/portal/dispatches').catch(() => []),
+      apiFetch<InvoiceListItem[]>('/portal/invoices').catch((): InvoiceListItem[] => []),
+      apiFetch<Array<{ pendingQty: number }>>('/portal/pending-merchandise').catch((): Array<{ pendingQty: number }> => []),
+      apiFetch<unknown[]>('/portal/dispatches').catch((): unknown[] => []),
     ])
       .then(([invoices, pending, dispatches]) => {
+        const balance = invoices.reduce<number>((sum, inv) => sum + invoiceBalance(inv), 0);
+        const pendingUnits = pending.reduce<number>((sum, item) => sum + (item.pendingQty ?? 0), 0);
         setStats({
           invoices: invoices.length,
-          balance: invoices.reduce((s, i) => s + invoiceBalance(i), 0),
-          pendingUnits: pending.reduce((s, p) => s + (p.pendingQty ?? 0), 0),
+          balance,
+          pendingUnits,
           dispatches: dispatches.length,
         });
       })
