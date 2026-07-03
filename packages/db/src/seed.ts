@@ -11,6 +11,14 @@ import {
 
 async function seed() {
   const db = createClientFromEnv();
+  const adminEmail = process.env.ADMIN_EMAIL?.trim() || 'admin@generalhome.tech';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'demo1234';
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd && (adminPassword === 'demo1234' || adminPassword.length < 12)) {
+    throw new Error('ADMIN_PASSWORD debe ser una contraseña fuerte (mín. 12 caracteres) en producción');
+  }
+
   console.log('🌱 Seeding GHome demo data...');
 
   const [company] = await db.insert(companies).values({
@@ -23,11 +31,11 @@ async function seed() {
     logoUrl: 'https://picsum.photos/seed/ghome-logo/200/200',
   }).returning();
 
-  const passwordHash = await bcrypt.hash('demo1234', 12);
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
 
   const [admin] = await db.insert(staffUsers).values({
     companyId: company.id,
-    email: 'admin@generalhome.tech',
+    email: adminEmail,
     passwordHash,
     name: 'Administrador GHome',
     role: 'owner',
@@ -241,7 +249,11 @@ async function seed() {
 
   console.log('✅ GHome seed complete');
   console.log('');
-  console.log('  Admin panel:    admin@generalhome.tech / demo1234');
+  if (isProd) {
+    console.log(`  Admin panel:    ${adminEmail} (contraseña definida en ADMIN_PASSWORD)`);
+  } else {
+    console.log(`  Admin panel:    ${adminEmail} / ${adminPassword}`);
+  }
   console.log('  Portal:         https://generalhome.tech');
   console.log('  Admin:          https://admin.generalhome.tech');
   console.log('  API:            https://api.generalhome.tech/api');

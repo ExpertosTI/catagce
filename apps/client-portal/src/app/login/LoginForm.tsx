@@ -17,8 +17,8 @@ export default function LoginForm() {
   const oauthEnabled = isFirebaseConfigured();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('cliente@demo.com');
-  const [password, setPassword] = useState('demo1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [companySlug, setCompanySlug] = useState(COMPANY_SLUG);
   const [error, setError] = useState('');

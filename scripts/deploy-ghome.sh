@@ -32,6 +32,11 @@ if [ -z "${DB_PASSWORD:-}" ] || [ "$DB_PASSWORD" = "change_this_in_production" ]
   echo "⚠️  Configure DB_PASSWORD en .env antes de producción"
 fi
 
+if [ -z "${JWT_SECRET:-}" ] || [ "${#JWT_SECRET}" -lt 32 ]; then
+  echo "❌ JWT_SECRET requerido (mín. 32 caracteres). Genere con: openssl rand -base64 32"
+  exit 1
+fi
+
 echo "═══ Build imágenes (puede tardar varios minutos) ═══"
 docker build -t ghome-api:latest -f apps/api/Dockerfile .
 docker build -t ghome-portal:latest \

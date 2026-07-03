@@ -1,10 +1,11 @@
-import { Injectable, Inject, UnauthorizedException, ConflictException, NotFoundException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, ConflictException, NotFoundException, BadRequestException, ServiceUnavailableException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { eq, and } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { companies, staffUsers, clients, warehouses, priceLists } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { isFirebaseConfigured, verifyFirebaseIdToken } from './firebase-admin.util';
+import { assertLoginAllowed, resetLoginAttempts } from '../common/utils/login-rate-limit';
 
 export type AuthUser = {
   userId: string;
@@ -30,6 +31,13 @@ export class AuthService {
     name: string;
     phone?: string;
   }) {
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_STAFF_REGISTER !== 'true') {
+      throw new ForbiddenException('El registro de administradores está deshabilitado en producción');
+    }
+    if (!data.password || data.password.length < 12) {
+      throw new BadRequestException('La contraseña debe tener al menos 12 caracteres');
+    }
+
     const slug = data.companySlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
     if (!slug) throw new ConflictException('Slug de empresa inválido');
 
@@ -70,11 +78,20 @@ export class AuthService {
   }
 
   async loginStaff(email: string, password: string) {
+    const key = `staff:${email.trim().toLowerCase()}`;
+    try {
+      assertLoginAllowed(key);
+    } catch {
+      throw new UnauthorizedException('Demasiados intentos. Espere unos minutos e intente de nuevo.');
+    }
+
     const [user] = await this.db.select().from(staffUsers)
       .where(and(eq(staffUsers.email, email.trim()), eq(staffUsers.isActive, true))).limit(1);
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
+
+    resetLoginAttempts(key);
 
     const [company] = await this.db.select().from(companies).where(eq(companies.id, user.companyId)).limit(1);
     await this.db.update(staffUsers).set({ lastLoginAt: new Date() }).where(eq(staffUsers.id, user.id));
@@ -125,6 +142,13 @@ export class AuthService {
   }
 
   async loginClient(email: string, password: string, companySlug?: string) {
+    const key = `client:${email.trim().toLowerCase()}:${companySlug?.trim().toLowerCase() || '*'}`;
+    try {
+      assertLoginAllowed(key);
+    } catch {
+      throw new UnauthorizedException('Demasiados intentos. Espere unos minutos e intente de nuevo.');
+    }
+
     let clientQuery = this.db.select().from(clients)
       .where(and(eq(clients.email, email.trim()), eq(clients.status, 'active')));
 
@@ -140,6 +164,8 @@ export class AuthService {
     if (!client?.passwordHash || !(await bcrypt.compare(password, client.passwordHash))) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
+
+    resetLoginAttempts(key);
 
     const [company] = await this.db.select().from(companies).where(eq(companies.id, client.companyId)).limit(1);
     await this.db.update(clients).set({ lastLoginAt: new Date() }).where(eq(clients.id, client.id));

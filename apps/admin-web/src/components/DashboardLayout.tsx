@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Package, FileText, Truck, ShoppingBag,
   Ship, BookOpen, Settings, LogOut, Plus, Menu, X, Wallet, BarChart3,
 } from 'lucide-react';
-import { clearAuth, getUser } from '../lib/api';
+import { clearAuth, getUser, getToken } from '../lib/api';
 import { SITE_URL } from '../lib/site';
 import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
@@ -87,8 +87,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
+    if (!getToken()) {
+      router.replace('/login');
+      return;
+    }
     setUserName(getUser<{ name?: string }>()?.name ?? null);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     setMenuOpen(false);

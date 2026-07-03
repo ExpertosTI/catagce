@@ -10,8 +10,8 @@ import { APP_META } from '../config';
 export function LoginScreen() {
   const { signIn } = useAuth();
   const [mode, setMode] = useState<'client' | 'staff'>('client');
-  const [email, setEmail] = useState('cliente@demo.com');
-  const [password, setPassword] = useState('demo1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

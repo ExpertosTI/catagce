@@ -19,7 +19,7 @@ export class CatalogsService {
     const rows = await this.db.select({
       catalog: catalogs,
       companySlug: catalogs.slug,
-    }).from(catalogs).where(eq(catalogs.slug, slug)).limit(1);
+    }).from(catalogs).where(and(eq(catalogs.slug, slug), eq(catalogs.isPublic, true))).limit(1);
 
     const [cat] = rows;
     if (!cat) throw new NotFoundException('Catálogo no encontrado');

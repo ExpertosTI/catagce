@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
+import { validateSecurityEnv } from './common/config/validate-env';
 
 const DEFAULT_CORS = [
   'https://generalhome.tech',
@@ -18,6 +19,7 @@ const DEFAULT_CORS = [
 ];
 
 async function bootstrap() {
+  validateSecurityEnv();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
 

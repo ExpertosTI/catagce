@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FileText, Package, BookOpen, LogOut, Truck, Home, Menu, X, LayoutDashboard } from 'lucide-react';
-import { clearAuth, getClient, apiFetch } from '../lib/api';
+import { clearAuth, getClient, apiFetch, getToken } from '../lib/api';
 import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
 
@@ -23,9 +23,13 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [catalogSlug, setCatalogSlug] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!getToken()) {
+      router.replace('/login');
+      return;
+    }
     setClientName(getClient<{ name?: string }>()?.name ?? null);
     apiFetch<{ slug: string } | null>('/portal/active-catalog').then((c) => setCatalogSlug(c?.slug ?? null)).catch(() => {});
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     setMenuOpen(false);

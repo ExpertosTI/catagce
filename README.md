@@ -55,12 +55,16 @@ bash scripts/ghome-db-init.sh all
 > No necesita `pnpm` en el servidor — la DB se inicializa con Docker.
 
 
-### Credenciales demo
+### Credenciales demo (solo desarrollo local)
+
+Tras `pnpm --filter @ghome/db seed` en local, sin `ADMIN_PASSWORD` en `.env`:
 
 | Rol | Email | Password |
 |-----|-------|----------|
 | Admin | `admin@generalhome.tech` | `demo1234` |
 | Cliente | `cliente@demo.com` | `demo1234` |
+
+En **producción** defina `ADMIN_PASSWORD` (mín. 12 caracteres) y `JWT_SECRET` (`openssl rand -base64 32`). No use `demo1234`.
 
 ## Arquitectura
 

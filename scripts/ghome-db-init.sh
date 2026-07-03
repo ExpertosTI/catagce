@@ -13,6 +13,11 @@ fi
 set -a && source .env && set +a
 
 DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD requerido en .env}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:?ADMIN_PASSWORD requerido en .env (mín. 12 caracteres)}"
+if [ "$ADMIN_PASSWORD" = "demo1234" ] || [ "${#ADMIN_PASSWORD}" -lt 12 ]; then
+  echo "❌ ADMIN_PASSWORD débil — use al menos 12 caracteres aleatorios en producción"
+  exit 1
+fi
 export DATABASE_URL="postgres://ghome_admin:${DB_PASSWORD}@127.0.0.1:5432/ghome_prod"
 
 echo "💾 Espacio en disco:"
@@ -31,7 +36,8 @@ run_db_cmd() {
     -v "$(pwd):/app" -w /app \
     -e DATABASE_URL="${DATABASE_URL}" \
     -e ADMIN_EMAIL="${ADMIN_EMAIL:-admin@generalhome.tech}" \
-    -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-demo1234}" \
+    -e ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
+    -e NODE_ENV=production \
     -e CI=true \
     node:20-alpine sh -c "
       set -e
@@ -63,7 +69,7 @@ case "${1:-all}" in
     echo "🌱 3/3 Seed..."
     run_db_cmd "pnpm --filter @ghome/db seed"
     echo ""
-    echo "✅ Listo — admin: admin@generalhome.tech / demo1234"
+    echo "✅ Listo — admin: ${ADMIN_EMAIL:-admin@generalhome.tech} (contraseña de ADMIN_PASSWORD en .env)"
     echo "   Portal: https://generalhome.tech"
     ;;
   *)
