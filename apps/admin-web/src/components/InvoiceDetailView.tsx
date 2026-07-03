@@ -350,7 +350,8 @@ export function InvoiceDetailView({ invoice, backHref, companyName, canManagePay
       )}
 
       <div className="card p-4 mt-4 space-y-3 max-w-lg">
-        <p className="font-semibold text-sm text-slate-800 flex items-center gap-2"><PenLine size={16} className="text-slate-500" /> Recibido por / Despachado por</p>
+        <p className="font-semibold text-sm text-slate-800 flex items-center gap-2"><PenLine size={16} className="text-slate-500" /> Firmas para PDF / impresión</p>
+        <p className="text-xs text-slate-500 -mt-1">Estos nombres aparecen en el PDF impreso, no al emitir la factura.</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <label className="form-label">Recibido por</label>

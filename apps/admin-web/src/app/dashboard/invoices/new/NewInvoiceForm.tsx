@@ -13,6 +13,7 @@ import { apiFetch } from '../../../../lib/api';
 import { formatCurrency } from '../../../../lib/currency';
 import { SALE_COMPROBANTE_OPTIONS, comprobanteTypeLabel } from '../../../../lib/labels';
 import type { InvoiceDetail } from '../../../../lib/invoice-utils';
+import { normalizeUnitLabel } from '../../../../lib/units';
 
 const ITBIS_RATE = 18;
 
@@ -32,8 +33,6 @@ export default function NewInvoiceForm() {
   const [invoiceType, setInvoiceType] = useState<'cash' | 'credit'>('credit');
   const [isFiscal, setIsFiscal] = useState(true);
   const [comprobanteType, setComprobanteType] = useState('B01');
-  const [receivedBy, setReceivedBy] = useState('');
-  const [dispatchedBy, setDispatchedBy] = useState('');
   const [payOnIssue, setPayOnIssue] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [lines, setLines] = useState<PickedLine[]>([]);
@@ -44,10 +43,10 @@ export default function NewInvoiceForm() {
 
   useEffect(() => {
     apiFetch<any[]>('/clients').then((c) => {
-      const active = c
-        .filter((x) => x.status === 'active')
+      const billable = c
+        .filter((x) => x.status !== 'suspended')
         .map((x) => ({ id: x.id, name: x.name, code: x.code, email: x.email, phone: x.phone, taxId: x.taxId }));
-      setClients(active);
+      setClients(billable);
     }).catch(() => setError('No se pudieron cargar los clientes'));
     apiFetch<PickerProduct[]>('/products').then(setProducts).catch(() => setError('No se pudieron cargar los productos'));
   }, []);
@@ -70,7 +69,7 @@ export default function NewInvoiceForm() {
           productId: (item as typeof item & { productId?: string }).productId ?? '',
           quantity: Number(item.quantity) || 1,
           unitPrice: parseFloat(item.unitPrice || '0'),
-          unitLabel: item.unitLabel ?? 'un',
+          unitLabel: normalizeUnitLabel(item.unitLabel),
         })).filter((l) => l.productId));
         setDuplicatedFrom(src.ncf ?? src.reference);
       })
@@ -117,13 +116,11 @@ export default function NewInvoiceForm() {
         isFiscal,
         itbisRate: ITBIS_RATE,
         issue: true,
-        receivedBy: receivedBy || undefined,
-        dispatchedBy: dispatchedBy || undefined,
         items: lines.map((l) => ({
           productId: l.productId,
           quantity: Number(l.quantity),
           unitPrice: Number(l.unitPrice),
-          unitLabel: l.unitLabel,
+          unitLabel: normalizeUnitLabel(l.unitLabel),
         })),
       };
       if (isFiscal) body.comprobanteType = comprobanteType;
@@ -212,25 +209,6 @@ export default function NewInvoiceForm() {
             Proforma / factura interna sin comprobante fiscal. No consume secuencia NCF.
           </p>
         )}
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <FormField label="Recibido por">
-            <input
-              value={receivedBy}
-              onChange={(e) => setReceivedBy(e.target.value)}
-              className="input"
-              placeholder="Nombre de quien recibe la mercancía"
-            />
-          </FormField>
-          <FormField label="Despachado por">
-            <input
-              value={dispatchedBy}
-              onChange={(e) => setDispatchedBy(e.target.value)}
-              className="input"
-              placeholder="Nombre de quien despacha"
-            />
-          </FormField>
-        </div>
 
         <div>
           <p className="form-label">Productos</p>

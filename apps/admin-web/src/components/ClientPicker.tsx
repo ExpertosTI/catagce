@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Search, UserPlus, X } from 'lucide-react';
 import { QuickClientModal } from './QuickClientModal';
+import { clientMatchesQuery, splitQueryForNewClient } from '../lib/client-search';
 
 export type PickerClient = { id: string; name: string; code?: string; email?: string; phone?: string; taxId?: string };
 
@@ -17,25 +18,20 @@ type Props = {
 
 export function ClientPicker({
   clients, value, onChange, allowCreate = true, onCreated,
-  emptyMessage = 'Busque y seleccione un cliente',
+  emptyMessage = 'Busque por nombre o teléfono',
 }: Props) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [modalSeed, setModalSeed] = useState({ name: '', phone: '' });
 
   const selected = clients.find((c) => c.id === value);
+  const q = query.trim();
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
     if (!q) return clients.slice(0, 8);
-    return clients
-      .filter((c) =>
-        c.name.toLowerCase().includes(q)
-        || c.code?.toLowerCase().includes(q)
-        || c.phone?.includes(q)
-        || c.taxId?.includes(q))
-      .slice(0, 8);
-  }, [clients, query]);
+    return clients.filter((c) => clientMatchesQuery(c, q)).slice(0, 8);
+  }, [clients, q]);
 
   function pick(c: PickerClient) {
     onChange(c.id);
@@ -48,6 +44,13 @@ export function ClientPicker({
     setQuery('');
   }
 
+  function openCreateModal() {
+    const seed = splitQueryForNewClient(q);
+    setModalSeed(seed);
+    setOpen(false);
+    setShowModal(true);
+  }
+
   function handleCreated(client: PickerClient) {
     onChange(client.id);
     onCreated?.(client);
@@ -55,6 +58,8 @@ export function ClientPicker({
     setQuery('');
     setOpen(false);
   }
+
+  const showNoResults = q.length >= 2 && results.length === 0;
 
   return (
     <div className="space-y-3">
@@ -80,9 +85,10 @@ export function ClientPicker({
             value={query}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
-            onBlur={() => setTimeout(() => setOpen(false), 150)}
-            placeholder="Buscar cliente por nombre, teléfono o código..."
+            onBlur={() => setTimeout(() => setOpen(false), 200)}
+            placeholder="Buscar por nombre o teléfono..."
             className="input-search"
+            autoComplete="off"
           />
           {open && (
             <div className="product-picker-dropdown">
@@ -105,14 +111,28 @@ export function ClientPicker({
                   </div>
                 </button>
               ))}
-              {query.trim() && results.length === 0 && (
-                <p className="text-sm text-slate-400 p-4 text-center">Sin resultados</p>
+
+              {showNoResults && (
+                <div className="px-4 py-3 text-center border-b border-slate-100">
+                  <p className="text-sm text-slate-500">No hay cliente con “{q}”</p>
+                  {allowCreate && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={openCreateModal}
+                      className="btn-subtle btn-subtle-primary text-xs mt-2 mx-auto"
+                    >
+                      <UserPlus size={14} /> Crear cliente con estos datos
+                    </button>
+                  )}
+                </div>
               )}
-              {allowCreate && (
+
+              {allowCreate && !showNoResults && (
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { setOpen(false); setShowModal(true); }}
+                  onClick={openCreateModal}
                   className="product-picker-result text-blue-700 font-medium border-t border-slate-100"
                 >
                   <UserPlus size={16} /> Crear cliente nuevo
@@ -127,7 +147,7 @@ export function ClientPicker({
         <div className="text-center py-6 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
           {emptyMessage}
           {allowCreate && (
-            <button type="button" onClick={() => setShowModal(true)} className="btn-subtle btn-subtle-primary mt-3 mx-auto">
+            <button type="button" onClick={openCreateModal} className="btn-subtle btn-subtle-primary mt-3 mx-auto">
               <UserPlus size={15} /> Crear primer cliente
             </button>
           )}
@@ -139,7 +159,8 @@ export function ClientPicker({
           open={showModal}
           onClose={() => setShowModal(false)}
           onCreated={handleCreated}
-          initialName={query.trim()}
+          initialName={modalSeed.name}
+          initialPhone={modalSeed.phone}
         />
       )}
     </div>

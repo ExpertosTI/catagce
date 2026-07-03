@@ -20,6 +20,14 @@ export default function NewClientPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.name.trim()) {
+      await alert({ title: 'Datos incompletos', message: 'El nombre es obligatorio', variant: 'info' });
+      return;
+    }
+    if (!form.phone.trim()) {
+      await alert({ title: 'Datos incompletos', message: 'El teléfono es obligatorio', variant: 'info' });
+      return;
+    }
     setLoading(true);
     try {
       await apiFetch('/clients', { method: 'POST', body: JSON.stringify(form) });

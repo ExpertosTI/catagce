@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Search, Trash2, Copy } from 'lucide-react';
 import { QuantityStepper } from './QuantityStepper';
 import { formatCurrency, formatAmountInput, parseAmount, formatAmount } from '../lib/currency';
-import { UNIT_OPTIONS } from '../lib/units';
+import { UNIT_OPTIONS, normalizeUnitLabel, unitConversionHint } from '../lib/units';
 
 export type PickerProduct = { id: string; name: string; sku?: string; salePrice: string; imageUrl?: string; unit?: string };
 export type PickedLine = {
@@ -172,9 +172,9 @@ export function ProductPicker({
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400">Unidad</span>
                   <select
-                    value={line.unitLabel}
+                    value={normalizeUnitLabel(line.unitLabel)}
                     onChange={(e) => updateLine(line.lineId, { unitLabel: e.target.value })}
-                    className="input !w-28 !py-1.5 text-sm"
+                    className="input !w-32 !py-1.5 text-sm"
                   >
                     {UNIT_OPTIONS.map((u) => (
                       <option key={u.value} value={u.value}>{u.label}</option>
@@ -202,6 +202,9 @@ export function ProductPicker({
                 </div>
                 <span className="font-bold text-blue-700 ml-auto">{formatCurrency(lineTotal)}</span>
               </div>
+              {unitConversionHint(line.quantity, line.unitLabel) && (
+                <p className="text-[11px] text-slate-400 mt-2">{unitConversionHint(line.quantity, line.unitLabel)}</p>
+              )}
             </div>
           );
         })}

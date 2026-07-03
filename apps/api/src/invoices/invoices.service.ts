@@ -1,4 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { toBaseUnits, normalizeUnitLabel } from '../common/utils/units';
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import {
   clients, invoices, invoiceItems, invoicePayments, clientAllocations,
@@ -193,14 +194,15 @@ export class InvoicesService {
         invoiceId: invoice.id,
         productId: item.productId,
         quantity: item.quantity,
-        unitLabel: item.unitLabel?.trim() || 'unidad',
+        unitLabel: normalizeUnitLabel(item.unitLabel),
         unitPrice: item.unitPrice.toFixed(2),
         lineTotal: item.lineTotal.toFixed(2),
         warehouseId: item.warehouseId,
       }).returning();
 
       if (data.issue && !MODIFICATION_TYPES.includes(comprobanteType)) {
-        await this.reserveStock(user.companyId, item.productId, item.quantity, item.warehouseId);
+        const stockQty = toBaseUnits(item.quantity, item.unitLabel);
+        await this.reserveStock(user.companyId, item.productId, stockQty, item.warehouseId);
         await this.db.insert(clientAllocations).values({
           companyId: user.companyId,
           clientId: data.clientId,
@@ -475,9 +477,10 @@ export class DispatchesService {
           invItem.warehouseId ? eq(stockLevels.warehouseId, invItem.warehouseId) : sql`true`,
         )).limit(1);
       if (stock) {
+        const baseQty = toBaseUnits(item.quantity, invItem.unitLabel);
         await this.db.update(stockLevels).set({
-          reservedQty: Math.max(0, stock.reservedQty - item.quantity),
-          dispatchedQty: stock.dispatchedQty + item.quantity,
+          reservedQty: Math.max(0, stock.reservedQty - baseQty),
+          dispatchedQty: stock.dispatchedQty + baseQty,
           updatedAt: new Date(),
         }).where(eq(stockLevels.id, stock.id));
       }
