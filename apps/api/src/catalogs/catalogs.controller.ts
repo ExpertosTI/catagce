@@ -70,4 +70,19 @@ export class CatalogsController {
   }) {
     return this.presalesService.convertToInvoice(user, id, body);
   }
+
+  @StaffOnly()
+  @Get(':id')
+  getById(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.catalogsService.getById(user, id);
+  }
+
+  @StaffOnly()
+  @Patch(':id')
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: {
+    name?: string; slug?: string; description?: string;
+    isPresale?: boolean; isPublic?: boolean; productIds?: string[];
+  }) {
+    return this.catalogsService.update(user, id, body);
+  }
 }

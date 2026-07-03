@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { FileText, Package, BookOpen, LogOut, Truck, Home, Menu, X } from 'lucide-react';
+import { FileText, Package, BookOpen, LogOut, Truck, Home, Menu, X, LayoutDashboard } from 'lucide-react';
 import { clearAuth, getClient, apiFetch } from '../lib/api';
 import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
 
 const baseNav = [
+  { href: '/portal', label: 'Inicio', icon: LayoutDashboard, exact: true },
   { href: '/portal/invoices', label: 'Mis facturas', icon: FileText },
   { href: '/portal/dispatches', label: 'Mis despachos', icon: Truck },
   { href: '/portal/pending', label: 'Mercancía pendiente', icon: Package },
@@ -39,8 +40,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     ? [...baseNav, { href: `/catalogo/${catalogSlug}`, label: 'Catálogo', icon: BookOpen }]
     : baseNav;
 
-  const navLinks = (onNavigate?: () => void) => nav.map(({ href, label, icon: Icon }) => {
-    const active = pathname === href || pathname.startsWith(`${href}/`);
+  const navLinks = (onNavigate?: () => void) => nav.map(({ href, label, icon: Icon, exact }) => {
+    const active = exact
+      ? pathname === href
+      : pathname === href || pathname.startsWith(`${href}/`);
     return (
       <Link
         key={href}

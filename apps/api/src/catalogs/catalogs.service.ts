@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, forwardRef } from '@nestjs/common';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import { catalogs, catalogProducts, products, productMedia, presales, presaleItems, clients, invoices } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
@@ -64,6 +64,57 @@ export class CatalogsService {
     }
 
     return catalog;
+  }
+
+  async getById(user: AuthUser, id: string) {
+    const [catalog] = await this.db.select().from(catalogs)
+      .where(and(eq(catalogs.id, id), eq(catalogs.companyId, user.companyId)))
+      .limit(1);
+    if (!catalog) throw new NotFoundException('Catálogo no encontrado');
+
+    const items = await this.db.select({
+      productId: products.id,
+      name: products.name,
+      sku: products.sku,
+      salePrice: products.salePrice,
+    })
+      .from(catalogProducts)
+      .innerJoin(products, eq(catalogProducts.productId, products.id))
+      .where(eq(catalogProducts.catalogId, id))
+      .orderBy(asc(catalogProducts.sortOrder));
+
+    return { ...catalog, productIds: items.map((i: { productId: string }) => i.productId), items };
+  }
+
+  async update(user: AuthUser, id: string, data: {
+    name?: string; slug?: string; description?: string;
+    isPresale?: boolean; isPublic?: boolean; productIds?: string[];
+  }) {
+    await this.getById(user, id);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.slug !== undefined) updates.slug = data.slug;
+    if (data.description !== undefined) updates.description = data.description || null;
+    if (data.isPresale !== undefined) updates.isPresale = data.isPresale;
+    if (data.isPublic !== undefined) updates.isPublic = data.isPublic;
+
+    if (Object.keys(updates).length > 1) {
+      await this.db.update(catalogs).set(updates).where(eq(catalogs.id, id));
+    }
+
+    if (data.productIds !== undefined) {
+      await this.db.delete(catalogProducts).where(eq(catalogProducts.catalogId, id));
+      for (let i = 0; i < data.productIds.length; i++) {
+        await this.db.insert(catalogProducts).values({
+          catalogId: id,
+          productId: data.productIds[i],
+          sortOrder: i,
+        });
+      }
+    }
+
+    return this.getById(user, id);
   }
 }
 

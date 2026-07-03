@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Plus, Search, Globe, ShoppingBag, Copy, Check } from 'lucide-react';
+import { ExternalLink, Plus, Search, Globe, ShoppingBag, Copy, Check, Pencil, BookOpen } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { LoadingState } from '../../../components/LoadingState';
 import { apiFetch } from '../../../lib/api';
@@ -59,7 +59,7 @@ export default function CatalogsPage() {
       {!loading && catalogs.length > 0 && (
         <div className="grid grid-cols-2 gap-3 mb-5 max-w-md">
           <div className="report-kpi">
-            <p className="text-xs text-slate-500 font-medium">📚 Catálogos</p>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1"><BookOpen size={14} /> Catálogos</p>
             <p className="report-kpi-value text-slate-800">{catalogs.length}</p>
           </div>
           <div className="report-kpi">
@@ -76,7 +76,7 @@ export default function CatalogsPage() {
         </div>
       )}
 
-      {loading && <LoadingState emoji="📚" message="Cargando catálogos..." />}
+      {loading && <LoadingState message="Cargando catálogos..." />}
 
       {!loading && catalogs.length === 0 && (
         <div className="executive-card text-center py-16 text-slate-500">
@@ -98,6 +98,9 @@ export default function CatalogsPage() {
             {c.description && <p className="text-sm text-slate-500 mt-1 line-clamp-2">{c.description}</p>}
             <p className="text-xs text-slate-400 mt-2 font-mono">/{c.slug}</p>
             <div className="flex flex-wrap gap-2 mt-4">
+              <Link href={`/dashboard/catalogs/${c.id}`} className="action-chip">
+                <Pencil size={14} /> <span className="!inline">Editar</span>
+              </Link>
               <a href={`${SITE_URL}/catalogo/${c.slug}`} target="_blank" rel="noreferrer" className="action-chip action-chip-success">
                 <ExternalLink size={14} /> <span className="!inline">Abrir</span>
               </a>
