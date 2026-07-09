@@ -87,6 +87,15 @@ echo ""
 echo "🚢 Desplegando stack..."
 docker stack deploy -c docker-compose.yml catagce
 
+if [ -f scripts/catagce-schema-patch.sql ]; then
+  echo ""
+  echo "🗄️  Parche schema (idempotente)..."
+  db_cid="$(docker ps -qf name=catagce_db | head -1)"
+  if [ -n "$db_cid" ]; then
+    docker exec -i "$db_cid" psql -U catagce_admin -d catagce_prod < scripts/catagce-schema-patch.sql || true
+  fi
+fi
+
 # 8. Reiniciar servicios con nuevas imágenes
 echo ""
 echo "🔄 Reiniciando servicios..."

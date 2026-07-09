@@ -33,6 +33,10 @@ export const jobStatusEnum = pgEnum('job_status', [
   'pending', 'running', 'completed', 'failed',
 ]);
 
+export const whatsappTicketStatusEnum = pgEnum('whatsapp_ticket_status', [
+  'open', 'pending', 'resolved', 'closed',
+]);
+
 // ─── Tenants & Identity ──────────────────────────────────────────────────────
 export const sellers = pgTable('sellers', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -449,6 +453,47 @@ export const verificationCodes = pgTable('verification_codes', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ─── WhatsApp Inbox (Whaticket-style) ───────────────────────────────────────
+export const whatsappLabels = pgTable('whatsapp_labels', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  name: text('name').notNull(),
+  color: text('color').default('#00D1FF'),
+  evolutionLabelId: text('evolution_label_id'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (t) => ({
+  sellerNameIdx: uniqueIndex('whatsapp_labels_seller_name_idx').on(t.sellerId, t.name),
+}));
+
+export const whatsappTickets = pgTable('whatsapp_tickets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  remoteJid: text('remote_jid').notNull(),
+  phone: text('phone').notNull(),
+  contactName: text('contact_name'),
+  status: whatsappTicketStatusEnum('status').default('open'),
+  labelIds: text('label_ids').array().default(sql`'{}'::text[]`),
+  lastMessageAt: timestamp('last_message_at'),
+  lastMessagePreview: text('last_message_preview'),
+  unreadCount: integer('unread_count').default(0),
+  assignedUserId: uuid('assigned_user_id').references(() => sellerUsers.id),
+  isGroup: boolean('is_group').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  sellerJidIdx: uniqueIndex('whatsapp_tickets_seller_jid_idx').on(t.sellerId, t.remoteJid),
+}));
+
+export const whatsappQuickReplies = pgTable('whatsapp_quick_replies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  shortcut: text('shortcut'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // ─── Relations ───────────────────────────────────────────────────────────────
 export const sellersRelations = relations(sellers, ({ one, many }) => ({
   branding: one(sellerBranding, { fields: [sellers.id], references: [sellerBranding.sellerId] }),
@@ -463,6 +508,9 @@ export const sellersRelations = relations(sellers, ({ one, many }) => ({
   warehouses: many(warehouses),
   priceLists: many(priceLists),
   buyerContacts: many(buyerContacts),
+  whatsappLabels: many(whatsappLabels),
+  whatsappTickets: many(whatsappTickets),
+  whatsappQuickReplies: many(whatsappQuickReplies),
 }));
 
 export const sellerUsersRelations = relations(sellerUsers, ({ one }) => ({
@@ -567,4 +615,17 @@ export const priceListsRelations = relations(priceLists, ({ one, many }) => ({
 
 export const buyerContactsRelations = relations(buyerContacts, ({ one }) => ({
   seller: one(sellers, { fields: [buyerContacts.sellerId], references: [sellers.id] }),
+}));
+
+export const whatsappLabelsRelations = relations(whatsappLabels, ({ one }) => ({
+  seller: one(sellers, { fields: [whatsappLabels.sellerId], references: [sellers.id] }),
+}));
+
+export const whatsappTicketsRelations = relations(whatsappTickets, ({ one }) => ({
+  seller: one(sellers, { fields: [whatsappTickets.sellerId], references: [sellers.id] }),
+  assignedUser: one(sellerUsers, { fields: [whatsappTickets.assignedUserId], references: [sellerUsers.id] }),
+}));
+
+export const whatsappQuickRepliesRelations = relations(whatsappQuickReplies, ({ one }) => ({
+  seller: one(sellers, { fields: [whatsappQuickReplies.sellerId], references: [sellers.id] }),
 }));

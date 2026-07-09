@@ -62,7 +62,7 @@ export default function RegisterPage() {
           { id: 'whatsapp' as const, label: 'WhatsApp' },
         ]}
         active={tab}
-        onChange={setTab}
+        onChange={(id) => { setTab(id); setError(''); }}
       />
 
       {tab === 'email' ? (
