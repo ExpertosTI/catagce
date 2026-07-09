@@ -8,12 +8,14 @@ import {
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { InventoryBroadcastService, InventorySnapshot } from './inventory-broadcast.service';
+import { CommerceNotifyService } from '../whatsapp/commerce-notify.service';
 
 @Injectable()
 export class MobileService {
   constructor(
     @Inject(DRIZZLE) private db: any,
     private inventoryBroadcast: InventoryBroadcastService,
+    private commerceNotify: CommerceNotifyService,
   ) {}
 
   async getActiveCatalogPdf(user: AuthUser) {
@@ -141,6 +143,7 @@ export class MobileService {
       });
     }
 
+    void this.commerceNotify.notifyOrderRequestCreated(user.companyId, order.id);
     return this.getOrderRequest(user, order.id);
   }
 
@@ -243,6 +246,7 @@ export class MobileService {
       updatedAt: new Date(),
     }).where(eq(orderRequests.id, orderId));
 
+    void this.commerceNotify.notifyOrderPriced(user.companyId, orderId, Boolean(data.confirm));
     return this.getOrderRequest(user, orderId);
   }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Plus, Search, Globe, ShoppingBag, Copy, Check, Pencil, BookOpen } from 'lucide-react';
+import { ExternalLink, Plus, Search, Globe, ShoppingBag, Copy, Check, Pencil, BookOpen, MessageCircle } from 'lucide-react';
 import DashboardLayout, { PageHeader } from '../../../components/DashboardLayout';
 import { LoadingState } from '../../../components/LoadingState';
 import { EmptyState } from '../../../components/EmptyState';
@@ -25,6 +25,7 @@ export default function CatalogsPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [waSendingId, setWaSendingId] = useState<string | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -36,6 +37,28 @@ export default function CatalogsPage() {
     if (!q) return catalogs;
     return catalogs.filter((c) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q));
   }, [catalogs, query]);
+
+  async function shareWhatsApp(c: Catalog) {
+    const phone = window.prompt('WhatsApp del cliente (10 dígitos):');
+    if (!phone?.trim()) return;
+    const name = window.prompt('Nombre del cliente (opcional):') || undefined;
+    setWaSendingId(c.id);
+    try {
+      const res = await apiFetch<{ ok: boolean; error?: string; url?: string }>('/whatsapp/catalog-share', {
+        method: 'POST',
+        body: JSON.stringify({ catalogId: c.id, phone: phone.trim(), recipientName: name }),
+      });
+      if (res.ok) {
+        showToast('Catálogo enviado por WhatsApp');
+      } else {
+        showToast(res.error === 'evolution_not_configured' ? 'Evolution API no configurada en el servidor' : 'No se pudo enviar', 'error');
+      }
+    } catch {
+      showToast('Error al enviar por WhatsApp', 'error');
+    } finally {
+      setWaSendingId(null);
+    }
+  }
 
   async function copyLink(c: Catalog) {
     const url = `${SITE_URL}/catalogo/${c.slug}`;
@@ -112,6 +135,15 @@ export default function CatalogsPage() {
               <button type="button" onClick={() => copyLink(c)} className="action-chip">
                 {copiedId === c.id ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                 <span className="!inline">{copiedId === c.id ? 'Copiado' : 'Copiar link'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => shareWhatsApp(c)}
+                disabled={waSendingId === c.id}
+                className="action-chip action-chip-success"
+              >
+                <MessageCircle size={14} />
+                <span className="!inline">{waSendingId === c.id ? 'Enviando…' : 'WhatsApp'}</span>
               </button>
             </div>
           </article>

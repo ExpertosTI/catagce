@@ -18,6 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AiModule } from './ai/ai.module';
 import { ReportsModule } from './reports/reports.module';
 import { FiscalModule } from './fiscal/fiscal.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
@@ -39,6 +40,7 @@ import { AuthGuard } from './common/guards/auth.guard';
     AiModule,
     ReportsModule,
     FiscalModule,
+    WhatsAppModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],

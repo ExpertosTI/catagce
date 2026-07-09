@@ -16,6 +16,8 @@ export class HealthController {
       marca_de_tiempo: new Date().toISOString(),
       tiempo_activo: process.uptime(),
       version: process.env.npm_package_version || '0.1.0',
+      whatsapp: process.env.EVOLUTION_API_URL ? 'evolution_on' : 'off',
+      whatsappAdminSource: 'companies.phone',
     };
   }
 

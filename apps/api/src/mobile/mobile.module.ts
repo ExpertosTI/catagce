@@ -3,9 +3,10 @@ import { MobileController } from './mobile.controller';
 import { MobileService } from './mobile.service';
 import { InventoryBroadcastService } from './inventory-broadcast.service';
 import { AuthModule } from '../auth/auth.module';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, WhatsAppModule],
   controllers: [MobileController],
   providers: [MobileService, InventoryBroadcastService],
   exports: [MobileService, InventoryBroadcastService],

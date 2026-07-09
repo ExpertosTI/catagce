@@ -49,7 +49,10 @@ export class CompaniesService {
     if (data.name !== undefined) updates.name = data.name.trim();
     if (data.taxId !== undefined) updates.taxId = data.taxId;
     if (data.email !== undefined) updates.email = data.email;
-    if (data.phone !== undefined) updates.phone = data.phone;
+    if (data.phone !== undefined) {
+      const trimmed = String(data.phone || '').trim();
+      updates.phone = trimmed || null;
+    }
     if (data.address !== undefined) updates.address = data.address;
     if (data.logoUrl !== undefined) updates.logoUrl = data.logoUrl;
     if (data.settings !== undefined) {

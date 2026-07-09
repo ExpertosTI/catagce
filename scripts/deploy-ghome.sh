@@ -28,6 +28,27 @@ fi
 # shellcheck disable=SC1091
 set -a && source .env && set +a
 
+load_evolution_local() {
+  local file="$1" line key val
+  [ -f "$file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in ''|\#*) continue ;; esac
+    key="${line%%=*}"; val="${line#*=}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    export "$key=$val"
+  done < "$file"
+}
+if [ -f .evolution.local ]; then
+  load_evolution_local .evolution.local
+  echo "✓ WhatsApp Evolution (${EVOLUTION_INSTANCE:-?}) — alertas al teléfono de Ajustes"
+elif [ -n "${EVOLUTION_API_URL:-}" ]; then
+  echo "✓ WhatsApp Evolution desde .env"
+else
+  echo "⚠️  WhatsApp: cree .evolution.local (ver .evolution.local.example)"
+fi
+export PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-${NEXT_PUBLIC_SITE_URL:-https://generalhome.tech}}"
+
 if [ -z "${DB_PASSWORD:-}" ] || [ "$DB_PASSWORD" = "change_this_in_production" ]; then
   echo "⚠️  Configure DB_PASSWORD en .env antes de producción"
 fi

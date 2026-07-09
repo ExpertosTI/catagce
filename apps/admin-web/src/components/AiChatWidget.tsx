@@ -11,7 +11,8 @@ type Message = { role: 'user' | 'assistant'; content: string };
 const SUGGESTIONS = [
   '¿Qué facturas están vencidas?',
   '¿Quién me debe más dinero?',
-  '¿Cuáles fueron los últimos pagos recibidos?',
+  'Resumen de pedidos recientes',
+  'Envíame por WhatsApp un reporte de cobros pendientes',
   '¿Cuántos despachos están pendientes?',
 ];
 
@@ -68,7 +69,7 @@ export function AiChatWidget() {
               </div>
               <div>
                 <p className="font-bold text-sm">Super AI</p>
-                <p className="text-[11px] opacity-80">Asistente GHome · datos en tiempo real</p>
+                <p className="text-[11px] opacity-80">Super AI · pedidos, cobros y WhatsApp</p>
               </div>
             </div>
             <button type="button" onClick={() => setOpen(false)} className="p-1 hover:bg-white/10 rounded-lg">

@@ -4,6 +4,7 @@ import { catalogs, catalogProducts, products, productMedia, presales, presaleIte
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { InvoicesService } from '../invoices/invoices.service';
+import { CommerceNotifyService } from '../whatsapp/commerce-notify.service';
 
 @Injectable()
 export class CatalogsService {
@@ -123,6 +124,7 @@ export class PresalesService {
   constructor(
     @Inject(DRIZZLE) private db: any,
     @Inject(forwardRef(() => InvoicesService)) private invoicesService: InvoicesService,
+    private commerceNotify: CommerceNotifyService,
   ) {}
 
   async list(user: AuthUser) {
@@ -194,6 +196,7 @@ export class PresalesService {
     await this.db.update(presales)
       .set({ status: 'confirmed', updatedAt: new Date() })
       .where(eq(presales.id, id));
+    void this.commerceNotify.notifyPresaleStatus(user.companyId, id, 'confirmed');
     return this.getById(user, id);
   }
 
@@ -205,6 +208,7 @@ export class PresalesService {
     await this.db.update(presales)
       .set({ status: 'cancelled', updatedAt: new Date() })
       .where(eq(presales.id, id));
+    void this.commerceNotify.notifyPresaleStatus(user.companyId, id, 'cancelled');
     return this.getById(user, id);
   }
 
@@ -279,6 +283,7 @@ export class PresalesService {
       });
     }
 
+    void this.commerceNotify.notifyPresaleCreated(user.companyId, presale.id);
     return presale;
   }
 }

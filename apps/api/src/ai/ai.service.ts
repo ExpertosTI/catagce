@@ -4,15 +4,22 @@ import { invoices, clients, clientAllocations, stockLevels, companies, invoicePa
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { generateWithGemini, isAiConfigured } from './gemini.util';
+import { generateWithTools, turnsToContents, type GeminiContent } from './gemini-tools.util';
 import { getCompanyGeminiKey } from './company-ai.util';
 import { formatCurrency } from '../common/format-currency';
 import { formatDate } from '../common/format-date';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { CommerceNotifyService } from '../whatsapp/commerce-notify.service';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 @Injectable()
 export class AiService {
-  constructor(@Inject(DRIZZLE) private db: any) {}
+  constructor(
+    @Inject(DRIZZLE) private db: any,
+    private whatsapp: WhatsAppService,
+    private commerceNotify: CommerceNotifyService,
+  ) {}
 
   async staffChat(user: AuthUser, message: string, history: ChatMessage[] = []) {
     const context: Record<string, unknown> = await this.buildStaffContext(user);
@@ -30,6 +37,11 @@ export class AiService {
       };
     }
 
+    const toolReply = await this.staffChatWithTools(user, message, history, context, geminiKey);
+    if (toolReply) {
+      return { reply: toolReply, aiEnabled: true, whatsappEnabled: this.whatsapp.evolutionConfigured() };
+    }
+
     const systemInstruction = `Eres el asistente inteligente de GHome, un panel de administración de importación y ventas en Santo Domingo, República Dominicana. Respondes en español, de forma breve, clara y profesional, con montos siempre en pesos dominicanos (RD$). Tienes acceso a datos reales de la empresa que se te dan como contexto, incluyendo facturas, pagos recientes, deudores principales y — si el mensaje menciona a un cliente — su estado de cuenta detallado (clienteConsultado). Si el usuario pide una acción que no puedes ejecutar directamente (como crear o borrar algo), explica cómo hacerlo desde el panel (por ejemplo indicando la sección) en vez de inventar que ya se hizo.\n\nContexto actual de la empresa (JSON):\n${JSON.stringify(context)}`;
 
     const historyText = history.slice(-6).map((h) => `${h.role === 'user' ? 'Usuario' : 'Asistente'}: ${h.content}`).join('\n');
@@ -39,7 +51,116 @@ export class AiService {
     return {
       reply: reply ?? this.staffFallbackReply(message, context),
       aiEnabled: Boolean(reply),
+      whatsappEnabled: this.whatsapp.evolutionConfigured(),
     };
+  }
+
+  private async staffChatWithTools(
+    user: AuthUser,
+    message: string,
+    history: ChatMessage[],
+    context: Record<string, unknown>,
+    geminiKey: string | null,
+  ): Promise<string | null> {
+    const tools = [
+      {
+        name: 'get_business_snapshot',
+        description: 'KPIs de facturas vencidas, por vencer, despachos, inventario y deudores.',
+        parameters: { type: 'object', properties: {} },
+      },
+      {
+        name: 'list_recent_orders',
+        description: 'Pedidos/preventas recientes del catálogo.',
+        parameters: {
+          type: 'object',
+          properties: { limit: { type: 'number', description: 'Máximo de filas (default 8)' } },
+        },
+      },
+      {
+        name: 'send_whatsapp_admin',
+        description: 'Envía un mensaje WhatsApp al equipo/admin con un reporte o alerta.',
+        parameters: {
+          type: 'object',
+          properties: { message: { type: 'string', description: 'Cuerpo del mensaje' } },
+          required: ['message'],
+        },
+      },
+      {
+        name: 'share_catalog_whatsapp',
+        description: 'Envía un catálogo público por WhatsApp a un número de cliente.',
+        parameters: {
+          type: 'object',
+          properties: {
+            catalogId: { type: 'string' },
+            phone: { type: 'string' },
+            recipientName: { type: 'string' },
+          },
+          required: ['catalogId', 'phone'],
+        },
+      },
+    ];
+
+    const systemInstruction = `Eres Super AI de GHome — copiloto de operaciones con herramientas reales.
+- Responde en español, breve y profesional (montos en RD$).
+- Usa get_business_snapshot o list_recent_orders antes de reportes.
+- Usa send_whatsapp_admin solo cuando el usuario pida explícitamente notificar o enviar un reporte por WhatsApp.
+- Usa share_catalog_whatsapp cuando pidan compartir un catálogo por WhatsApp (necesitas catalogId y teléfono).
+- No inventes datos; usa las herramientas.
+Contexto JSON: ${JSON.stringify(context).slice(0, 6000)}`;
+
+    const contents: GeminiContent[] = [
+      ...turnsToContents(history.slice(-6)),
+      { role: 'user', parts: [{ text: message }] },
+    ];
+
+    for (let i = 0; i < 5; i++) {
+      const result = await generateWithTools(contents, { systemInstruction, tools, apiKey: geminiKey });
+      if (!result.ok) return null;
+
+      if (result.functionCall) {
+        const fn = result.functionCall;
+        const toolResult = await this.runStaffTool(user, fn.name, fn.args || {});
+        contents.push({ role: 'model', parts: [{ functionCall: fn }] });
+        contents.push({
+          role: 'user',
+          parts: [{ functionResponse: { name: fn.name, response: toolResult } }],
+        });
+        continue;
+      }
+
+      if (result.text) return result.text;
+      return null;
+    }
+    return null;
+  }
+
+  private async runStaffTool(user: AuthUser, name: string, args: Record<string, unknown>) {
+    if (name === 'get_business_snapshot') {
+      const ctx = await this.buildStaffContext(user);
+      return ctx;
+    }
+    if (name === 'list_recent_orders') {
+      const limit = Math.min(20, Math.max(1, Number(args.limit) || 8));
+      return this.commerceNotify.recentOrdersSummary(user.companyId, limit);
+    }
+    if (name === 'send_whatsapp_admin') {
+      const text = String(args.message || '').trim().slice(0, 3500);
+      if (!text) return { ok: false, error: 'empty_message' };
+      if (!this.whatsapp.evolutionConfigured()) return { ok: false, error: 'evolution_not_configured' };
+      const admin = await this.whatsapp.adminPhoneStatus(user.companyId);
+      if (!admin.configured) {
+        return { ok: false, error: 'admin_phone_missing', hint: 'Configure el WhatsApp del negocio en Ajustes → Datos de la empresa' };
+      }
+      return this.whatsapp.sendAdmin(user.companyId, text);
+    }
+    if (name === 'share_catalog_whatsapp') {
+      const catalogId = String(args.catalogId || '');
+      const phone = String(args.phone || '');
+      const recipientName = args.recipientName ? String(args.recipientName) : undefined;
+      if (!catalogId || !phone) return { ok: false, error: 'invalid_request' };
+      return this.commerceNotify.shareCatalog(user.companyId, catalogId, phone, recipientName);
+    }
+    return { error: 'unknown_tool' };
   }
 
   async clientChat(user: AuthUser, message: string, history: ChatMessage[] = [], clientContext?: Record<string, unknown>) {

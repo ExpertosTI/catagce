@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Building2, Check, ExternalLink, FileText, Link2, Loader2, Receipt, Sparkles,
+  Building2, Check, ExternalLink, FileText, Link2, Loader2, MessageCircle, Receipt, Sparkles,
 } from 'lucide-react';
 import DashboardLayout, { PageHeader, SectionTitle } from '../../../components/DashboardLayout';
 import { FormField } from '../../../components/FormField';
@@ -224,13 +224,40 @@ export default function SettingsPage() {
           <FormField label="Correo de contacto">
             <input type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" />
           </FormField>
-          <FormField label="Teléfono">
-            <input type="tel" value={form.phone ?? ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" />
+          <FormField label="WhatsApp del negocio">
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={form.phone ?? ''}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="input"
+              placeholder="8095550000"
+            />
+            <p className="form-hint">
+              Alertas de pedidos nuevos y reportes del Super AI. Cámbielo aquí y se actualiza al instante.
+            </p>
           </FormField>
         </div>
         <FormField label="Dirección">
           <input value={form.address ?? ''} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input" />
         </FormField>
+
+        <div className="pt-4 border-t border-slate-100 space-y-3">
+          <div className="flex items-center gap-2">
+            <MessageCircle size={16} className="text-emerald-600" />
+            <p className="text-sm font-semibold text-slate-800">Notificaciones WhatsApp</p>
+          </div>
+          <p className="text-xs text-slate-500">
+            Los pedidos del catálogo y la app móvil avisan al <strong>WhatsApp del negocio</strong> de arriba.
+            Los clientes reciben confirmación si tienen teléfono en su perfil.
+          </p>
+          {!form.phone?.trim() && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              Configure el WhatsApp del negocio para recibir alertas de pedidos.
+            </p>
+          )}
+        </div>
 
         <div className="pt-4 border-t border-slate-100 space-y-3">
           <div className="flex items-center gap-2">
