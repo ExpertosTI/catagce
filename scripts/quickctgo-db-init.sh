@@ -45,10 +45,27 @@ staff_count() {
 }
 
 do_push() {
-  echo "🗄️  Aplicando schema (drizzle push)..."
-  run_db_cmd "pnpm --filter @ghome/db push --force"
-  echo "🩹 Parche SQL idempotente..."
-  bash scripts/ghome-schema-patch.sh
+  echo "🩹 Parche SQL idempotente (solo tablas broadcast + columnas seguras)..."
+  bash scripts/quickctgo-schema-patch.sh || {
+    echo ""
+    echo "⚠️  El parche SQL falló — probablemente el schema de la DB no coincide con ghome."
+    echo "   NO ejecute drizzle push en producción sin revisar diagnose-quickctgo.sh"
+    return 1
+  }
+
+  if [ "${QUICKCTGO_DRIZZLE_PUSH:-}" != "1" ]; then
+    echo ""
+    echo "ℹ️  drizzle push OMITIDO (producción)."
+    echo "   Solo se aplicó el parche SQL. Para forzar drizzle (peligroso):"
+    echo "   QUICKCTGO_DRIZZLE_PUSH=1 bash scripts/quickctgo-db-init.sh push"
+    return 0
+  fi
+
+  echo "🗄️  drizzle push (forzado con QUICKCTGO_DRIZZLE_PUSH=1)..."
+  run_db_cmd "pnpm --filter @ghome/db push --force" || {
+    echo "❌ drizzle push falló — revise logs arriba. La DB en línea no fue borrada."
+    return 1
+  }
 }
 
 do_seed() {
@@ -69,7 +86,7 @@ case "${1:-push}" in
     do_seed
     ;;
   patch)
-    bash scripts/ghome-schema-patch.sh
+    bash scripts/quickctgo-schema-patch.sh
     ;;
   all)
     do_push
@@ -83,8 +100,9 @@ case "${1:-push}" in
     ;;
   *)
     echo "Uso: $0 [push|seed|patch|all]"
-    echo "  push  — solo schema (predeterminado, seguro)"
-    echo "  all   — schema + seed solo si la DB está vacía"
+    echo "  push  — parche SQL seguro (predeterminado); drizzle solo con QUICKCTGO_DRIZZLE_PUSH=1"
+    echo "  patch — solo parche SQL"
+    echo "  all   — push + seed solo si la DB está vacía"
     exit 1
     ;;
 esac
