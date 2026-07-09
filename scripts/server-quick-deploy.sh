@@ -12,6 +12,14 @@ docker builder prune -af 2>/dev/null || true
 
 echo "🏗️  Build api + web..."
 export $(grep -v '^#' .env | xargs)
+if [ -f .evolution.local ]; then
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    [ -z "${!key}" ] && export "$key=$val"
+  done < .evolution.local
+fi
 docker compose build --parallel api web
 
 echo "🚢 Deploy stack..."
@@ -23,7 +31,8 @@ for svc in api web media-processor catalog-renderer notifications; do
 done
 
 echo "🗄️  DB reset + seed admin..."
-bash scripts/reset-and-seed-server.sh all
+echo "⚠️  DEPRECADO: no uses este script en producción. Usa: bash scripts/deploy-update.sh"
+echo "   Si realmente necesitas reset: bash scripts/reset-and-seed-server.sh all"
 
 sleep 8
 curl -sf https://api.catagce.renace.tech/api/health && echo " ✅ API OK" || echo " ⏳ API arrancando..."

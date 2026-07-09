@@ -1,0 +1,5 @@
+# Copiar a .evolution.local en el servidor (no commitear secretos).
+# Usado por la API para enviar códigos de verificación por WhatsApp.
+EVOLUTION_API_URL=https://tu-evolution.ejemplo.com
+EVOLUTION_API_KEY=tu-api-key
+EVOLUTION_INSTANCE=nombre-instancia

@@ -1,0 +1,114 @@
+import { Injectable, Inject, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { eq, and, gt, desc } from 'drizzle-orm';
+import { randomInt } from 'crypto';
+import * as bcrypt from 'bcryptjs';
+import { verificationCodes } from '@catagce/db';
+import { DRIZZLE } from '../database/database.module';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { isValidPhone, maskPhone, normalizePhoneDigits } from '../common/utils/phone.util';
+
+const CODE_TTL_MS = 10 * 60 * 1000;
+const MAX_SENDS_PER_WINDOW = 3;
+const SEND_WINDOW_MS = 15 * 60 * 1000;
+const MAX_VERIFY_ATTEMPTS = 5;
+
+@Injectable()
+export class VerificationService {
+  private sendLog = new Map<string, number[]>();
+
+  constructor(
+    @Inject(DRIZZLE) private db: any,
+    private whatsapp: WhatsAppService,
+    private jwt: JwtService,
+  ) {}
+
+  private assertSendRate(phone: string) {
+    const now = Date.now();
+    const key = phone;
+    const hits = (this.sendLog.get(key) || []).filter((t) => now - t < SEND_WINDOW_MS);
+    if (hits.length >= MAX_SENDS_PER_WINDOW) {
+      throw new HttpException('Demasiados intentos. Espere unos minutos.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    hits.push(now);
+    this.sendLog.set(key, hits);
+  }
+
+  async sendCode(phoneRaw: string, purpose: 'register' | 'login') {
+    const phone = normalizePhoneDigits(phoneRaw);
+    if (!isValidPhone(phone)) throw new BadRequestException('Número de WhatsApp inválido');
+    if (!this.whatsapp.configured()) {
+      throw new BadRequestException('WhatsApp no está disponible en este momento');
+    }
+
+    this.assertSendRate(phone);
+
+    const code = String(randomInt(100000, 999999));
+    const codeHash = await bcrypt.hash(code, 10);
+    const expiresAt = new Date(Date.now() + CODE_TTL_MS);
+
+    await this.db.delete(verificationCodes).where(and(
+      eq(verificationCodes.phone, phone),
+      eq(verificationCodes.purpose, purpose),
+    ));
+
+    await this.db.insert(verificationCodes).values({
+      phone, codeHash, purpose, expiresAt, attempts: 0,
+    });
+
+    const text = purpose === 'register'
+      ? `Tu código de registro en Catagce es: ${code}\nVálido por 10 minutos.`
+      : `Tu código de acceso a Catagce es: ${code}\nVálido por 10 minutos.`;
+
+    const sent = await this.whatsapp.sendText(phone, text);
+    if (!sent.ok) throw new BadRequestException('No se pudo enviar el código por WhatsApp');
+
+    return { ok: true, masked: maskPhone(phone), expiresInSec: CODE_TTL_MS / 1000 };
+  }
+
+  async verifyCode(phoneRaw: string, code: string, purpose: 'register' | 'login') {
+    const phone = normalizePhoneDigits(phoneRaw);
+    if (!isValidPhone(phone) || !/^\d{6}$/.test(code)) {
+      throw new BadRequestException('Código inválido');
+    }
+
+    const [row] = await this.db.select().from(verificationCodes).where(and(
+      eq(verificationCodes.phone, phone),
+      eq(verificationCodes.purpose, purpose),
+      gt(verificationCodes.expiresAt, new Date()),
+    )).orderBy(desc(verificationCodes.createdAt)).limit(1);
+
+    if (!row) throw new BadRequestException('Código expirado o no solicitado');
+    if (row.attempts >= MAX_VERIFY_ATTEMPTS) {
+      throw new BadRequestException('Demasiados intentos. Solicite un código nuevo.');
+    }
+
+    const ok = await bcrypt.compare(code, row.codeHash);
+    await this.db.update(verificationCodes)
+      .set({ attempts: row.attempts + 1 })
+      .where(eq(verificationCodes.id, row.id));
+
+    if (!ok) throw new BadRequestException('Código incorrecto');
+
+    await this.db.delete(verificationCodes).where(eq(verificationCodes.id, row.id));
+
+    const verificationToken = this.jwt.sign(
+      { phone, purpose, typ: 'wa_verify' },
+      { expiresIn: '15m' },
+    );
+
+    return { ok: true, verificationToken, phone };
+  }
+
+  verifyToken(token: string, expectedPurpose: 'register' | 'login') {
+    try {
+      const payload = this.jwt.verify(token) as { phone?: string; purpose?: string; typ?: string };
+      if (payload.typ !== 'wa_verify' || payload.purpose !== expectedPurpose || !payload.phone) {
+        throw new Error('invalid');
+      }
+      return normalizePhoneDigits(payload.phone);
+    } catch {
+      throw new BadRequestException('Verificación expirada. Solicite un código nuevo.');
+    }
+  }
+}

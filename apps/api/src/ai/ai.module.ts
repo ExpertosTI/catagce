@@ -24,5 +24,6 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
   ],
   controllers: [AiController],
   providers: [AiAssistantService, AiToolsService],
+  exports: [AiToolsService],
 })
 export class AiModule {}

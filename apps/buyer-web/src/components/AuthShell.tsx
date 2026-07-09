@@ -82,15 +82,18 @@ export function AuthButton({
   loading,
   disabled,
   type = 'submit',
+  onClick,
 }: {
   children: ReactNode;
   loading?: boolean;
   disabled?: boolean;
   type?: 'submit' | 'button';
+  onClick?: () => void;
 }) {
   return (
     <button
       type={type}
+      onClick={onClick}
       disabled={disabled || loading}
       className="w-full h-12 rounded-xl bg-[#FFD60A] hover:bg-[#F5C400] text-[#1A1D26] font-bold text-[15px] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
     >

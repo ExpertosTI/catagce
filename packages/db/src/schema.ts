@@ -439,6 +439,16 @@ export const aiChatMessages = pgTable('ai_chat_messages', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const verificationCodes = pgTable('verification_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  phone: text('phone').notNull(),
+  codeHash: text('code_hash').notNull(),
+  purpose: text('purpose').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // ─── Relations ───────────────────────────────────────────────────────────────
 export const sellersRelations = relations(sellers, ({ one, many }) => ({
   branding: one(sellerBranding, { fields: [sellers.id], references: [sellerBranding.sellerId] }),
