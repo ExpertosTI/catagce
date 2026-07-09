@@ -51,7 +51,7 @@ export default function CatalogsPage() {
       if (res.ok) {
         showToast('Catálogo enviado por WhatsApp');
       } else {
-        showToast(res.error === 'evolution_not_configured' ? 'Evolution API no configurada en el servidor' : 'No se pudo enviar', 'error');
+        showToast(res.error === 'evolution_not_configured' ? 'WhatsApp no está disponible' : 'No se pudo enviar', 'error');
       }
     } catch {
       showToast('Error al enviar por WhatsApp', 'error');

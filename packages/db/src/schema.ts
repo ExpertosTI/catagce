@@ -1,5 +1,5 @@
 import {
-  pgTable, text, timestamp, integer, pgEnum, decimal, uuid, boolean, jsonb, uniqueIndex,
+  pgTable, text, timestamp, integer, pgEnum, decimal, uuid, boolean, jsonb, uniqueIndex, primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -25,6 +25,12 @@ export const importStatusEnum = pgEnum('import_status', ['in_transit', 'customs'
 export const allocationStatusEnum = pgEnum('allocation_status', ['reserved', 'partially_dispatched', 'dispatched']);
 export const stockMovementTypeEnum = pgEnum('stock_movement_type', [
   'adjustment', 'import', 'dispatch', 'return', 'correction',
+]);
+export const broadcastCampaignStatusEnum = pgEnum('broadcast_campaign_status', [
+  'draft', 'scheduled', 'running', 'paused', 'completed',
+]);
+export const broadcastJobStatusEnum = pgEnum('broadcast_job_status', [
+  'pending', 'sending', 'sent', 'failed',
 ]);
 
 // ─── Empresa importadora ─────────────────────────────────────────────────────
@@ -458,6 +464,62 @@ export const notifications = pgTable('notifications', {
   readAt: timestamp('read_at'),
   sentAt: timestamp('sent_at'),
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Difusión WhatsApp (listas de broadcast) ─────────────────────────────────
+export const broadcastContacts = pgTable('broadcast_contacts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  name: text('name').notNull(),
+  phone: text('phone').notNull(),
+  notes: text('notes'),
+  clientId: uuid('client_id').references(() => clients.id),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (t) => ({
+  phoneCompanyIdx: uniqueIndex('broadcast_contacts_phone_company_idx').on(t.phone, t.companyId),
+}));
+
+export const broadcastLists = pgTable('broadcast_lists', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  name: text('name').notNull(),
+  color: text('color').default('#25D366'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const broadcastListMembers = pgTable('broadcast_list_members', {
+  listId: uuid('list_id').references(() => broadcastLists.id, { onDelete: 'cascade' }).notNull(),
+  contactId: uuid('contact_id').references(() => broadcastContacts.id, { onDelete: 'cascade' }).notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.listId, t.contactId] }),
+}));
+
+export const broadcastCampaigns = pgTable('broadcast_campaigns', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  listId: uuid('list_id').references(() => broadcastLists.id).notNull(),
+  name: text('name').notNull(),
+  message: text('message').notNull(),
+  mediaUrl: text('media_url'),
+  mediaType: text('media_type'),
+  intervalMinSec: integer('interval_min_sec').default(45).notNull(),
+  intervalMaxSec: integer('interval_max_sec').default(90).notNull(),
+  status: broadcastCampaignStatusEnum('status').default('draft').notNull(),
+  startAt: timestamp('start_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const broadcastCampaignJobs = pgTable('broadcast_campaign_jobs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  campaignId: uuid('campaign_id').references(() => broadcastCampaigns.id, { onDelete: 'cascade' }).notNull(),
+  contactId: uuid('contact_id').references(() => broadcastContacts.id).notNull(),
+  phone: text('phone').notNull(),
+  contactName: text('contact_name'),
+  status: broadcastJobStatusEnum('status').default('pending').notNull(),
+  scheduledAt: timestamp('scheduled_at').notNull(),
+  sentAt: timestamp('sent_at'),
+  error: text('error'),
 });
 
 export const auditLogs = pgTable('audit_logs', {

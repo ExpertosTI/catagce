@@ -6,10 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, Package, FileText, Truck, ShoppingBag,
   Ship, BookOpen, Settings, LogOut, Plus, Menu, X, Wallet, BarChart3,
-  Search as SearchIcon,
+  Search as SearchIcon, Send,
 } from 'lucide-react';
 import { clearAuth, getUser, getToken } from '../lib/api';
-import { SITE_URL } from '../lib/site';
+import { SITE_URL, APP_NAME } from '../lib/site';
 import { NotificationBell } from './NotificationBell';
 import { AiChatWidget } from './AiChatWidget';
 import { GlobalSearch, GlobalSearchTrigger, openGlobalSearch } from './GlobalSearch';
@@ -26,6 +26,7 @@ const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   '/dashboard/presales': ShoppingBag,
   '/dashboard/imports': Ship,
   '/dashboard/catalogs': BookOpen,
+  '/dashboard/broadcast': Send,
   '/dashboard/reports': BarChart3,
   '/dashboard/settings': Settings,
 };
@@ -74,7 +75,7 @@ function SidebarBrand({ userName }: { userName: string | null }) {
         G
       </div>
       <div className="min-w-0">
-        <p className="font-bold text-sm tracking-tight">GHome Admin</p>
+        <p className="font-bold text-sm tracking-tight">{APP_NAME}</p>
         <p className="text-xs text-blue-200/80 truncate" suppressHydrationWarning>
           {userName ?? 'Administrador'}
         </p>
@@ -125,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <Menu size={22} />
         </button>
-        <p className="font-bold text-sm tracking-tight">GHome Admin</p>
+        <p className="font-bold text-sm tracking-tight">{APP_NAME}</p>
         <div className="flex items-center gap-1">
           <button
             type="button"

@@ -20,9 +20,10 @@ export class WhatsAppService {
   }
 
   status() {
+    const ready = this.evolutionConfigured();
     return {
-      evolution: this.evolutionConfigured(),
-      instance: env('EVOLUTION_INSTANCE') || null,
+      whatsapp: ready,
+      ready,
     };
   }
 
@@ -50,12 +51,44 @@ export class WhatsAppService {
     const res = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(env('EVOLUTION_INSTANCE'))}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: env('EVOLUTION_API_KEY') },
-      body: JSON.stringify({ number: phone, text }),
+      body: JSON.stringify({ number: phone, text, delay: 1200 }),
     });
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       console.warn('[whatsapp] send failed', res.status, detail.slice(0, 200));
+      return { ok: false as const, error: `http_${res.status}` };
+    }
+    return { ok: true as const };
+  }
+
+  async sendMedia(to: string, opts: {
+    mediaUrl: string;
+    mediatype: 'image' | 'document' | 'video';
+    mimetype?: string;
+    caption?: string;
+  }) {
+    if (!this.evolutionConfigured()) return { ok: false as const, error: 'evolution_not_configured' };
+    const phone = normalizePhoneDigits(to);
+    if (!isValidPhone(phone)) return { ok: false as const, error: 'invalid_phone' };
+
+    const baseUrl = env('EVOLUTION_API_URL').replace(/\/$/, '');
+    const res = await fetch(`${baseUrl}/message/sendMedia/${encodeURIComponent(env('EVOLUTION_INSTANCE'))}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: env('EVOLUTION_API_KEY') },
+      body: JSON.stringify({
+        number: phone,
+        mediatype: opts.mediatype,
+        mimetype: opts.mimetype || (opts.mediatype === 'image' ? 'image/jpeg' : 'application/octet-stream'),
+        media: opts.mediaUrl,
+        caption: opts.caption || '',
+        delay: 1500,
+      }),
+    });
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.warn('[whatsapp] sendMedia failed', res.status, detail.slice(0, 200));
       return { ok: false as const, error: `http_${res.status}` };
     }
     return { ok: true as const };
