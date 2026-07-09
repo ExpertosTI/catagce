@@ -1,7 +1,7 @@
 import { Injectable, Inject, UnauthorizedException, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import {
   sellers, sellerUsers, sellerApiKeys, sellerBranding, sellerSettings,
@@ -23,15 +23,28 @@ export class AuthService {
 
   async findSellerByPhone(phoneRaw: string) {
     const phone = normalizePhoneDigits(phoneRaw);
+    const local = phone.startsWith('1') && phone.length === 11 ? phone.slice(1) : phone;
+    const variants = [...new Set([phone, local, `+${phone}`, `+1${local}`])];
+
     let sellerId: string | null = null;
 
-    const [byPhone] = await this.db.select().from(sellers).where(eq(sellers.phone, phone)).limit(1);
+    const [byPhone] = await this.db.select({ id: sellers.id }).from(sellers)
+      .where(or(...variants.map((p) => eq(sellers.phone, p))))
+      .limit(1);
     if (byPhone) sellerId = byPhone.id;
-    else {
-      const [byWa] = await this.db.select({ sellerId: sellerSettings.sellerId })
-        .from(sellerSettings).where(eq(sellerSettings.whatsappNumber, phone)).limit(1);
-      sellerId = byWa?.sellerId ?? null;
+
+    if (!sellerId) {
+      try {
+        const [byWa] = await this.db.select({ sellerId: sellerSettings.sellerId })
+          .from(sellerSettings)
+          .where(or(...variants.map((p) => eq(sellerSettings.whatsappNumber, p))))
+          .limit(1);
+        sellerId = byWa?.sellerId ?? null;
+      } catch (err) {
+        console.warn('[auth] whatsappNumber lookup skipped:', (err as Error).message);
+      }
     }
+
     if (!sellerId) return null;
 
     const [seller] = await this.db.select().from(sellers).where(eq(sellers.id, sellerId)).limit(1);

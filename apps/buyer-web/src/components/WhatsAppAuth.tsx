@@ -40,15 +40,22 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
     router.push(onboarding.completed ? '/dashboard' : '/onboarding');
   };
 
+  const parseApiError = (data: { message?: string | string[] }, fallback: string) => {
+    if (Array.isArray(data.message)) return data.message.join(', ');
+    return data.message || fallback;
+  };
+
   const sendCode = async () => {
     setLoading(true);
     setError('');
     try {
-      const check = await fetch(`${API_URL}/auth/whatsapp/check`, {
+      const checkRes = await fetch(`${API_URL}/auth/whatsapp/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
-      }).then((r) => r.json());
+      });
+      const check = await checkRes.json();
+      if (!checkRes.ok) throw new Error(parseApiError(check, 'No se pudo verificar el número'));
       if (!check.exists && mode === 'login') {
         throw new Error('No hay cuenta con este número. Crea una cuenta primero.');
       }
@@ -63,7 +70,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
         body: JSON.stringify({ phone, purpose: p }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'No se pudo enviar el código');
+      if (!res.ok) throw new Error(parseApiError(data, 'No se pudo enviar el código'));
       setMasked(data.masked || '');
       setStep('code');
     } catch (err: unknown) {
@@ -144,7 +151,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
   if (step === 'phone') {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-[#6B7280]">
+        <p className="text-sm text-gray-400">
           Te enviaremos un código de 6 dígitos a tu WhatsApp para {mode === 'login' ? 'iniciar sesión' : 'verificar tu número'}.
         </p>
         <AuthInput
@@ -154,7 +161,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
           placeholder="8095551234 o +18095551234"
           required
         />
-        {error && <p className="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{error}</p>}
         <AuthButton type="button" loading={loading} onClick={sendCode}>
           {loading ? 'Enviando...' : 'Enviar código'}
         </AuthButton>
@@ -175,7 +182,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
           placeholder="123456"
           required
         />
-        {error && <p className="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{error}</p>}
         <AuthButton type="button" loading={loading} onClick={verifyCode} disabled={code.length !== 6}>
           {loading ? 'Verificando...' : 'Verificar código'}
         </AuthButton>
@@ -195,7 +202,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
       <AuthInput label="URL de tu tienda" value={profile.sellerSlug} onChange={(v) => updateProfile('sellerSlug', v)} required />
       <AuthInput label="Tu nombre" value={profile.name} onChange={(v) => updateProfile('name', v)} required />
       <AuthInput label="Correo (opcional)" type="email" value={profile.email} onChange={(v) => updateProfile('email', v)} placeholder="tu@empresa.com" />
-      {error && <p className="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{error}</p>}
       <AuthButton loading={loading}>{loading ? 'Creando cuenta...' : 'Crear mi tienda'}</AuthButton>
     </form>
   );
