@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS verification_codes (
 );
 CREATE INDEX IF NOT EXISTS verification_codes_phone_purpose_idx ON verification_codes (phone, purpose);
 
--- WhatsApp inbox (Whaticket-style)
+-- WhatsApp inbox
 DO $$ BEGIN
   CREATE TYPE whatsapp_ticket_status AS ENUM ('open', 'pending', 'resolved', 'closed');
 EXCEPTION WHEN duplicate_object THEN NULL;

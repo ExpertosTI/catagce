@@ -50,10 +50,17 @@ export function ShareCatalogModal({
     setManualName('');
   };
 
+  const recipientPhones = () => {
+    const phones = new Set(selected);
+    const manual = normalizePhone(manualPhone);
+    if (manual.length >= 11) phones.add(manual);
+    return Array.from(phones);
+  };
+
   const send = async () => {
-    const phones = Array.from(selected);
+    const phones = recipientPhones();
     if (!phones.length) {
-      setError('Selecciona al menos un contacto o agrega un número');
+      setError('Selecciona al menos un contacto o escribe un número');
       return;
     }
     setLoading(true);
@@ -95,7 +102,9 @@ export function ShareCatalogModal({
             <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Contactos de la app</p>
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {contacts.length === 0 ? (
-                <p className="text-sm text-gray-600 py-2">Sin contactos aún (aparecen al recibir pedidos)</p>
+                <p className="text-sm text-gray-600 py-2">
+                  Sin contactos. <a href="/dashboard/contacts" className="text-[#00D1FF] underline">Crear contactos</a>
+                </p>
               ) : contacts.map((c) => (
                 <label key={c.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
                   <input
@@ -147,7 +156,7 @@ export function ShareCatalogModal({
             className="w-full py-3 rounded-xl bg-[#25D366] text-black font-bold flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
-            {loading ? 'Enviando...' : `Enviar a ${selected.size || 0} contacto(s)`}
+            {loading ? 'Enviando...' : `Enviar a ${recipientPhones().length} contacto(s)`}
           </button>
         </div>
       </div>

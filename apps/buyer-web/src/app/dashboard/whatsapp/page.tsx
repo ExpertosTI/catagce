@@ -186,9 +186,9 @@ export default function WhatsAppInboxPage() {
             WhatsApp Inbox
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Conversaciones 1 a 1 (estilo Whaticket). Para enviar a muchos contactos con pausa automática usa{' '}
+            Conversaciones con tus clientes. Para enviar a muchos contactos usa{' '}
             <a href="/dashboard/difusion" className="text-[#25D366] font-semibold underline">Difusión</a>.
-            {!waReady && ' · Evolution no configurado'}
+            {!waReady && ' · WhatsApp no configurado'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -215,7 +215,7 @@ export default function WhatsAppInboxPage() {
 
       {showQuickReplies && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-4 mb-6">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-[#FF8A00]" /> Autocopilot — respuestas rápidas</h3>
+          <h3 className="font-semibold mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-[#FF8A00]" /> Respuestas rápidas</h3>
           <div className="flex flex-wrap gap-2 mb-3">
             {quickReplies.map((qr) => (
               <button

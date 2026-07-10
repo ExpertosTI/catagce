@@ -461,7 +461,7 @@ export const verificationCodes = pgTable('verification_codes', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// ─── WhatsApp Inbox (Whaticket-style) ───────────────────────────────────────
+// ─── WhatsApp Inbox ─────────────────────────────────────────────────────────
 export const whatsappLabels = pgTable('whatsapp_labels', {
   id: uuid('id').defaultRandom().primaryKey(),
   sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
