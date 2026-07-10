@@ -10,14 +10,26 @@ export type OnboardingSetup = {
   welcomeMessage?: string;
   primaryColor?: string;
   accentColor?: string;
+  logoUrl?: string;
+  logoSkipped?: boolean;
   whatsappNumber?: string;
   productName?: string;
   productPrice?: number;
+  productImageUrl?: string;
+  productImageSkipped?: boolean;
   catalogName?: string;
   catalogSlug?: string;
 };
 
-export type OnboardingPhase = 'brand' | 'product' | 'catalog' | 'done';
+export type OnboardingPhase =
+  | 'brand'
+  | 'logo'
+  | 'product'
+  | 'product_photo'
+  | 'catalog'
+  | 'done';
+
+export type AskUpload = 'logo' | 'product' | null;
 
 export type OnboardingChatResponse = {
   reply: string;
@@ -25,28 +37,33 @@ export type OnboardingChatResponse = {
   readyToApply: boolean;
   phase: OnboardingPhase;
   suggestions: string[];
+  askUpload?: AskUpload;
 };
 
-const PHASE_ORDER: OnboardingPhase[] = ['brand', 'product', 'catalog', 'done'];
+const PHASE_ORDER: OnboardingPhase[] = [
+  'brand', 'logo', 'product', 'product_photo', 'catalog', 'done',
+];
 
 const PROMPT = `Eres el asistente de configuración de Catagce (catálogos y pedidos por WhatsApp en RD).
 
 REGLAS ESTRICTAS:
-1. Habla en español, cálido y breve (1-3 oraciones).
+1. Español, cálido, breve (1-3 oraciones).
 2. NO repitas preguntas ya respondidas. Usa el setup acumulado.
-3. Avanza SOLO en la fase indicada. Nunca retrocedas.
-4. Extrae datos del mensaje del usuario y ponlos en setup (solo campos nuevos).
-5. Responde SOLO JSON válido, sin markdown:
-{"reply":"...","setup":{...},"phase":"brand|product|catalog|done","readyToApply":false,"suggestions":["..."]}
+3. Nunca retrocedas de fase.
+4. Extrae datos del mensaje en setup (solo campos nuevos).
+5. SOLO JSON válido:
+{"reply":"...","setup":{...},"phase":"...","readyToApply":false,"suggestions":["..."],"askUpload":null}
 
-Campos setup: businessName, primaryColor (hex), accentColor (hex), welcomeMessage,
-productName, productPrice (número), catalogName, catalogSlug (minúsculas-guiones), whatsappNumber.
-
-Fases:
+Fases en orden: brand → logo → product → product_photo → catalog → done
 - brand: nombre + colores
-- product: primer producto + precio
-- catalog: nombre catálogo + slug
-- done: listo para aplicar`;
+- logo: pedir logo (askUpload:"logo")
+- product: nombre + precio
+- product_photo: pedir foto (askUpload:"product")
+- catalog: nombre + slug
+- done: listo
+
+Campos: businessName, primaryColor, accentColor, logoUrl, productName, productPrice,
+productImageUrl, catalogName, catalogSlug, whatsappNumber, logoSkipped, productImageSkipped.`;
 
 function phaseIndex(p: string): number {
   const i = PHASE_ORDER.indexOf(p as OnboardingPhase);
@@ -67,18 +84,56 @@ function slugify(text: string): string {
     .slice(0, 40) || 'catalogo';
 }
 
+function hasLogo(setup: OnboardingSetup) {
+  return Boolean(setup.logoUrl) || Boolean(setup.logoSkipped);
+}
+
+function hasProductImage(setup: OnboardingSetup) {
+  return Boolean(setup.productImageUrl) || Boolean(setup.productImageSkipped);
+}
+
 function inferPhase(setup: OnboardingSetup): OnboardingPhase {
-  if (setup.catalogName && setup.catalogSlug && setup.productName && setup.productPrice) {
-    return 'done';
+  if (
+    setup.catalogName && setup.catalogSlug
+    && setup.productName && setup.productPrice
+    && hasProductImage(setup) && hasLogo(setup)
+  ) return 'done';
+
+  if (setup.productName && setup.productPrice && hasProductImage(setup) && hasLogo(setup)) {
+    return 'catalog';
   }
-  if (setup.productName && setup.productPrice) return 'catalog';
-  if (setup.businessName || setup.primaryColor) return 'product';
+  if (setup.productName && setup.productPrice && hasLogo(setup)) {
+    return 'product_photo';
+  }
+  if (hasLogo(setup) && (setup.businessName || setup.primaryColor)) {
+    return 'product';
+  }
+  if (setup.businessName || setup.primaryColor) {
+    return 'logo';
+  }
   return 'brand';
+}
+
+function isSkip(message: string) {
+  return /omitir|saltar|después|despues|sin\s+(logo|foto|imagen)|no\s+tengo|más\s+tarde|mas\s+tarde|skip/i.test(message);
 }
 
 function extractFromMessage(message: string, phase: OnboardingPhase): OnboardingSetup {
   const setup: OnboardingSetup = {};
   const lower = message.toLowerCase().trim();
+
+  // Uploaded image URL pasted or sent by client
+  const urlMatch = message.match(/https?:\/\/\S+\.(?:png|jpe?g|webp|gif)(?:\?\S*)?/i)
+    || message.match(/https?:\/\/\S*\/uploads\/\S+/i);
+  if (urlMatch) {
+    if (phase === 'logo') setup.logoUrl = urlMatch[0];
+    if (phase === 'product_photo') setup.productImageUrl = urlMatch[0];
+  }
+
+  if (isSkip(message)) {
+    if (phase === 'logo') setup.logoSkipped = true;
+    if (phase === 'product_photo') setup.productImageSkipped = true;
+  }
 
   const hexes = message.match(/#[0-9A-Fa-f]{6}/g) || [];
   if (hexes[0]) setup.primaryColor = hexes[0];
@@ -91,6 +146,16 @@ function extractFromMessage(message: string, phase: OnboardingPhase): Onboarding
 
   const nameMatch = message.match(/(?:se llama|negocio(?:\s+se\s+llama)?|marca)\s+([A-Za-z0-9ÁÉÍÓÚáéíóúñÑ .&-]{2,40})/i);
   if (nameMatch) setup.businessName = nameMatch[1].replace(/[,.].*$/, '').trim();
+
+  // Bare business name when in brand and no price
+  if (phase === 'brand' && !setup.businessName && !/\d/.test(message) && message.trim().length >= 2 && message.trim().length <= 40) {
+    if (!/colores|azul|naranja|omitir/i.test(lower) || /se llama|negocio|marca/i.test(lower)) {
+      const bare = message.replace(/colores?.*/i, '').replace(/[,.].*$/, '').trim();
+      if (/negocio|se llama|marca/i.test(lower) || bare.split(/\s+/).length <= 5) {
+        // keep nameMatch result; if "Solo tengo el nombre" style handled elsewhere
+      }
+    }
+  }
 
   const priceMatch = message.match(/(?:rd\$?\s*|\$\s*|precio\s*(?:de\s*)?)(\d+(?:[.,]\d{1,2})?)/i)
     || message.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:pesos|rd\$?)/i);
@@ -118,7 +183,7 @@ function extractFromMessage(message: string, phase: OnboardingPhase): Onboarding
     if (slash) {
       setup.catalogName = slash[1].trim();
       setup.catalogSlug = slugify(slash[2]);
-    } else if (/^[A-Za-z0-9ÁÉÍÓÚáéíóúñÑ ._-]{2,40}$/.test(message.trim()) && !priceMatch) {
+    } else if (/^[A-Za-z0-9ÁÉÍÓÚáéíóúñÑ ._-]{2,40}$/.test(message.trim()) && !priceMatch && phase === 'catalog') {
       setup.catalogName = message.trim();
       setup.catalogSlug = slugify(message.trim());
     }
@@ -137,6 +202,12 @@ function mergeSetup(a: OnboardingSetup, b?: OnboardingSetup): OnboardingSetup {
     if (v !== undefined && v !== null && v !== '') (out as any)[k] = v;
   }
   return out;
+}
+
+function askUploadFor(phase: OnboardingPhase): AskUpload {
+  if (phase === 'logo') return 'logo';
+  if (phase === 'product_photo') return 'product';
+  return null;
 }
 
 @Injectable()
@@ -164,6 +235,7 @@ export class OnboardingChatService {
       reply: `¡Hola! Soy tu asistente de Catagce. Vamos a dejar **${sellerName}** listo para vender por WhatsApp en pocos minutos.\n\n¿Cómo se llama tu negocio y qué colores representan tu marca? (ej. azul #00D1FF y naranja #FF8A00)`,
       readyToApply: false,
       phase: 'brand',
+      askUpload: null,
       suggestions: [
         'Mi negocio se llama Renace Tech, colores azul y naranja',
         'Solo tengo el nombre por ahora',
@@ -183,38 +255,61 @@ export class OnboardingChatService {
         reply: `¡Hola! Vamos a configurar **${name}**. ¿Cómo se llama tu negocio y qué colores de marca usas?`,
         setup,
         phase: 'brand',
+        askUpload: null,
         readyToApply: false,
         suggestions: ['Mi negocio se llama Renace Tech, azul y naranja', 'Solo el nombre por ahora'],
       };
     }
 
+    if (phase === 'logo') {
+      return {
+        reply: `Excelente${setup.businessName ? `, **${setup.businessName}**` : ''}. Sube el **logo** de tu empresa (PNG o JPG). Si no lo tienes a mano, puedes omitirlo.`,
+        setup,
+        phase: 'logo',
+        askUpload: 'logo',
+        readyToApply: false,
+        suggestions: ['Omitir logo por ahora'],
+      };
+    }
+
     if (phase === 'product') {
       return {
-        reply: `Genial${setup.businessName ? `, **${setup.businessName}**` : ''}. Ahora dime el nombre de tu primer producto y su precio en pesos dominicanos.`,
+        reply: `Ahora dime el nombre de tu primer producto y su precio en pesos dominicanos.`,
         setup,
         phase: 'product',
+        askUpload: null,
         readyToApply: false,
         suggestions: ['Camiseta polo RD$850', 'Loción capilar RD$1200'],
       };
     }
 
-    if (phase === 'catalog') {
-      const productHint = setup.productName
-        ? ` con **${setup.productName}**`
-        : '';
+    if (phase === 'product_photo') {
       return {
-        reply: `Perfecto${productHint}. ¿Cómo quieres llamar tu catálogo y qué URL corta prefieres? (ej. "Catálogo 2026" / renace-2026)`,
+        reply: `¿Tienes una **foto** de **${setup.productName || 'tu producto'}**? Súbela para que se vea bien en el catálogo. También puedes omitirla.`,
+        setup,
+        phase: 'product_photo',
+        askUpload: 'product',
+        readyToApply: false,
+        suggestions: ['Omitir foto por ahora'],
+      };
+    }
+
+    if (phase === 'catalog') {
+      return {
+        reply: `Perfecto. ¿Cómo quieres llamar tu catálogo y qué URL corta prefieres? (ej. "Catálogo 2026" / renace-2026)`,
         setup,
         phase: 'catalog',
+        askUpload: null,
         readyToApply: false,
         suggestions: ['Catálogo principal / catalogo-principal', 'POS80'],
       };
     }
 
     return {
-      reply: `¡Todo listo! Tengo marca, producto y catálogo. Pulsa **Aplicar configuración** para crearlos en tu tienda.`,
+      reply: `¡Todo listo! Tengo marca${setup.logoUrl ? ' + logo' : ''}, producto${setup.productImageUrl ? ' + foto' : ''} y catálogo. Pulsa **Aplicar configuración**.`,
       setup,
       phase: 'done',
+      askUpload: null,
       readyToApply: true,
       suggestions: [],
     };
@@ -228,38 +323,36 @@ export class OnboardingChatService {
   ): OnboardingChatResponse {
     const setup = mergeSetup(accumulated, parsed.setup);
     const inferred = inferPhase(setup);
-    // Never go backwards; prefer inferred progress over model whim
     let phase = maxPhase(forcedPhase, inferred);
-    if (parsed.phase) {
+    if (parsed.phase && PHASE_ORDER.includes(parsed.phase as OnboardingPhase)) {
       const modelPhase = parsed.phase as OnboardingPhase;
-      // Allow model to advance, never retreat below inferred
-      phase = maxPhase(inferred, maxPhase(forcedPhase, modelPhase));
       if (phaseIndex(modelPhase) < phaseIndex(inferred)) phase = inferred;
+      else phase = maxPhase(inferred, maxPhase(forcedPhase, modelPhase));
     }
 
     const ready = Boolean(parsed.readyToApply) || phase === 'done'
-      || Boolean(setup.productName && setup.productPrice && setup.catalogName && setup.catalogSlug);
+      || Boolean(
+        setup.productName && setup.productPrice && setup.catalogName && setup.catalogSlug
+        && hasLogo(setup) && hasProductImage(setup),
+      );
 
     if (ready) phase = 'done';
 
     let reply = (parsed.reply || '').trim();
-    // If model repeated a previous-phase question, replace with correct phase reply
-    const looksLikeProductLoop = /primer producto|precio en pesos/i.test(reply) && phaseIndex(phase) >= phaseIndex('catalog');
-    const looksLikeBrandLoop = /colores representan|cómo se llama tu negocio/i.test(reply) && phaseIndex(phase) > 0;
-    if (!reply || looksLikeProductLoop || looksLikeBrandLoop) {
-      reply = this.replyForPhase(phase === 'done' ? 'done' : phase, setup, sellerName).reply;
+    const wrongProduct = /primer producto|precio en pesos/i.test(reply) && phaseIndex(phase) > phaseIndex('product');
+    const wrongBrand = /colores representan|cómo se llama tu negocio/i.test(reply) && phaseIndex(phase) > 0;
+    if (!reply || wrongProduct || wrongBrand) {
+      reply = this.replyForPhase(phase, setup, sellerName).reply;
     }
 
-    const suggestions = parsed.suggestions?.length
-      ? parsed.suggestions
-      : this.replyForPhase(phase === 'done' ? 'done' : phase, setup, sellerName).suggestions;
-
+    const base = this.replyForPhase(phase, setup, sellerName);
     return {
       reply,
       setup,
       phase,
       readyToApply: ready || phase === 'done',
-      suggestions: phase === 'done' ? [] : suggestions,
+      suggestions: phase === 'done' ? [] : (parsed.suggestions?.length ? parsed.suggestions : base.suggestions),
+      askUpload: askUploadFor(phase),
     };
   }
 
@@ -274,30 +367,65 @@ export class OnboardingChatService {
     const ctx = await this.getContext(sellerId);
     const sellerName = ctx.seller?.name || 'tu negocio';
     const lower = message.toLowerCase().trim();
-
-    // Affirmations after product → jump to catalog
     const affirming = /^(sí|si|ok|dale|créalo|crealo|hazlo|aplica|listo|vamos|claro|perfecto)/i.test(lower);
 
     let phase: OnboardingPhase = clientPhase && PHASE_ORDER.includes(clientPhase)
       ? clientPhase
       : inferPhase(clientSetup);
 
-    // User explicitly asks for catalog
-    if (/cat[aá]logo/i.test(lower) && phaseIndex(phase) < phaseIndex('catalog') && clientSetup.productName) {
-      phase = 'catalog';
-    }
-
     const extracted = extractFromMessage(message, phase);
     let accumulated = mergeSetup(clientSetup, extracted);
 
-    // "Sí, créalo" with product already known → move to catalog (don't re-ask product)
-    if (affirming && accumulated.productName && accumulated.productPrice && phaseIndex(phase) <= phaseIndex('product')) {
-      phase = 'catalog';
-      accumulated = mergeSetup(accumulated, extracted);
-      return this.replyForPhase('catalog', accumulated, sellerName);
+    // Upload confirmations from UI
+    if (/sub[ií]|logo|imagen|foto/i.test(lower) && (accumulated.logoUrl || accumulated.productImageUrl)) {
+      // keep extracted urls
     }
 
-    // Short catalog name like "POS80"
+    // After brand fields → logo
+    if (phase === 'brand' && (accumulated.businessName || accumulated.primaryColor)) {
+      phase = inferPhase(accumulated);
+    }
+
+    // Logo done → product
+    if (phase === 'logo' && hasLogo(accumulated)) {
+      phase = 'product';
+      return this.normalizeResponse(
+        this.replyForPhase('product', accumulated, sellerName),
+        accumulated,
+        'product',
+        sellerName,
+      );
+    }
+
+    // Affirm after product text → product_photo (not catalog)
+    if (affirming && accumulated.productName && accumulated.productPrice && phaseIndex(phase) <= phaseIndex('product')) {
+      phase = 'product_photo';
+      return this.replyForPhase('product_photo', accumulated, sellerName);
+    }
+
+    // Product filled → photo
+    if (phase === 'product' && accumulated.productName && accumulated.productPrice) {
+      phase = 'product_photo';
+      return this.normalizeResponse(
+        this.replyForPhase('product_photo', accumulated, sellerName),
+        accumulated,
+        'product_photo',
+        sellerName,
+      );
+    }
+
+    // Photo done → catalog
+    if (phase === 'product_photo' && hasProductImage(accumulated)) {
+      phase = 'catalog';
+      return this.normalizeResponse(
+        this.replyForPhase('catalog', accumulated, sellerName),
+        accumulated,
+        'catalog',
+        sellerName,
+      );
+    }
+
+    // Catalog name → done
     if (phase === 'catalog' && accumulated.catalogName && accumulated.catalogSlug) {
       return this.normalizeResponse(
         { reply: '', setup: accumulated, phase: 'done', readyToApply: true, suggestions: [] },
@@ -307,16 +435,13 @@ export class OnboardingChatService {
       );
     }
 
-    // Deterministic advance when we just filled required fields
     const nextInferred = inferPhase(accumulated);
-    if (phaseIndex(nextInferred) > phaseIndex(phase)) {
-      phase = nextInferred;
-    }
+    if (phaseIndex(nextInferred) > phaseIndex(phase)) phase = nextInferred;
 
     const genAI = this.gemini();
     if (!genAI) {
       return this.normalizeResponse(
-        this.replyForPhase(phase === 'done' ? 'done' : phase, accumulated, sellerName),
+        this.replyForPhase(phase, accumulated, sellerName),
         accumulated,
         phase,
         sellerName,
@@ -327,21 +452,17 @@ export class OnboardingChatService {
     const transcript = history.slice(-10).map((m) => `${m.role}: ${m.content}`).join('\n');
     const prompt = `${PROMPT}
 
-Fase actual (OBLIGATORIA, no retrocedas): ${phase}
-Setup acumulado (ya confirmado): ${JSON.stringify(accumulated)}
-Negocio: ${JSON.stringify({
-      name: ctx.seller?.name,
-      slug: ctx.seller?.slug,
-      whatsapp: ctx.settings?.whatsappNumber || ctx.seller?.phone,
-    })}
+Fase actual (OBLIGATORIA): ${phase}
+Setup acumulado: ${JSON.stringify(accumulated)}
+Negocio: ${JSON.stringify({ name: ctx.seller?.name, slug: ctx.seller?.slug })}
 
 Historial:
 ${transcript}
 
 Usuario: ${message}
 
-Si el usuario ya dio producto+precio y pide catálogo o da un nombre corto de catálogo, phase debe ser catalog o done.
-Nunca preguntes de nuevo por producto si productName y productPrice ya están en el setup.`;
+Si phase es logo o product_photo, askUpload debe ser "logo" o "product".
+Nunca preguntes de nuevo por producto si ya está en setup.`;
 
     try {
       const result = await model.generateContent(prompt);
@@ -349,16 +470,13 @@ Nunca preguntes de nuevo por producto si productName y productPrice ya están en
       const parsed = JSON.parse(raw) as OnboardingChatResponse;
       return this.normalizeResponse(parsed, accumulated, phase, sellerName);
     } catch {
-      // Rule-based path — never loop to product if we already have it
-      if (phase === 'catalog' || (accumulated.productName && accumulated.productPrice && /cat[aá]logo|pos\d+/i.test(lower))) {
-        if (!accumulated.catalogName && message.trim().length >= 2) {
-          accumulated.catalogName = message.trim();
-          accumulated.catalogSlug = slugify(message.trim());
-        }
+      if (phase === 'catalog' && message.trim().length >= 2) {
+        accumulated.catalogName = accumulated.catalogName || message.trim();
+        accumulated.catalogSlug = accumulated.catalogSlug || slugify(message.trim());
         phase = inferPhase(accumulated);
       }
       return this.normalizeResponse(
-        this.replyForPhase(phase === 'done' ? 'done' : phase, accumulated, sellerName),
+        this.replyForPhase(phase, accumulated, sellerName),
         accumulated,
         phase,
         sellerName,
@@ -372,11 +490,12 @@ Nunca preguntes de nuevo por producto si productName y productPrice ya están en
         .where(eq(sellers.id, sellerId));
     }
 
-    if (setup.primaryColor || setup.accentColor || setup.welcomeMessage) {
+    if (setup.primaryColor || setup.accentColor || setup.welcomeMessage || setup.logoUrl) {
       await this.db.update(sellerBranding).set({
         ...(setup.primaryColor ? { primaryColor: setup.primaryColor } : {}),
         ...(setup.accentColor ? { accentColor: setup.accentColor } : {}),
         ...(setup.welcomeMessage ? { welcomeMessage: setup.welcomeMessage } : {}),
+        ...(setup.logoUrl ? { logoUrl: setup.logoUrl } : {}),
         updatedAt: new Date(),
       }).where(eq(sellerBranding.sellerId, sellerId));
     }
@@ -395,6 +514,7 @@ Nunca preguntes de nuevo por producto si productName y productPrice ya están en
         name: setup.productName,
         basePrice: setup.productPrice,
         initialStock: 50,
+        ...(setup.productImageUrl ? { imageUrl: setup.productImageUrl } : {}),
       }, sellerId, userId);
     }
 

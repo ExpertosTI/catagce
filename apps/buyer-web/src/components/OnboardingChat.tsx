@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Send, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { ImageUpload } from '@/components/ImageUpload';
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; id: string };
 type SetupDraft = Record<string, unknown>;
@@ -14,6 +15,7 @@ type ChatResponse = {
   readyToApply: boolean;
   phase: string;
   suggestions: string[];
+  askUpload?: 'logo' | 'product' | null;
 };
 
 function mergeSetup(prev: SetupDraft, next?: SetupDraft): SetupDraft {
@@ -90,6 +92,10 @@ export function OnboardingChat() {
   const [done, setDone] = useState(false);
   const [typingId, setTypingId] = useState<string | null>(null);
   const [boot, setBoot] = useState(true);
+  const [askUpload, setAskUpload] = useState<'logo' | 'product' | null>(null);
+  const setupRef = useRef<SetupDraft>({});
+
+  useEffect(() => { setupRef.current = setup; }, [setup]);
 
   const pushAssistant = useCallback((content: string) => {
     const id = uid();
@@ -98,11 +104,23 @@ export function OnboardingChat() {
     return id;
   }, []);
 
+  const applyResponse = (res: ChatResponse) => {
+    const nextSetup = mergeSetup(setupRef.current, res.setup);
+    setupRef.current = nextSetup;
+    setSetup(nextSetup);
+    setReadyToApply(res.readyToApply);
+    setPhase(res.phase);
+    setSuggestions(res.suggestions || []);
+    setAskUpload(res.askUpload || null);
+    pushAssistant(res.reply);
+  };
+
   useEffect(() => {
     apiFetch<ChatResponse>('/onboarding/chat')
       .then((res) => {
         setPhase(res.phase);
         setSuggestions(res.suggestions || []);
+        setAskUpload(res.askUpload || null);
         const id = uid();
         setMessages([{ role: 'assistant', content: res.reply, id }]);
         setTypingId(id);
@@ -121,16 +139,22 @@ export function OnboardingChat() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading, typingId]);
+  }, [messages, loading, typingId, askUpload]);
 
-  const send = async (text: string) => {
+  const send = async (text: string, setupOverride?: SetupDraft) => {
     const trimmed = text.trim();
     if (!trimmed || loading || typingId) return;
     setInput('');
+    const currentSetup = setupOverride || setupRef.current;
+    if (setupOverride) {
+      setupRef.current = setupOverride;
+      setSetup(setupOverride);
+    }
     const userMsg: ChatMsg = { role: 'user', content: trimmed, id: uid() };
     const history = [...messages, userMsg];
     setMessages(history);
     setSuggestions([]);
+    setAskUpload(null);
     setLoading(true);
     try {
       const res = await apiFetch<ChatResponse>('/onboarding/chat', {
@@ -138,21 +162,27 @@ export function OnboardingChat() {
         body: JSON.stringify({
           message: trimmed,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
-          setup,
+          setup: currentSetup,
           phase,
         }),
       });
-      const nextSetup = mergeSetup(setup, res.setup);
-      setSetup(nextSetup);
-      setReadyToApply(res.readyToApply);
-      setPhase(res.phase);
-      setSuggestions(res.suggestions || []);
-      pushAssistant(res.reply);
+      applyResponse(res);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error de conexión';
       pushAssistant(`Hubo un problema: ${msg}. Intenta de nuevo.`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onImageUploaded = async (url: string) => {
+    if (!url || loading || typingId) return;
+    if (askUpload === 'logo') {
+      const next = mergeSetup(setupRef.current, { logoUrl: url });
+      await send('Listo, ya subí el logo', next);
+    } else if (askUpload === 'product') {
+      const next = mergeSetup(setupRef.current, { productImageUrl: url });
+      await send('Listo, ya subí la foto del producto', next);
     }
   };
 
@@ -182,7 +212,13 @@ export function OnboardingChat() {
   };
 
   const phases = ['Marca', 'Producto', 'Catálogo', 'Listo'];
-  const phaseIdx = ['brand', 'product', 'catalog', 'done'].indexOf(phase);
+  const phaseIdx = (() => {
+    if (phase === 'brand' || phase === 'logo') return 0;
+    if (phase === 'product' || phase === 'product_photo') return 1;
+    if (phase === 'catalog') return 2;
+    if (phase === 'done') return 3;
+    return 0;
+  })();
   const inputLocked = loading || Boolean(typingId) || boot;
 
   return (
@@ -252,13 +288,30 @@ export function OnboardingChat() {
         <div ref={bottomRef} />
       </div>
 
+      {askUpload && !done && !typingId && !loading && (
+        <div className="mt-4 glass rounded-2xl p-4 msg-in">
+          <ImageUpload
+            value={
+              askUpload === 'logo'
+                ? String(setup.logoUrl || '')
+                : String(setup.productImageUrl || '')
+            }
+            onChange={onImageUploaded}
+            label={askUpload === 'logo' ? 'Logo de tu empresa' : 'Foto del producto'}
+          />
+        </div>
+      )}
+
       {Object.keys(setup).length > 0 && (
         <div className="mt-4 glass rounded-xl p-3 text-xs text-gray-400">
           <span className="text-[#00D1FF] font-semibold text-sm block mb-1">Borrador</span>
           <div className="flex flex-wrap gap-2">
-            {Object.entries(setup).map(([k, v]) => (
-              <span key={k} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10">
-                <span className="text-gray-500">{k}: </span>{String(v)}
+            {Object.entries(setup)
+              .filter(([k]) => !k.endsWith('Skipped'))
+              .map(([k, v]) => (
+              <span key={k} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 max-w-full truncate">
+                <span className="text-gray-500">{k}: </span>
+                {String(v).startsWith('http') ? '✓ subido' : String(v)}
               </span>
             ))}
           </div>
