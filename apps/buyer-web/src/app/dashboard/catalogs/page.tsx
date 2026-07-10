@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Copy, Check, Share2, Plus, ExternalLink } from 'lucide-react';
+import { Copy, Check, Plus, ExternalLink, MessageCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { ShareCatalogModal } from '@/components/ShareCatalogModal';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -18,6 +19,7 @@ export default function CatalogsPage() {
   const [newCatalog, setNewCatalog] = useState({ name: '', slug: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [shareCatalog, setShareCatalog] = useState<{ id: string; name: string } | null>(null);
 
   const loadCatalogs = () => {
     apiFetch<any[]>('/catalogs')
@@ -118,13 +120,24 @@ export default function CatalogsPage() {
                     <ExternalLink className="w-4 h-4" /> Ver
                   </a>
                   {token && (
-                    <button
-                      onClick={() => copyShareLink(token)}
-                      className="flex items-center gap-2 px-4 py-2 bg-[#FF8A00] text-black font-bold rounded-xl text-sm"
-                    >
-                      {copied === token ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                      {copied === token ? 'Copiado' : 'Compartir'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => copyShareLink(token)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl text-sm hover:bg-white/10 transition-colors"
+                      >
+                        {copied === token ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied === token ? 'Copiado' : 'Copiar link'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShareCatalog({ id: catalog.id, name: catalog.name })}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#25D366] text-black font-bold rounded-xl text-sm"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        WhatsApp
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -138,6 +151,14 @@ export default function CatalogsPage() {
           <Copy className="w-12 h-12 mx-auto mb-4 opacity-30" />
           <p>Crea tu primer catálogo para compartir con clientes.</p>
         </div>
+      )}
+
+      {shareCatalog && (
+        <ShareCatalogModal
+          catalogId={shareCatalog.id}
+          catalogName={shareCatalog.name}
+          onClose={() => setShareCatalog(null)}
+        />
       )}
     </DashboardLayout>
   );

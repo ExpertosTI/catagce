@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { normalizePhoneDigits, isValidPhone } from '../common/utils/phone.util';
+import { normalizePhoneDigits, isValidPhone, phoneSendVariants } from '../common/utils/phone.util';
 
 function env(name: string) {
   return String(process.env[name] ?? '').trim().replace(/^["']|["']$/g, '');
@@ -40,13 +40,40 @@ export class WhatsAppService {
     const phone = normalizePhoneDigits(to);
     if (!isValidPhone(phone)) return { ok: false as const, error: 'invalid_phone' };
 
-    const res = await this.evolutionFetch('/message/sendText/{instance}', {
-      method: 'POST',
-      body: JSON.stringify({ number: phone, text, delay: 1200 }),
-    });
+    let lastStatus = 0;
+    for (const number of phoneSendVariants(to)) {
+      const res = await this.evolutionFetch('/message/sendText/{instance}', {
+        method: 'POST',
+        body: JSON.stringify({ number, text, delay: 1200 }),
+      });
+      if (res.ok) return { ok: true as const };
+      lastStatus = res.status || 0;
+    }
+    return { ok: false as const, error: lastStatus ? `http_${lastStatus}` : 'send_failed' };
+  }
 
-    if (!res.ok) return { ok: false as const, error: `http_${res.status}` };
-    return { ok: true as const };
+  async sendMedia(to: string, opts: { caption?: string; mediaUrl: string; mediatype?: string }) {
+    if (!this.configured()) return { ok: false as const, error: 'not_configured' };
+    if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false as const, error: 'invalid_phone' };
+
+    const body = {
+      number: '',
+      mediatype: opts.mediatype || 'image',
+      media: opts.mediaUrl,
+      caption: opts.caption || '',
+      delay: 1200,
+    };
+
+    let lastStatus = 0;
+    for (const number of phoneSendVariants(to)) {
+      const res = await this.evolutionFetch('/message/sendMedia/{instance}', {
+        method: 'POST',
+        body: JSON.stringify({ ...body, number }),
+      });
+      if (res.ok) return { ok: true as const };
+      lastStatus = res.status || 0;
+    }
+    return { ok: false as const, error: lastStatus ? `http_${lastStatus}` : 'send_failed' };
   }
 
   async findChats() {

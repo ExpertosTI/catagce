@@ -25,6 +25,15 @@ export class CatalogsController {
     return this.catalogsService.publish(id, user.sellerId);
   }
 
+  @Post(':id/share-whatsapp')
+  async shareWhatsApp(
+    @Param('id') id: string,
+    @CurrentUser() user: UserPayload,
+    @Body() body: { phones: string[]; message?: string },
+  ) {
+    return this.catalogsService.shareViaWhatsApp(user.sellerId, id, body);
+  }
+
   @Get(':slug')
   @Public()
   async findBySlug(@Param('slug') slug: string) {

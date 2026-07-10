@@ -186,7 +186,8 @@ export default function WhatsAppInboxPage() {
             WhatsApp Inbox
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Tickets, etiquetas y respuestas rápidas — estilo Whaticket
+            Conversaciones 1 a 1 (estilo Whaticket). Para enviar a muchos contactos con pausa automática usa{' '}
+            <a href="/dashboard/difusion" className="text-[#25D366] font-semibold underline">Difusión</a>.
             {!waReady && ' · Evolution no configurado'}
           </p>
         </div>

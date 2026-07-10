@@ -3,9 +3,10 @@ import { BullModule } from '@nestjs/bullmq';
 import { CatalogsController } from './catalogs.controller';
 import { CatalogsService } from './catalogs.service';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: 'catalog-render' })],
+  imports: [BullModule.registerQueue({ name: 'catalog-render' }), WhatsAppModule],
   controllers: [CatalogsController],
   providers: [CatalogsService, WebhookDispatcherService],
   exports: [CatalogsService],

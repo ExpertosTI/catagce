@@ -37,6 +37,14 @@ export const whatsappTicketStatusEnum = pgEnum('whatsapp_ticket_status', [
   'open', 'pending', 'resolved', 'closed',
 ]);
 
+export const broadcastCampaignStatusEnum = pgEnum('broadcast_campaign_status', [
+  'draft', 'running', 'paused', 'completed', 'cancelled',
+]);
+
+export const broadcastJobStatusEnum = pgEnum('broadcast_job_status', [
+  'pending', 'sent', 'failed',
+]);
+
 // ─── Tenants & Identity ──────────────────────────────────────────────────────
 export const sellers = pgTable('sellers', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -494,6 +502,54 @@ export const whatsappQuickReplies = pgTable('whatsapp_quick_replies', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ─── WhatsApp Difusión (listas de difusión) ─────────────────────────────────
+export const broadcastLists = pgTable('broadcast_lists', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const broadcastListMembers = pgTable('broadcast_list_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  listId: uuid('list_id').references(() => broadcastLists.id).notNull(),
+  phone: text('phone').notNull(),
+  name: text('name').notNull(),
+  buyerContactId: uuid('buyer_contact_id').references(() => buyerContacts.id),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (t) => ({
+  listPhoneIdx: uniqueIndex('broadcast_list_members_list_phone_idx').on(t.listId, t.phone),
+}));
+
+export const broadcastCampaigns = pgTable('broadcast_campaigns', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  listId: uuid('list_id').references(() => broadcastLists.id).notNull(),
+  name: text('name').notNull(),
+  messageText: text('message_text').notNull(),
+  mediaUrl: text('media_url'),
+  status: broadcastCampaignStatusEnum('status').default('draft'),
+  delayMinSec: integer('delay_min_sec').default(45),
+  delayMaxSec: integer('delay_max_sec').default(90),
+  scheduledAt: timestamp('scheduled_at'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const broadcastJobs = pgTable('broadcast_jobs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  campaignId: uuid('campaign_id').references(() => broadcastCampaigns.id).notNull(),
+  phone: text('phone').notNull(),
+  contactName: text('contact_name'),
+  status: broadcastJobStatusEnum('status').default('pending'),
+  scheduledAt: timestamp('scheduled_at'),
+  sentAt: timestamp('sent_at'),
+  error: text('error'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 // ─── Relations ───────────────────────────────────────────────────────────────
 export const sellersRelations = relations(sellers, ({ one, many }) => ({
   branding: one(sellerBranding, { fields: [sellers.id], references: [sellerBranding.sellerId] }),
@@ -511,6 +567,8 @@ export const sellersRelations = relations(sellers, ({ one, many }) => ({
   whatsappLabels: many(whatsappLabels),
   whatsappTickets: many(whatsappTickets),
   whatsappQuickReplies: many(whatsappQuickReplies),
+  broadcastLists: many(broadcastLists),
+  broadcastCampaigns: many(broadcastCampaigns),
 }));
 
 export const sellerUsersRelations = relations(sellerUsers, ({ one }) => ({
@@ -628,4 +686,25 @@ export const whatsappTicketsRelations = relations(whatsappTickets, ({ one }) => 
 
 export const whatsappQuickRepliesRelations = relations(whatsappQuickReplies, ({ one }) => ({
   seller: one(sellers, { fields: [whatsappQuickReplies.sellerId], references: [sellers.id] }),
+}));
+
+export const broadcastListsRelations = relations(broadcastLists, ({ one, many }) => ({
+  seller: one(sellers, { fields: [broadcastLists.sellerId], references: [sellers.id] }),
+  members: many(broadcastListMembers),
+  campaigns: many(broadcastCampaigns),
+}));
+
+export const broadcastListMembersRelations = relations(broadcastListMembers, ({ one }) => ({
+  list: one(broadcastLists, { fields: [broadcastListMembers.listId], references: [broadcastLists.id] }),
+  buyerContact: one(buyerContacts, { fields: [broadcastListMembers.buyerContactId], references: [buyerContacts.id] }),
+}));
+
+export const broadcastCampaignsRelations = relations(broadcastCampaigns, ({ one, many }) => ({
+  seller: one(sellers, { fields: [broadcastCampaigns.sellerId], references: [sellers.id] }),
+  list: one(broadcastLists, { fields: [broadcastCampaigns.listId], references: [broadcastLists.id] }),
+  jobs: many(broadcastJobs),
+}));
+
+export const broadcastJobsRelations = relations(broadcastJobs, ({ one }) => ({
+  campaign: one(broadcastCampaigns, { fields: [broadcastJobs.campaignId], references: [broadcastCampaigns.id] }),
 }));

@@ -16,6 +16,8 @@ import { AiModule } from './ai/ai.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { WhatsAppInboxModule } from './whatsapp-inbox/whatsapp-inbox.module';
+import { ContactsModule } from './contacts/contacts.module';
+import { BroadcastModule } from './broadcast/broadcast.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { BullModule } from '@nestjs/bullmq';
 
@@ -36,6 +38,8 @@ import { BullModule } from '@nestjs/bullmq';
     OnboardingModule,
     UploadsModule,
     WhatsAppInboxModule,
+    ContactsModule,
+    BroadcastModule,
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST || 'localhost',

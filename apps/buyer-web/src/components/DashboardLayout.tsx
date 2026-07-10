@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Package, FileOutput, Settings, LogOut, Warehouse, BookOpen, MessageCircle } from 'lucide-react';
+import { Home, LayoutGrid, Package, FileOutput, Settings, LogOut, Warehouse, BookOpen, MessageCircle, Radio } from 'lucide-react';
 import { clearAuth } from '@/lib/api';
 import { AiAssistant } from '@/components/AiAssistant';
 
@@ -12,7 +12,8 @@ const navItems = [
   { href: '/dashboard/catalogs', icon: BookOpen, label: 'Catálogos' },
   { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario' },
   { href: '/dashboard/orders', icon: FileOutput, label: 'Pedidos' },
-  { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+  { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'Inbox' },
+  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión' },
   { href: '/dashboard/settings', icon: Settings, label: 'Config' },
 ];
 

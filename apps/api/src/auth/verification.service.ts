@@ -61,7 +61,12 @@ export class VerificationService {
       : `Tu código de acceso a Catagce es: ${code}\nVálido por 10 minutos.`;
 
     const sent = await this.whatsapp.sendText(phone, text);
-    if (!sent.ok) throw new BadRequestException('No se pudo enviar el código por WhatsApp');
+    if (!sent.ok) {
+      const detail = sent.error === 'not_configured'
+        ? 'WhatsApp no está configurado en el servidor'
+        : `No se pudo enviar el código (${sent.error}). Verifica el número con código país, ej: 8494577463`;
+      throw new BadRequestException(detail);
+    }
 
     return { ok: true, masked: maskPhone(phone), expiresInSec: CODE_TTL_MS / 1000 };
   }

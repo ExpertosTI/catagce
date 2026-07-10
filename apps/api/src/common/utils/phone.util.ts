@@ -23,6 +23,14 @@ export function maskPhone(raw: string) {
   return `***${d.slice(-4)}`;
 }
 
+/** Formatos a probar con Evolution API (DR y otros) */
+export function phoneSendVariants(raw: string): string[] {
+  const norm = normalizePhoneDigits(raw);
+  if (!norm) return [];
+  const local = norm.length === 11 && norm.startsWith('1') ? norm.slice(1) : norm;
+  return [...new Set([norm, local, `+${norm}`].filter(Boolean))];
+}
+
 export function waEmailFromPhone(phone: string) {
   return `${normalizePhoneDigits(phone)}@wa.catagce.local`;
 }
