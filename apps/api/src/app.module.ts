@@ -18,6 +18,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { WhatsAppInboxModule } from './whatsapp-inbox/whatsapp-inbox.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
+import { WhatsAppConnectModule } from './whatsapp-connect/whatsapp-connect.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { BullModule } from '@nestjs/bullmq';
 
@@ -40,6 +41,7 @@ import { BullModule } from '@nestjs/bullmq';
     WhatsAppInboxModule,
     ContactsModule,
     BroadcastModule,
+    WhatsAppConnectModule,
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST || 'localhost',

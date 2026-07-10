@@ -1,5 +1,6 @@
-# Copiar a .evolution.local en el servidor (no commitear secretos).
-# Instancia Connected en evoapi — usa el NOMBRE exacto de la tarjeta (ej: RENACE.TECH o renace).
+# Evolution API (tu evoapi) — clave GLOBAL de admin (puede crear instancias).
+# Cada vendedor de Catagce crea su propia instancia y escanea QR en Config → WhatsApp.
 EVOLUTION_API_URL=https://evoapi.renace.tech
-EVOLUTION_API_KEY=tu-api-key-global-o-de-instancia
+EVOLUTION_API_KEY=tu-api-key-global
+# Instancia de plataforma (OTP login/registro Catagce). Opcional si solo usas WhatsApp por vendedor.
 EVOLUTION_INSTANCE=RENACE.TECH

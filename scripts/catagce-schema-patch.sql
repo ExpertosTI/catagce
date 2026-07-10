@@ -109,3 +109,9 @@ CREATE TABLE IF NOT EXISTS broadcast_jobs (
   error text,
   created_at timestamp DEFAULT now()
 );
+
+-- WhatsApp por vendedor (instancia Evolution propia)
+ALTER TABLE seller_settings ADD COLUMN IF NOT EXISTS evolution_instance text;
+ALTER TABLE seller_settings ADD COLUMN IF NOT EXISTS evolution_token text;
+ALTER TABLE seller_settings ADD COLUMN IF NOT EXISTS evolution_status text;
+ALTER TABLE seller_settings ADD COLUMN IF NOT EXISTS evolution_phone text;

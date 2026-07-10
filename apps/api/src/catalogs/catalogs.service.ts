@@ -1,13 +1,14 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { DRIZZLE } from '../database/database.module';
-import { catalogs, catalogProducts, catalogPublications } from '@catagce/db';
+import { catalogs, catalogProducts, catalogPublications, sellerSettings } from '@catagce/db';
 import { eq } from 'drizzle-orm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { isValidPhone, normalizePhoneDigits } from '../common/utils/phone.util';
+import { platformEvolution } from '../whatsapp/evolution-config';
 
 const WEB_URL = (process.env.PUBLIC_WEB_URL || 'https://catagce.renace.tech').replace(/\/$/, '');
 
@@ -92,8 +93,15 @@ export class CatalogsService {
     catalogId: string,
     body: { phones: string[]; message?: string; imageUrl?: string },
   ) {
-    if (!this.whatsapp.configured()) {
-      throw new BadRequestException('WhatsApp no está configurado');
+    const settings = await this.db.query.sellerSettings.findFirst({
+      where: eq(sellerSettings.sellerId, sellerId),
+    });
+    const creds = settings?.evolutionInstance && settings?.evolutionToken
+      ? { instance: settings.evolutionInstance, apiKey: settings.evolutionToken }
+      : platformEvolution();
+
+    if (!creds) {
+      throw new BadRequestException('Conecta tu WhatsApp en Configuración para compartir');
     }
 
     const catalog = await this.db.query.catalogs.findFirst({
@@ -120,8 +128,8 @@ export class CatalogsService {
         continue;
       }
       const sent = body.imageUrl
-        ? await this.whatsapp.sendMedia(phone, { caption: text, mediaUrl: body.imageUrl })
-        : await this.whatsapp.sendText(phone, text);
+        ? await this.whatsapp.sendMedia(phone, { caption: text, mediaUrl: body.imageUrl }, creds)
+        : await this.whatsapp.sendText(phone, text, creds);
       results.push({ phone, ok: sent.ok, error: sent.ok ? undefined : sent.error });
     }
 

@@ -1,9 +1,10 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { broadcastCampaigns, broadcastJobs } from '@catagce/db';
+import { broadcastCampaigns, broadcastJobs, sellerSettings } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { parseMediaUrls } from './media-urls.util';
+import { EvolutionCreds, platformEvolution } from '../whatsapp/evolution-config';
 
 @Injectable()
 export class BroadcastRunnerService implements OnModuleInit {
@@ -16,6 +17,16 @@ export class BroadcastRunnerService implements OnModuleInit {
 
   onModuleInit() {
     setInterval(() => void this.processDueJobs(), 8000);
+  }
+
+  private async sellerCreds(sellerId: string): Promise<EvolutionCreds | null> {
+    const settings = await this.db.query.sellerSettings.findFirst({
+      where: eq(sellerSettings.sellerId, sellerId),
+    });
+    if (settings?.evolutionInstance && settings?.evolutionToken) {
+      return { instance: settings.evolutionInstance, apiKey: settings.evolutionToken };
+    }
+    return platformEvolution();
   }
 
   async processDueJobs() {
@@ -45,13 +56,14 @@ export class BroadcastRunnerService implements OnModuleInit {
   private async sendJob(
     jobId: string,
     phone: string,
-    campaign: { id: string; messageText: string; mediaUrl?: string | null },
+    campaign: { id: string; sellerId: string; messageText: string; mediaUrl?: string | null },
   ) {
     const mediaUrls = parseMediaUrls(campaign.mediaUrl);
+    const creds = await this.sellerCreds(campaign.sellerId);
     const result = await this.whatsapp.sendBundle(phone, {
       text: campaign.messageText,
       mediaUrls,
-    });
+    }, creds);
 
     if (result.ok) {
       await this.db.update(broadcastJobs).set({

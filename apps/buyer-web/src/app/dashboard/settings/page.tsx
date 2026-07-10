@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Webhook, Plug, Palette, RefreshCw, Plus, Sparkles } from 'lucide-react';
+import { Webhook, Plug, Palette, RefreshCw, Plus, Sparkles, MessageCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ImageUpload } from '@/components/ImageUpload';
+import { WhatsAppConnectPanel } from '@/components/WhatsAppConnectPanel';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -14,7 +15,7 @@ const WEBHOOK_EVENTS = ['order.created', 'order.updated', 'catalog.published', '
 export default function SettingsPage() {
   const router = useRouter();
   const { ensureAuth, onApiError } = useRequireAuth();
-  const [tab, setTab] = useState<'branding' | 'webhooks' | 'integrations' | 'ai'>('branding');
+  const [tab, setTab] = useState<'whatsapp' | 'branding' | 'webhooks' | 'integrations' | 'ai'>('whatsapp');
   const [branding, setBranding] = useState<any>({});
   const [sellerSettings, setSellerSettings] = useState({ whatsappNumber: '' });
   const [aiConfig, setAiConfig] = useState({ googleAiApiKey: '', aiModel: 'gemini-2.5-flash', aiEnabled: true, hasApiKey: false, apiKeyPreview: null as string | null });
@@ -144,6 +145,7 @@ export default function SettingsPage() {
   };
 
   const tabs = [
+    { id: 'whatsapp' as const, label: 'WhatsApp', icon: MessageCircle },
     { id: 'branding' as const, label: 'Marca', icon: Palette },
     { id: 'ai' as const, label: 'Superpower AI', icon: Sparkles },
     { id: 'webhooks' as const, label: 'Webhooks', icon: Webhook },
@@ -170,6 +172,8 @@ export default function SettingsPage() {
           </button>
         ))}
       </div>
+
+      {tab === 'whatsapp' && <WhatsAppConnectPanel />}
 
       {tab === 'branding' && (
         <div className="glass rounded-2xl p-6 space-y-4 max-w-lg">

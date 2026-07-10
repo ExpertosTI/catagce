@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { existsSync, readFileSync } from 'fs';
 import { extname, join } from 'path';
 import { normalizePhoneDigits, isValidPhone, phoneSendVariants } from '../common/utils/phone.util';
+import {
+  EvolutionCreds,
+  evolutionAdminKey,
+  evolutionBaseUrl,
+  evolutionConfigured,
+  platformEvolution,
+} from './evolution-config';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/uploads';
-
-function env(name: string) {
-  return String(process.env[name] ?? '').trim().replace(/^["']|["']$/g, '');
-}
 
 type SendResult =
   | { ok: true }
@@ -16,24 +19,28 @@ type SendResult =
 @Injectable()
 export class WhatsAppService {
   configured() {
-    return Boolean(env('EVOLUTION_API_URL') && env('EVOLUTION_API_KEY') && env('EVOLUTION_INSTANCE'));
+    return evolutionConfigured() && Boolean(platformEvolution());
   }
 
-  async status() {
-    const configured = this.configured();
-    if (!configured) {
-      return { whatsapp: false, ready: false, instance: null, state: null };
+  /** Platform can create instances even if default INSTANCE is empty */
+  adminConfigured() {
+    return evolutionConfigured();
+  }
+
+  async status(creds?: EvolutionCreds | null) {
+    const c = creds || platformEvolution();
+    if (!c || !evolutionBaseUrl()) {
+      return { whatsapp: false, ready: false, instance: null, state: null, connected: false };
     }
-    const instance = env('EVOLUTION_INSTANCE');
-    const conn = await this.evolutionFetch('/instance/connectionState/{instance}', { method: 'GET' });
+    const conn = await this.evolutionFetch('/instance/connectionState/{instance}', { method: 'GET' }, c);
     const state = conn.ok
       ? (conn.data?.instance?.state || conn.data?.state || conn.data?.status || 'unknown')
       : 'unreachable';
     const ready = conn.ok && String(state).toLowerCase() === 'open';
     return {
       whatsapp: true,
-      ready: ready || configured,
-      instance,
+      ready: ready || Boolean(c),
+      instance: c.instance,
       state,
       connected: ready,
     };
@@ -52,9 +59,11 @@ export class WhatsAppService {
     return detail.slice(0, 180) || 'Error de Evolution API';
   }
 
-  private async evolutionFetch(path: string, init?: RequestInit) {
-    const baseUrl = env('EVOLUTION_API_URL').replace(/\/$/, '');
-    const instance = encodeURIComponent(env('EVOLUTION_INSTANCE'));
+  async evolutionFetch(path: string, init?: RequestInit, creds?: EvolutionCreds | null) {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false as const, status: 0, detail: 'not_configured' };
+    const baseUrl = evolutionBaseUrl();
+    const instance = encodeURIComponent(c.instance);
     const url = `${baseUrl}${path.replace('{instance}', instance)}`;
     let res: Response;
     try {
@@ -62,7 +71,7 @@ export class WhatsAppService {
         ...init,
         headers: {
           'Content-Type': 'application/json',
-          apikey: env('EVOLUTION_API_KEY'),
+          apikey: c.apiKey,
           ...(init?.headers || {}),
         },
       });
@@ -78,14 +87,65 @@ export class WhatsAppService {
     let data: any = null;
     try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
     if (data?.error || data?.status === 'ERROR') {
-      const detail = this.parseEvolutionError(JSON.stringify(data));
-      return { ok: false as const, status: res.status, detail };
+      return { ok: false as const, status: res.status, detail: this.parseEvolutionError(JSON.stringify(data)) };
     }
     return { ok: true as const, data };
   }
 
-  async sendText(to: string, text: string): Promise<SendResult> {
-    if (!this.configured()) return { ok: false, error: 'not_configured' };
+  /** Admin key (global) — create/list instances */
+  async adminFetch(path: string, init?: RequestInit) {
+    const baseUrl = evolutionBaseUrl();
+    const key = evolutionAdminKey();
+    if (!baseUrl || !key) return { ok: false as const, status: 0, detail: 'admin_not_configured' };
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: key,
+          ...(init?.headers || {}),
+        },
+      });
+    } catch (err: any) {
+      return { ok: false as const, status: 0, detail: err?.message || 'network_error' };
+    }
+    const raw = await res.text().catch(() => '');
+    if (!res.ok) {
+      console.warn('[whatsapp] admin', path, res.status, raw.slice(0, 200));
+      return { ok: false as const, status: res.status, detail: this.parseEvolutionError(raw) };
+    }
+    let data: any = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
+    return { ok: true as const, data };
+  }
+
+  async createInstance(instanceName: string) {
+    return this.adminFetch('/instance/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        instanceName,
+        qrcode: true,
+        integration: 'WHATSAPP-BAILEYS',
+      }),
+    });
+  }
+
+  async connectInstance(creds: EvolutionCreds) {
+    return this.evolutionFetch('/instance/connect/{instance}', { method: 'GET' }, creds);
+  }
+
+  async logoutInstance(creds: EvolutionCreds) {
+    return this.evolutionFetch('/instance/logout/{instance}', { method: 'DELETE' }, creds);
+  }
+
+  async deleteInstance(instanceName: string) {
+    return this.adminFetch(`/instance/delete/${encodeURIComponent(instanceName)}`, { method: 'DELETE' });
+  }
+
+  async sendText(to: string, text: string, creds?: EvolutionCreds | null): Promise<SendResult> {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false, error: 'not_configured' };
     if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
     let lastError = 'send_failed';
@@ -94,7 +154,7 @@ export class WhatsAppService {
       const res = await this.evolutionFetch('/message/sendText/{instance}', {
         method: 'POST',
         body: JSON.stringify({ number, text }),
-      });
+      }, c);
       if (res.ok) return { ok: true };
       lastError = res.status ? `http_${res.status}` : 'send_failed';
       lastDetail = res.detail || '';
@@ -117,14 +177,7 @@ export class WhatsAppService {
           fileName: filename,
         };
       }
-      console.warn('[whatsapp] upload file missing on disk', filePath);
-      // Prefer public URL so Evolution can fetch it
-      return {
-        media: mediaUrl,
-        mediatype: 'image',
-        mimetype: 'image/jpeg',
-        fileName: filename,
-      };
+      return { media: mediaUrl, mediatype: 'image', mimetype: 'image/jpeg', fileName: filename };
     }
     if (mediaUrl.startsWith('http')) {
       return { media: mediaUrl, mediatype: 'image', mimetype: 'image/jpeg', fileName: 'image.jpg' };
@@ -132,8 +185,9 @@ export class WhatsAppService {
     return null;
   }
 
-  async sendMedia(to: string, opts: { caption?: string; mediaUrl: string }): Promise<SendResult> {
-    if (!this.configured()) return { ok: false, error: 'not_configured' };
+  async sendMedia(to: string, opts: { caption?: string; mediaUrl: string }, creds?: EvolutionCreds | null): Promise<SendResult> {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false, error: 'not_configured' };
     if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
     const resolved = this.resolveMedia(opts.mediaUrl);
@@ -141,7 +195,6 @@ export class WhatsAppService {
 
     let lastError = 'send_failed';
     let lastDetail = '';
-
     for (const number of phoneSendVariants(to)) {
       const res = await this.evolutionFetch('/message/sendMedia/{instance}', {
         method: 'POST',
@@ -153,72 +206,74 @@ export class WhatsAppService {
           media: resolved.media,
           caption: opts.caption || '',
         }),
-      });
+      }, c);
       if (res.ok) return { ok: true };
       lastError = res.status ? `http_${res.status}` : 'send_failed';
       lastDetail = res.detail || '';
     }
-    console.warn('[whatsapp] sendMedia failed', lastError, lastDetail);
     return { ok: false, error: lastError, detail: lastDetail };
   }
 
-  /** Text + N images for one contact (caption on first image or as text if no images). */
-  async sendBundle(to: string, opts: { text?: string; mediaUrls?: string[] }): Promise<SendResult> {
+  async sendBundle(
+    to: string,
+    opts: { text?: string; mediaUrls?: string[] },
+    creds?: EvolutionCreds | null,
+  ): Promise<SendResult> {
     const mediaUrls = (opts.mediaUrls || []).filter(Boolean);
     const text = (opts.text || '').trim();
 
     if (!mediaUrls.length) {
       if (!text) return { ok: false, error: 'empty_message' };
-      return this.sendText(to, text);
+      return this.sendText(to, text, creds);
     }
 
     for (let i = 0; i < mediaUrls.length; i++) {
       const caption = i === 0 ? text : '';
-      const result = await this.sendMedia(to, { mediaUrl: mediaUrls[i], caption });
+      const result = await this.sendMedia(to, { mediaUrl: mediaUrls[i], caption }, creds);
       if (!result.ok) return result;
-      if (i < mediaUrls.length - 1) {
-        await new Promise((r) => setTimeout(r, 1500));
-      }
+      if (i < mediaUrls.length - 1) await new Promise((r) => setTimeout(r, 1500));
     }
     return { ok: true };
   }
 
-  async findChats() {
-    if (!this.configured()) return { ok: false as const, error: 'not_configured', chats: [] as any[] };
-    const res = await this.evolutionFetch('/chat/findChats/{instance}', { method: 'POST', body: '{}' });
+  async findChats(creds?: EvolutionCreds | null) {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false as const, error: 'not_configured', chats: [] as any[] };
+    const res = await this.evolutionFetch('/chat/findChats/{instance}', { method: 'POST', body: '{}' }, c);
     if (!res.ok) return { ok: false as const, error: `http_${res.status}`, chats: [] as any[] };
     const chats = Array.isArray(res.data) ? res.data : (res.data?.chats ?? res.data?.records ?? []);
     return { ok: true as const, chats };
   }
 
-  async findMessages(remoteJid: string) {
-    if (!this.configured()) return { ok: false as const, error: 'not_configured', messages: [] as any[] };
+  async findMessages(remoteJid: string, creds?: EvolutionCreds | null) {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false as const, error: 'not_configured', messages: [] as any[] };
     const res = await this.evolutionFetch('/chat/findMessages/{instance}', {
       method: 'POST',
       body: JSON.stringify({ where: { key: { remoteJid } } }),
-    });
+    }, c);
     if (!res.ok) return { ok: false as const, error: `http_${res.status}`, messages: [] as any[] };
-    const messages = Array.isArray(res.data)
-      ? res.data
-      : (res.data?.messages ?? res.data?.records ?? []);
+    const messages = Array.isArray(res.data) ? res.data : (res.data?.messages ?? res.data?.records ?? []);
     return { ok: true as const, messages };
   }
 
-  async findLabels() {
-    if (!this.configured()) return { ok: false as const, error: 'not_configured', labels: [] as any[] };
-    const res = await this.evolutionFetch('/label/findLabels/{instance}', { method: 'GET' });
+  async findLabels(creds?: EvolutionCreds | null) {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false as const, error: 'not_configured', labels: [] as any[] };
+    const res = await this.evolutionFetch('/label/findLabels/{instance}', { method: 'GET' }, c);
     if (!res.ok) return { ok: false as const, error: `http_${res.status}`, labels: [] as any[] };
     const labels = Array.isArray(res.data) ? res.data : (res.data?.labels ?? []);
     return { ok: true as const, labels };
   }
 
-  async handleLabel(number: string, labelId: string, action: 'add' | 'remove') {
-    if (!this.configured()) return { ok: false as const, error: 'not_configured' };
+  async handleLabel(number: string, labelId: string, action: 'add' | 'remove', creds?: EvolutionCreds | null) {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false as const, error: 'not_configured' };
     const phone = normalizePhoneDigits(number);
     const res = await this.evolutionFetch('/label/handleLabel/{instance}', {
       method: 'POST',
       body: JSON.stringify({ number: phone, labelId, action }),
-    });
+    }, c);
     if (!res.ok) return { ok: false as const, error: `http_${res.status}` };
     return { ok: true as const };
   }

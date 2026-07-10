@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import {
-  broadcastCampaigns, broadcastJobs, broadcastListMembers, broadcastLists,
+  broadcastCampaigns, broadcastJobs, broadcastListMembers, broadcastLists, sellerSettings,
 } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { normalizePhoneDigits, isValidPhone } from '../common/utils/phone.util';
@@ -142,8 +142,15 @@ export class BroadcastService {
     const members = campaign.list?.members || [];
     if (!members.length) throw new BadRequestException('Lista vacía');
 
-    if (!this.whatsapp.configured()) {
+    if (!this.whatsapp.adminConfigured()) {
       throw new BadRequestException('WhatsApp no está configurado en el servidor');
+    }
+
+    const settings = await this.db.query.sellerSettings.findFirst({
+      where: eq(sellerSettings.sellerId, sellerId),
+    });
+    if (!settings?.evolutionInstance || !settings?.evolutionToken) {
+      throw new BadRequestException('Conecta tu WhatsApp en Configuración → WhatsApp antes de difundir');
     }
 
     await this.db.delete(broadcastJobs).where(eq(broadcastJobs.campaignId, id));
