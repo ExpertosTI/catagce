@@ -31,6 +31,19 @@ function extractHash(data: any): string | null {
   return null;
 }
 
+/** Evolution 401 suele ser clave de instancia, no la AUTHENTICATION_API_KEY global. */
+function evolutionAdminError(detail?: string): string {
+  const d = String(detail || '').toLowerCase();
+  if (d.includes('unauthorized') || d.includes('401') || d.includes('forbidden')) {
+    return (
+      'Evolution rechazó la clave (Unauthorized). ' +
+      'EVOLUTION_API_KEY debe ser la clave GLOBAL del servidor (AUTHENTICATION_API_KEY), ' +
+      'no el token de una instancia como RENACE.TECH.'
+    );
+  }
+  return detail || 'Error de Evolution API';
+}
+
 @Injectable()
 export class WhatsAppConnectService {
   constructor(
@@ -68,19 +81,30 @@ export class WhatsAppConnectService {
 
   async status(sellerId: string) {
     const platformOk = evolutionConfigured();
+    let adminOk = false;
+    let adminHint = '';
+    if (platformOk) {
+      const probe = await this.whatsapp.adminFetch('/instance/fetchInstances', { method: 'GET' });
+      adminOk = probe.ok;
+      if (!probe.ok) adminHint = evolutionAdminError(probe.detail);
+    }
+
     const settings = await this.getSettings(sellerId);
     const creds = await this.getCreds(sellerId);
 
     if (!creds) {
       return {
         platformOk,
+        adminOk,
         connected: false,
         state: null,
         instance: null,
         phone: settings?.whatsappNumber || null,
-        message: platformOk
-          ? 'Conecta tu WhatsApp escaneando el código QR'
-          : 'WhatsApp de plataforma no configurado (contacta a Renace)',
+        message: !platformOk
+          ? 'WhatsApp de plataforma no configurado (contacta a Renace)'
+          : !adminOk
+            ? adminHint || 'Clave Evolution inválida para crear instancias'
+            : 'Conecta tu WhatsApp escaneando el código QR',
       };
     }
 
@@ -99,6 +123,7 @@ export class WhatsAppConnectService {
 
     return {
       platformOk,
+      adminOk,
       connected,
       state,
       instance: creds.instance,
@@ -112,6 +137,11 @@ export class WhatsAppConnectService {
   async start(sellerId: string) {
     if (!evolutionConfigured()) {
       throw new BadRequestException('Evolution API no está configurada en el servidor');
+    }
+
+    const probe = await this.whatsapp.adminFetch('/instance/fetchInstances', { method: 'GET' });
+    if (!probe.ok) {
+      throw new BadRequestException(evolutionAdminError(probe.detail));
     }
 
     const seller = await this.getSeller(sellerId);
@@ -130,7 +160,9 @@ export class WhatsAppConnectService {
           { method: 'GET' },
         );
         if (!retry.ok) {
-          throw new BadRequestException(created.detail || 'No se pudo crear la instancia WhatsApp');
+          throw new BadRequestException(
+            evolutionAdminError(created.detail) || 'No se pudo crear la instancia WhatsApp',
+          );
         }
         qr = extractQr(retry.data);
         token = evolutionAdminKey();
@@ -161,7 +193,9 @@ export class WhatsAppConnectService {
           { method: 'GET' },
         );
         if (!adminConn.ok) {
-          throw new BadRequestException(conn.detail || 'No se pudo obtener el QR');
+          throw new BadRequestException(
+            evolutionAdminError(conn.detail) || 'No se pudo obtener el QR',
+          );
         }
         qr = extractQr(adminConn.data);
       } else {

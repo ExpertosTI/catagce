@@ -7,6 +7,7 @@ import { getErrorMessage } from '@/lib/auth-errors';
 
 type Status = {
   platformOk: boolean;
+  adminOk?: boolean;
   connected: boolean;
   state: string | null;
   instance: string | null;
@@ -130,7 +131,7 @@ export function WhatsAppConnectPanel() {
             <button
               type="button"
               onClick={start}
-              disabled={loading || status?.platformOk === false}
+              disabled={loading || status?.platformOk === false || status?.adminOk === false}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] text-black font-bold text-sm disabled:opacity-50"
             >
               <QrCode className="w-4 h-4" />
