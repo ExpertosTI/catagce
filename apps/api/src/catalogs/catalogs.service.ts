@@ -90,7 +90,7 @@ export class CatalogsService {
   async shareViaWhatsApp(
     sellerId: string,
     catalogId: string,
-    body: { phones: string[]; message?: string },
+    body: { phones: string[]; message?: string; imageUrl?: string },
   ) {
     if (!this.whatsapp.configured()) {
       throw new BadRequestException('WhatsApp no está configurado');
@@ -119,7 +119,9 @@ export class CatalogsService {
         results.push({ phone: raw, ok: false, error: 'invalid_phone' });
         continue;
       }
-      const sent = await this.whatsapp.sendText(phone, text);
+      const sent = body.imageUrl
+        ? await this.whatsapp.sendMedia(phone, { caption: text, mediaUrl: body.imageUrl })
+        : await this.whatsapp.sendText(phone, text);
       results.push({ phone, ok: sent.ok, error: sent.ok ? undefined : sent.error });
     }
 

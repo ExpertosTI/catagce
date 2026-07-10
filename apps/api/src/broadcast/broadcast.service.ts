@@ -1,12 +1,12 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { and, eq } from 'drizzle-orm';
 import {
   broadcastCampaigns, broadcastJobs, broadcastListMembers, broadcastLists,
 } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { normalizePhoneDigits, isValidPhone } from '../common/utils/phone.util';
+import { BroadcastRunnerService } from './broadcast-runner.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 function randDelay(min: number, max: number) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -16,7 +16,8 @@ function randDelay(min: number, max: number) {
 export class BroadcastService {
   constructor(
     @Inject(DRIZZLE) private db: any,
-    @InjectQueue('broadcast') private broadcastQueue: Queue,
+    private runner: BroadcastRunnerService,
+    private whatsapp: WhatsAppService,
   ) {}
 
   async listLists(sellerId: string) {
@@ -78,13 +79,17 @@ export class BroadcastService {
     });
     return campaigns.map((c: any) => ({
       ...c,
-      stats: {
-        total: c.jobs?.length || 0,
-        sent: c.jobs?.filter((j: any) => j.status === 'sent').length || 0,
-        pending: c.jobs?.filter((j: any) => j.status === 'pending').length || 0,
-        failed: c.jobs?.filter((j: any) => j.status === 'failed').length || 0,
-      },
+      stats: this.jobStats(c.jobs || []),
     }));
+  }
+
+  private jobStats(jobs: Array<{ status: string }>) {
+    return {
+      total: jobs.length,
+      sent: jobs.filter((j) => j.status === 'sent').length,
+      pending: jobs.filter((j) => j.status === 'pending').length,
+      failed: jobs.filter((j) => j.status === 'failed').length,
+    };
   }
 
   async createCampaign(sellerId: string, body: {
@@ -122,16 +127,7 @@ export class BroadcastService {
       with: { list: { with: { members: true } }, jobs: true },
     });
     if (!campaign) throw new NotFoundException('Campaña no encontrada');
-    const jobs = campaign.jobs || [];
-    return {
-      ...campaign,
-      stats: {
-        total: jobs.length,
-        sent: jobs.filter((j: any) => j.status === 'sent').length,
-        pending: jobs.filter((j: any) => j.status === 'pending').length,
-        failed: jobs.filter((j: any) => j.status === 'failed').length,
-      },
-    };
+    return { ...campaign, stats: this.jobStats(campaign.jobs || []) };
   }
 
   async startCampaign(sellerId: string, id: string) {
@@ -140,35 +136,28 @@ export class BroadcastService {
     const members = campaign.list?.members || [];
     if (!members.length) throw new BadRequestException('Lista vacía');
 
+    if (!this.whatsapp.configured()) {
+      throw new BadRequestException('WhatsApp no está configurado en el servidor');
+    }
+
     await this.db.delete(broadcastJobs).where(eq(broadcastJobs.campaignId, id));
 
     const min = campaign.delayMinSec ?? 45;
     const max = campaign.delayMaxSec ?? 90;
     let cumulativeDelayMs = 0;
 
-    for (const member of members) {
-      cumulativeDelayMs += randDelay(min, max) * 1000;
+    for (let i = 0; i < members.length; i++) {
+      const member = members[i];
+      if (i > 0) cumulativeDelayMs += randDelay(min, max) * 1000;
       const scheduledAt = new Date(Date.now() + cumulativeDelayMs);
 
-      const [jobRow] = await this.db.insert(broadcastJobs).values({
+      await this.db.insert(broadcastJobs).values({
         campaignId: id,
         phone: member.phone,
         contactName: member.name,
         status: 'pending',
         scheduledAt,
-      }).returning();
-
-      await this.broadcastQueue.add(
-        'send',
-        {
-          jobId: jobRow.id,
-          campaignId: id,
-          phone: member.phone,
-          text: campaign.messageText,
-          mediaUrl: campaign.mediaUrl || undefined,
-        },
-        { delay: cumulativeDelayMs, jobId: `broadcast-${jobRow.id}` },
-      );
+      });
     }
 
     await this.db.update(broadcastCampaigns).set({
@@ -176,6 +165,8 @@ export class BroadcastService {
       startedAt: new Date(),
       completedAt: null,
     }).where(eq(broadcastCampaigns.id, id));
+
+    void this.runner.processDueJobs();
 
     return this.getCampaign(sellerId, id);
   }

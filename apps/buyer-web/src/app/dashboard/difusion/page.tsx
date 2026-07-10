@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Radio, Plus, Users, Play, Pause, List, MessageCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { ImagePicker } from '@/components/ImagePicker';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -26,7 +27,7 @@ export default function DifusionPage() {
   const [selectedList, setSelectedList] = useState<string | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [campaignForm, setCampaignForm] = useState({
-    listId: '', name: '', messageText: '', mediaUrl: '', delayMinSec: 45, delayMaxSec: 90,
+    listId: '', name: '', messageText: '', mediaUrl: '' as string | undefined, delayMinSec: 45, delayMaxSec: 90,
   });
   const [showNewCampaign, setShowNewCampaign] = useState(false);
 
@@ -47,6 +48,13 @@ export default function DifusionPage() {
   }, [ensureAuth, onApiError]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  useEffect(() => {
+    const running = campaigns.some((c) => c.status === 'running');
+    if (!running) return;
+    const timer = setInterval(() => { refresh(); }, 5000);
+    return () => clearInterval(timer);
+  }, [campaigns, refresh]);
 
   const createList = async () => {
     if (!newListName.trim()) return;
@@ -77,7 +85,7 @@ export default function DifusionPage() {
       }),
     });
     setShowNewCampaign(false);
-    setCampaignForm({ listId: '', name: '', messageText: '', mediaUrl: '', delayMinSec: 45, delayMaxSec: 90 });
+    setCampaignForm({ listId: '', name: '', messageText: '', mediaUrl: undefined, delayMinSec: 45, delayMaxSec: 90 });
     setTab('campaigns');
     refresh();
   };
@@ -237,11 +245,10 @@ export default function DifusionPage() {
                 rows={4}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm"
               />
-              <input
+              <ImagePicker
                 value={campaignForm.mediaUrl}
-                onChange={(e) => setCampaignForm({ ...campaignForm, mediaUrl: e.target.value })}
-                placeholder="URL imagen (opcional)"
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm"
+                onChange={(url) => setCampaignForm({ ...campaignForm, mediaUrl: url })}
+                label="Imagen (opcional)"
               />
               <div className="flex gap-2 text-sm">
                 <label className="flex-1">Pausa min (s)

@@ -29,7 +29,7 @@ export class CatalogsController {
   async shareWhatsApp(
     @Param('id') id: string,
     @CurrentUser() user: UserPayload,
-    @Body() body: { phones: string[]; message?: string },
+    @Body() body: { phones: string[]; message?: string; imageUrl?: string },
   ) {
     return this.catalogsService.shareViaWhatsApp(user.sellerId, id, body);
   }

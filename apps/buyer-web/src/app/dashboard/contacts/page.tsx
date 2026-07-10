@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Users, Plus, Trash2, Phone, Mail } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -23,6 +24,7 @@ export default function ContactsPage() {
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
   const [saving, setSaving] = useState(false);
+  const [toDelete, setToDelete] = useState<Contact | null>(null);
 
   const load = useCallback(async () => {
     if (!ensureAuth()) return;
@@ -57,13 +59,15 @@ export default function ContactsPage() {
     }
   };
 
-  const remove = async (contact: Contact) => {
-    if (!window.confirm(`¿Eliminar a ${contact.name}?`)) return;
+  const remove = async () => {
+    if (!toDelete) return;
     try {
-      await apiFetch(`/contacts/${contact.id}`, { method: 'DELETE' });
-      setContacts((prev) => prev.filter((c) => c.id !== contact.id));
+      await apiFetch(`/contacts/${toDelete.id}`, { method: 'DELETE' });
+      setContacts((prev) => prev.filter((c) => c.id !== toDelete.id));
+      setToDelete(null);
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo eliminar'));
+      setToDelete(null);
     }
   };
 
@@ -99,21 +103,24 @@ export default function ContactsPage() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             placeholder="Nombre"
             required
-            className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm"
+            className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+            autoComplete="off"
           />
           <input
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             placeholder="8095551234"
             required
-            className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm"
+            className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+            autoComplete="off"
           />
           <input
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             placeholder="Email (opcional)"
             type="email"
-            className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm"
+            className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+            autoComplete="off"
           />
         </div>
         <button
@@ -140,7 +147,7 @@ export default function ContactsPage() {
             </div>
             <button
               type="button"
-              onClick={() => remove(c)}
+              onClick={() => setToDelete(c)}
               className="p-2 rounded-xl text-red-400 hover:bg-red-500/10"
               title="Eliminar"
             >
@@ -153,6 +160,15 @@ export default function ContactsPage() {
       {contacts.length === 0 && (
         <p className="text-center text-gray-500 py-12">No hay contactos. Agrega el primero arriba.</p>
       )}
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Eliminar contacto"
+        message={toDelete ? `¿Eliminar a ${toDelete.name}? Esta acción no se puede deshacer.` : ''}
+        confirmLabel="Eliminar"
+        onConfirm={remove}
+        onCancel={() => setToDelete(null)}
+      />
     </DashboardLayout>
   );
 }

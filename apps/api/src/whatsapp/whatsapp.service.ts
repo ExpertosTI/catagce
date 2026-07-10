@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { existsSync, readFileSync } from 'fs';
+import { extname, join } from 'path';
 import { normalizePhoneDigits, isValidPhone, phoneSendVariants } from '../common/utils/phone.util';
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/uploads';
 
 function env(name: string) {
   return String(process.env[name] ?? '').trim().replace(/^["']|["']$/g, '');
@@ -52,27 +56,45 @@ export class WhatsAppService {
     return { ok: false as const, error: lastStatus ? `http_${lastStatus}` : 'send_failed' };
   }
 
+  private resolveMedia(mediaUrl: string): { media: string; mediatype: string } {
+    const match = mediaUrl.match(/\/uploads\/([^/]+)\/([^/?#]+)/);
+    if (match) {
+      const [, sellerId, filename] = match;
+      const filePath = join(UPLOAD_DIR, sellerId, filename);
+      if (existsSync(filePath)) {
+        const ext = extname(filename).toLowerCase().replace('.', '') || 'jpeg';
+        const base64 = readFileSync(filePath).toString('base64');
+        return { media: base64, mediatype: ext === 'png' ? 'image' : 'image' };
+      }
+    }
+    return { media: mediaUrl, mediatype: 'image' };
+  }
+
   async sendMedia(to: string, opts: { caption?: string; mediaUrl: string; mediatype?: string }) {
     if (!this.configured()) return { ok: false as const, error: 'not_configured' };
     if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false as const, error: 'invalid_phone' };
 
-    const body = {
-      number: '',
-      mediatype: opts.mediatype || 'image',
-      media: opts.mediaUrl,
-      caption: opts.caption || '',
-      delay: 1200,
-    };
+    const resolved = this.resolveMedia(opts.mediaUrl);
+    const mediatype = opts.mediatype || resolved.mediatype;
 
     let lastStatus = 0;
+    let lastDetail = '';
     for (const number of phoneSendVariants(to)) {
       const res = await this.evolutionFetch('/message/sendMedia/{instance}', {
         method: 'POST',
-        body: JSON.stringify({ ...body, number }),
+        body: JSON.stringify({
+          number,
+          mediatype,
+          media: resolved.media,
+          caption: opts.caption || '',
+          delay: 1200,
+        }),
       });
       if (res.ok) return { ok: true as const };
       lastStatus = res.status || 0;
+      lastDetail = res.detail || '';
     }
+    console.warn('[whatsapp] sendMedia failed', lastStatus, lastDetail.slice(0, 120));
     return { ok: false as const, error: lastStatus ? `http_${lastStatus}` : 'send_failed' };
   }
 

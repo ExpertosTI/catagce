@@ -1,16 +1,12 @@
 import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
 import { BroadcastController } from './broadcast.controller';
 import { BroadcastService } from './broadcast.service';
-import { BroadcastProcessor } from './broadcast.processor';
+import { BroadcastRunnerService } from './broadcast-runner.service';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 @Module({
-  imports: [
-    WhatsAppModule,
-    BullModule.registerQueue({ name: 'broadcast' }),
-  ],
+  imports: [WhatsAppModule],
   controllers: [BroadcastController],
-  providers: [BroadcastService, BroadcastProcessor],
+  providers: [BroadcastService, BroadcastRunnerService],
 })
 export class BroadcastModule {}

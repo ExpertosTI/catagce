@@ -5,6 +5,7 @@ import { X, MessageCircle, UserPlus, Send } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { normalizePhone } from '@/lib/whatsapp';
+import { ImagePicker } from '@/components/ImagePicker';
 
 type Contact = { id: string; name: string; phone: string; source: string };
 
@@ -22,6 +23,7 @@ export function ShareCatalogModal({
   const [manualPhone, setManualPhone] = useState('');
   const [manualName, setManualName] = useState('');
   const [message, setMessage] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -69,7 +71,7 @@ export function ShareCatalogModal({
     try {
       const res = await apiFetch<{ sent: number; failed: number; link: string }>(
         `/catalogs/${catalogId}/share-whatsapp`,
-        { method: 'POST', body: JSON.stringify({ phones, message: message || undefined }) },
+        { method: 'POST', body: JSON.stringify({ phones, message: message || undefined, imageUrl }) },
       );
       setSuccess(`Enviado a ${res.sent} contacto(s) por WhatsApp`);
       if (res.failed) setError(`${res.failed} número(s) fallaron`);
@@ -137,6 +139,8 @@ export function ShareCatalogModal({
               <UserPlus className="w-4 h-4" />
             </button>
           </div>
+
+          <ImagePicker value={imageUrl} onChange={setImageUrl} label="Imagen del catálogo (opcional)" />
 
           <textarea
             value={message}
