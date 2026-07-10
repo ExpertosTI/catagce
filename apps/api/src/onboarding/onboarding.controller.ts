@@ -14,9 +14,21 @@ export class OnboardingController {
   @Post('chat')
   async message(
     @CurrentUser() user: UserPayload,
-    @Body() body: { message: string; history?: { role: string; content: string }[] },
+    @Body() body: {
+      message: string;
+      history?: { role: string; content: string }[];
+      setup?: Record<string, unknown>;
+      phase?: string;
+    },
   ) {
-    return this.chat.chat(user.sellerId, user.userId, body.message, body.history || []);
+    return this.chat.chat(
+      user.sellerId,
+      user.userId,
+      body.message,
+      body.history || [],
+      (body.setup || {}) as any,
+      body.phase as any,
+    );
   }
 
   @Post('apply')
