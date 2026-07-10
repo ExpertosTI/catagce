@@ -7,6 +7,7 @@ import { DRIZZLE } from '../database/database.module';
 import { normalizePhoneDigits, isValidPhone } from '../common/utils/phone.util';
 import { BroadcastRunnerService } from './broadcast-runner.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { serializeMediaUrls } from './media-urls.util';
 
 function randDelay(min: number, max: number) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -97,6 +98,7 @@ export class BroadcastService {
     name: string;
     messageText: string;
     mediaUrl?: string;
+    mediaUrls?: string[];
     delayMinSec?: number;
     delayMaxSec?: number;
   }) {
@@ -107,12 +109,16 @@ export class BroadcastService {
     if (!list) throw new NotFoundException('Lista no encontrada');
     if (!list.members?.length) throw new BadRequestException('La lista no tiene contactos');
 
+    const urls = body.mediaUrls?.length
+      ? body.mediaUrls
+      : (body.mediaUrl ? [body.mediaUrl] : []);
+
     const [campaign] = await this.db.insert(broadcastCampaigns).values({
       sellerId,
       listId: body.listId,
       name: body.name.trim(),
       messageText: body.messageText.trim(),
-      mediaUrl: body.mediaUrl?.trim() || null,
+      mediaUrl: serializeMediaUrls(urls),
       delayMinSec: body.delayMinSec ?? 45,
       delayMaxSec: body.delayMaxSec ?? 90,
       status: 'draft',

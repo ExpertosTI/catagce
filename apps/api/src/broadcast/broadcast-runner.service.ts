@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { broadcastCampaigns, broadcastJobs } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { parseMediaUrls } from './media-urls.util';
 
 @Injectable()
 export class BroadcastRunnerService implements OnModuleInit {
@@ -41,16 +42,16 @@ export class BroadcastRunnerService implements OnModuleInit {
     }
   }
 
-  private async sendJob(jobId: string, phone: string, campaign: { id: string; messageText: string; mediaUrl?: string | null }) {
-    let result;
-    if (campaign.mediaUrl) {
-      result = await this.whatsapp.sendMedia(phone, {
-        caption: campaign.messageText,
-        mediaUrl: campaign.mediaUrl,
-      });
-    } else {
-      result = await this.whatsapp.sendText(phone, campaign.messageText);
-    }
+  private async sendJob(
+    jobId: string,
+    phone: string,
+    campaign: { id: string; messageText: string; mediaUrl?: string | null },
+  ) {
+    const mediaUrls = parseMediaUrls(campaign.mediaUrl);
+    const result = await this.whatsapp.sendBundle(phone, {
+      text: campaign.messageText,
+      mediaUrls,
+    });
 
     if (result.ok) {
       await this.db.update(broadcastJobs).set({

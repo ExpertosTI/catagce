@@ -11,7 +11,7 @@ export class WhatsAppInboxController {
   ) {}
 
   @Get('status')
-  status() {
+  async status() {
     return this.whatsapp.status();
   }
 

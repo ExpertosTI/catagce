@@ -76,10 +76,29 @@ fi
 grep -q "NEXT_PUBLIC_API_URL" .env || echo "NEXT_PUBLIC_API_URL=https://api.catagce.renace.tech/api" >> .env
 grep -q "GOOGLE_AI_API_KEY" .env || echo "GOOGLE_AI_API_KEY=" >> .env
 
+# Cargar Evolution (rnv.env ya puede estar en el shell; .evolution.local rellena vacíos)
+if [ -f .evolution.local ]; then
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    [ -z "${!key:-}" ] && export "$key=$val"
+  done < .evolution.local
+fi
+
+echo "📱 Evolution: URL=${EVOLUTION_API_URL:-∅} INSTANCE=${EVOLUTION_INSTANCE:-∅}"
+
 # 6. Build
 echo ""
 echo "🏗️  Construyendo imágenes..."
-export $(grep -v '^#' .env | xargs)
+set -a
+# shellcheck disable=SC1091
+[ -f .env ] && source .env
+set +a
+# No pisar Evolution ya exportado
+export EVOLUTION_API_URL="${EVOLUTION_API_URL:-}"
+export EVOLUTION_API_KEY="${EVOLUTION_API_KEY:-}"
+export EVOLUTION_INSTANCE="${EVOLUTION_INSTANCE:-}"
 docker compose build --parallel api web
 
 # 7. Deploy stack

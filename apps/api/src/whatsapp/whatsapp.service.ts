@@ -19,16 +19,33 @@ export class WhatsAppService {
     return Boolean(env('EVOLUTION_API_URL') && env('EVOLUTION_API_KEY') && env('EVOLUTION_INSTANCE'));
   }
 
-  status() {
-    return { whatsapp: this.configured(), ready: this.configured() };
+  async status() {
+    const configured = this.configured();
+    if (!configured) {
+      return { whatsapp: false, ready: false, instance: null, state: null };
+    }
+    const instance = env('EVOLUTION_INSTANCE');
+    const conn = await this.evolutionFetch('/instance/connectionState/{instance}', { method: 'GET' });
+    const state = conn.ok
+      ? (conn.data?.instance?.state || conn.data?.state || conn.data?.status || 'unknown')
+      : 'unreachable';
+    const ready = conn.ok && String(state).toLowerCase() === 'open';
+    return {
+      whatsapp: true,
+      ready: ready || configured,
+      instance,
+      state,
+      connected: ready,
+    };
   }
 
   private parseEvolutionError(detail: string): string {
     try {
       const json = JSON.parse(detail);
-      const msg = json?.message || json?.response?.message || json?.error;
-      if (Array.isArray(msg)) return msg.join(', ');
+      const msg = json?.message || json?.response?.message || json?.error || json?.response?.message?.[0];
+      if (Array.isArray(msg)) return msg.map((m) => (typeof m === 'string' ? m : JSON.stringify(m))).join(', ');
       if (typeof msg === 'string') return msg;
+      if (msg && typeof msg === 'object') return JSON.stringify(msg).slice(0, 180);
     } catch {
       // plain text
     }
@@ -38,14 +55,21 @@ export class WhatsAppService {
   private async evolutionFetch(path: string, init?: RequestInit) {
     const baseUrl = env('EVOLUTION_API_URL').replace(/\/$/, '');
     const instance = encodeURIComponent(env('EVOLUTION_INSTANCE'));
-    const res = await fetch(`${baseUrl}${path.replace('{instance}', instance)}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: env('EVOLUTION_API_KEY'),
-        ...(init?.headers || {}),
-      },
-    });
+    const url = `${baseUrl}${path.replace('{instance}', instance)}`;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: env('EVOLUTION_API_KEY'),
+          ...(init?.headers || {}),
+        },
+      });
+    } catch (err: any) {
+      console.warn('[whatsapp] fetch error', path, err?.message);
+      return { ok: false as const, status: 0, detail: err?.message || 'network_error' };
+    }
     const raw = await res.text().catch(() => '');
     if (!res.ok) {
       console.warn('[whatsapp] evolution', path, res.status, raw.slice(0, 200));
@@ -78,7 +102,7 @@ export class WhatsAppService {
     return { ok: false, error: lastError, detail: lastDetail };
   }
 
-  private resolveMedia(mediaUrl: string): { media: string; mediatype: string; mimetype: string; fileName: string } {
+  private resolveMedia(mediaUrl: string): { media: string; mediatype: string; mimetype: string; fileName: string } | null {
     const match = mediaUrl.match(/\/uploads\/([^/]+)\/([^/?#]+)/);
     if (match) {
       const [, sellerId, filename] = match;
@@ -93,8 +117,19 @@ export class WhatsAppService {
           fileName: filename,
         };
       }
+      console.warn('[whatsapp] upload file missing on disk', filePath);
+      // Prefer public URL so Evolution can fetch it
+      return {
+        media: mediaUrl,
+        mediatype: 'image',
+        mimetype: 'image/jpeg',
+        fileName: filename,
+      };
     }
-    return { media: mediaUrl, mediatype: 'image', mimetype: 'image/jpeg', fileName: 'image.jpg' };
+    if (mediaUrl.startsWith('http')) {
+      return { media: mediaUrl, mediatype: 'image', mimetype: 'image/jpeg', fileName: 'image.jpg' };
+    }
+    return null;
   }
 
   async sendMedia(to: string, opts: { caption?: string; mediaUrl: string }): Promise<SendResult> {
@@ -102,6 +137,8 @@ export class WhatsAppService {
     if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
     const resolved = this.resolveMedia(opts.mediaUrl);
+    if (!resolved) return { ok: false, error: 'invalid_media', detail: 'Imagen no encontrada' };
+
     let lastError = 'send_failed';
     let lastDetail = '';
 
@@ -123,6 +160,27 @@ export class WhatsAppService {
     }
     console.warn('[whatsapp] sendMedia failed', lastError, lastDetail);
     return { ok: false, error: lastError, detail: lastDetail };
+  }
+
+  /** Text + N images for one contact (caption on first image or as text if no images). */
+  async sendBundle(to: string, opts: { text?: string; mediaUrls?: string[] }): Promise<SendResult> {
+    const mediaUrls = (opts.mediaUrls || []).filter(Boolean);
+    const text = (opts.text || '').trim();
+
+    if (!mediaUrls.length) {
+      if (!text) return { ok: false, error: 'empty_message' };
+      return this.sendText(to, text);
+    }
+
+    for (let i = 0; i < mediaUrls.length; i++) {
+      const caption = i === 0 ? text : '';
+      const result = await this.sendMedia(to, { mediaUrl: mediaUrls[i], caption });
+      if (!result.ok) return result;
+      if (i < mediaUrls.length - 1) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+    return { ok: true };
   }
 
   async findChats() {

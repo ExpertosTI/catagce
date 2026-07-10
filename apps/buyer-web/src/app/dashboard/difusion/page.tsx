@@ -29,21 +29,24 @@ export default function DifusionPage() {
   const [selectedList, setSelectedList] = useState<string | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [campaignForm, setCampaignForm] = useState({
-    listId: '', name: '', messageText: '', mediaUrl: '' as string | undefined, delayMinSec: 45, delayMaxSec: 90,
+    listId: '', name: '', messageText: '', mediaUrls: [] as string[], delayMinSec: 45, delayMaxSec: 90,
   });
   const [showNewCampaign, setShowNewCampaign] = useState(false);
+  const [waStatus, setWaStatus] = useState<{ instance?: string; state?: string; connected?: boolean; ready?: boolean } | null>(null);
 
   const refresh = useCallback(async () => {
     if (!ensureAuth()) return;
     try {
-      const [l, c, ct] = await Promise.all([
+      const [l, c, ct, wa] = await Promise.all([
         apiFetch<ListRow[]>('/broadcast/lists'),
         apiFetch<Campaign[]>('/broadcast/campaigns'),
         apiFetch<Contact[]>('/contacts'),
+        apiFetch<{ instance?: string; state?: string; connected?: boolean; ready?: boolean }>('/auth/whatsapp/status').catch(() => null),
       ]);
       setLists(l);
       setCampaigns(c);
       setContacts(ct);
+      if (wa) setWaStatus(wa);
     } catch (err) {
       if (!onApiError(err)) setError(getErrorMessage(err));
     }
@@ -79,15 +82,23 @@ export default function DifusionPage() {
   };
 
   const createCampaign = async () => {
+    if (!campaignForm.listId || !campaignForm.name.trim() || !campaignForm.messageText.trim()) {
+      setError('Completa lista, nombre y mensaje');
+      return;
+    }
     await apiFetch('/broadcast/campaigns', {
       method: 'POST',
       body: JSON.stringify({
-        ...campaignForm,
-        mediaUrl: campaignForm.mediaUrl || undefined,
+        listId: campaignForm.listId,
+        name: campaignForm.name,
+        messageText: campaignForm.messageText,
+        mediaUrls: campaignForm.mediaUrls,
+        delayMinSec: campaignForm.delayMinSec,
+        delayMaxSec: campaignForm.delayMaxSec,
       }),
     });
     setShowNewCampaign(false);
-    setCampaignForm({ listId: '', name: '', messageText: '', mediaUrl: undefined, delayMinSec: 45, delayMaxSec: 90 });
+    setCampaignForm({ listId: '', name: '', messageText: '', mediaUrls: [], delayMinSec: 45, delayMaxSec: 90 });
     setTab('campaigns');
     refresh();
   };
@@ -118,6 +129,13 @@ export default function DifusionPage() {
           Envía mensajes a <strong>varios contactos</strong> con pausa automática (45–90s entre cada uno) para evitar bloqueos de WhatsApp.
           No es lo mismo que el <Link href="/dashboard/whatsapp" className="text-[#00D1FF] underline">Inbox</Link> (conversaciones 1 a 1).
         </p>
+        {waStatus && (
+          <p className={`text-xs mt-2 ${waStatus.connected || waStatus.state === 'open' ? 'text-green-400' : 'text-amber-400'}`}>
+            WhatsApp: instancia <strong>{waStatus.instance || '—'}</strong>
+            {waStatus.state ? ` · estado ${waStatus.state}` : ''}
+            {!(waStatus.connected || waStatus.state === 'open') && ' · revisa Evolution (Connected)'}
+          </p>
+        )}
       </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
@@ -253,9 +271,11 @@ export default function DifusionPage() {
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm"
               />
               <ImagePicker
-                value={campaignForm.mediaUrl}
-                onChange={(url) => setCampaignForm({ ...campaignForm, mediaUrl: url })}
-                label="Imagen (opcional)"
+                multiple
+                max={8}
+                values={campaignForm.mediaUrls}
+                onChangeMany={(urls) => setCampaignForm({ ...campaignForm, mediaUrls: urls })}
+                label="Fotos"
               />
               <div className="flex gap-2 text-sm">
                 <label className="flex-1">Pausa min (s)

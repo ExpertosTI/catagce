@@ -44,7 +44,8 @@ export class BroadcastController {
     @CurrentUser() user: UserPayload,
     @Body() body: {
       listId: string; name: string; messageText: string;
-      mediaUrl?: string; delayMinSec?: number; delayMaxSec?: number;
+      mediaUrl?: string; mediaUrls?: string[];
+      delayMinSec?: number; delayMaxSec?: number;
     },
   ) {
     return this.broadcast.createCampaign(user.sellerId, body);

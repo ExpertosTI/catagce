@@ -14,8 +14,18 @@ export class AuthController {
 
   @Get('whatsapp/status')
   @Public()
-  whatsappStatus() {
+  async whatsappStatus() {
     return this.whatsapp.status();
+  }
+
+  @Post('whatsapp/test-send')
+  async testSend(@Body() body: { phone: string; text?: string }) {
+    const result = await this.whatsapp.sendText(
+      body.phone,
+      body.text || 'Prueba Catagce WhatsApp ✓',
+    );
+    const status = await this.whatsapp.status();
+    return { ...result, instance: status.instance, state: status.state };
   }
 
   @Post('whatsapp/check')
