@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Radio, Plus, Users, Play, Pause, List, MessageCircle } from 'lucide-react';
+import { Radio, Plus, Users, Play, Pause, List, MessageCircle, RotateCcw } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ImagePicker } from '@/components/ImagePicker';
 import { apiFetch } from '@/lib/api';
@@ -10,9 +10,11 @@ import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 type ListRow = { id: string; name: string; description?: string; members?: Array<{ id: string; name: string; phone: string }> };
+type CampaignJob = { id: string; phone: string; contactName?: string; status: string; error?: string };
 type Campaign = {
   id: string; name: string; status: string; messageText: string; mediaUrl?: string;
   list?: { name: string }; stats: { total: number; sent: number; pending: number; failed: number };
+  jobs?: CampaignJob[];
 };
 type Contact = { id: string; name: string; phone: string };
 
@@ -97,6 +99,11 @@ export default function DifusionPage() {
 
   const pauseCampaign = async (id: string) => {
     await apiFetch(`/broadcast/campaigns/${id}/pause`, { method: 'POST' });
+    refresh();
+  };
+
+  const retryFailed = async (id: string) => {
+    await apiFetch(`/broadcast/campaigns/${id}/retry-failed`, { method: 'POST' });
     refresh();
   };
 
@@ -275,8 +282,23 @@ export default function DifusionPage() {
                   <p className="text-xs mt-2 text-[#00D1FF]">
                     {c.stats.sent}/{c.stats.total} enviados · {c.stats.pending} pendientes · {c.stats.failed} fallidos
                   </p>
+                  {(c.jobs || []).filter((j) => j.status === 'failed').map((j) => (
+                    <p key={j.id} className="text-xs mt-1 text-red-400">
+                      {j.contactName || j.phone}: {j.error || 'Error desconocido'}
+                    </p>
+                  ))}
+                  {(c.jobs || []).filter((j) => j.status === 'pending').map((j) => (
+                    <p key={j.id} className="text-xs mt-1 text-gray-500">
+                      Pendiente: {j.contactName || j.phone}
+                    </p>
+                  ))}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex flex-col gap-1">
+                  {c.stats.failed > 0 && (
+                    <button type="button" onClick={() => retryFailed(c.id)} className="p-2 rounded-lg bg-white/10 text-[#00D1FF]" title="Reintentar fallidos">
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
                   {c.status !== 'running' && c.status !== 'completed' && (
                     <button type="button" onClick={() => startCampaign(c.id)} className="p-2 rounded-lg bg-[#25D366] text-black">
                       <Play className="w-4 h-4" />

@@ -9,6 +9,10 @@ function env(name: string) {
   return String(process.env[name] ?? '').trim().replace(/^["']|["']$/g, '');
 }
 
+type SendResult =
+  | { ok: true }
+  | { ok: false; error: string; detail?: string };
+
 @Injectable()
 export class WhatsAppService {
   configured() {
@@ -17,6 +21,18 @@ export class WhatsAppService {
 
   status() {
     return { whatsapp: this.configured(), ready: this.configured() };
+  }
+
+  private parseEvolutionError(detail: string): string {
+    try {
+      const json = JSON.parse(detail);
+      const msg = json?.message || json?.response?.message || json?.error;
+      if (Array.isArray(msg)) return msg.join(', ');
+      if (typeof msg === 'string') return msg;
+    } catch {
+      // plain text
+    }
+    return detail.slice(0, 180) || 'Error de Evolution API';
   }
 
   private async evolutionFetch(path: string, init?: RequestInit) {
@@ -30,72 +46,83 @@ export class WhatsAppService {
         ...(init?.headers || {}),
       },
     });
+    const raw = await res.text().catch(() => '');
     if (!res.ok) {
-      const detail = await res.text().catch(() => '');
-      console.warn('[whatsapp] evolution', path, res.status, detail.slice(0, 200));
+      console.warn('[whatsapp] evolution', path, res.status, raw.slice(0, 200));
+      return { ok: false as const, status: res.status, detail: this.parseEvolutionError(raw) };
+    }
+    let data: any = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
+    if (data?.error || data?.status === 'ERROR') {
+      const detail = this.parseEvolutionError(JSON.stringify(data));
       return { ok: false as const, status: res.status, detail };
     }
-    const data = await res.json().catch(() => null);
     return { ok: true as const, data };
   }
 
-  async sendText(to: string, text: string) {
-    if (!this.configured()) return { ok: false as const, error: 'not_configured' };
-    const phone = normalizePhoneDigits(to);
-    if (!isValidPhone(phone)) return { ok: false as const, error: 'invalid_phone' };
+  async sendText(to: string, text: string): Promise<SendResult> {
+    if (!this.configured()) return { ok: false, error: 'not_configured' };
+    if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
-    let lastStatus = 0;
+    let lastError = 'send_failed';
+    let lastDetail = '';
     for (const number of phoneSendVariants(to)) {
       const res = await this.evolutionFetch('/message/sendText/{instance}', {
         method: 'POST',
-        body: JSON.stringify({ number, text, delay: 1200 }),
+        body: JSON.stringify({ number, text }),
       });
-      if (res.ok) return { ok: true as const };
-      lastStatus = res.status || 0;
+      if (res.ok) return { ok: true };
+      lastError = res.status ? `http_${res.status}` : 'send_failed';
+      lastDetail = res.detail || '';
     }
-    return { ok: false as const, error: lastStatus ? `http_${lastStatus}` : 'send_failed' };
+    return { ok: false, error: lastError, detail: lastDetail };
   }
 
-  private resolveMedia(mediaUrl: string): { media: string; mediatype: string } {
+  private resolveMedia(mediaUrl: string): { media: string; mediatype: string; mimetype: string; fileName: string } {
     const match = mediaUrl.match(/\/uploads\/([^/]+)\/([^/?#]+)/);
     if (match) {
       const [, sellerId, filename] = match;
       const filePath = join(UPLOAD_DIR, sellerId, filename);
       if (existsSync(filePath)) {
         const ext = extname(filename).toLowerCase().replace('.', '') || 'jpeg';
-        const base64 = readFileSync(filePath).toString('base64');
-        return { media: base64, mediatype: ext === 'png' ? 'image' : 'image' };
+        const mimetype = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+        return {
+          media: readFileSync(filePath).toString('base64'),
+          mediatype: 'image',
+          mimetype,
+          fileName: filename,
+        };
       }
     }
-    return { media: mediaUrl, mediatype: 'image' };
+    return { media: mediaUrl, mediatype: 'image', mimetype: 'image/jpeg', fileName: 'image.jpg' };
   }
 
-  async sendMedia(to: string, opts: { caption?: string; mediaUrl: string; mediatype?: string }) {
-    if (!this.configured()) return { ok: false as const, error: 'not_configured' };
-    if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false as const, error: 'invalid_phone' };
+  async sendMedia(to: string, opts: { caption?: string; mediaUrl: string }): Promise<SendResult> {
+    if (!this.configured()) return { ok: false, error: 'not_configured' };
+    if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
     const resolved = this.resolveMedia(opts.mediaUrl);
-    const mediatype = opts.mediatype || resolved.mediatype;
-
-    let lastStatus = 0;
+    let lastError = 'send_failed';
     let lastDetail = '';
+
     for (const number of phoneSendVariants(to)) {
       const res = await this.evolutionFetch('/message/sendMedia/{instance}', {
         method: 'POST',
         body: JSON.stringify({
           number,
-          mediatype,
+          mediatype: resolved.mediatype,
+          mimetype: resolved.mimetype,
+          fileName: resolved.fileName,
           media: resolved.media,
           caption: opts.caption || '',
-          delay: 1200,
         }),
       });
-      if (res.ok) return { ok: true as const };
-      lastStatus = res.status || 0;
+      if (res.ok) return { ok: true };
+      lastError = res.status ? `http_${res.status}` : 'send_failed';
       lastDetail = res.detail || '';
     }
-    console.warn('[whatsapp] sendMedia failed', lastStatus, lastDetail.slice(0, 120));
-    return { ok: false as const, error: lastStatus ? `http_${lastStatus}` : 'send_failed' };
+    console.warn('[whatsapp] sendMedia failed', lastError, lastDetail);
+    return { ok: false, error: lastError, detail: lastDetail };
   }
 
   async findChats() {

@@ -64,4 +64,9 @@ export class BroadcastController {
   pause(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.broadcast.pauseCampaign(user.sellerId, id);
   }
+
+  @Post('campaigns/:id/retry-failed')
+  retryFailed(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.broadcast.retryFailed(user.sellerId, id);
+  }
 }

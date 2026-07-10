@@ -176,4 +176,26 @@ export class BroadcastService {
       .where(and(eq(broadcastCampaigns.id, id), eq(broadcastCampaigns.sellerId, sellerId)));
     return this.getCampaign(sellerId, id);
   }
+
+  async retryFailed(sellerId: string, id: string) {
+    const campaign = await this.getCampaign(sellerId, id);
+    const failed = (campaign.jobs || []).filter((j: { status: string }) => j.status === 'failed');
+    if (!failed.length) throw new BadRequestException('No hay envíos fallidos');
+
+    for (const job of failed) {
+      await this.db.update(broadcastJobs).set({
+        status: 'pending',
+        error: null,
+        scheduledAt: new Date(),
+      }).where(eq(broadcastJobs.id, job.id));
+    }
+
+    await this.db.update(broadcastCampaigns).set({
+      status: 'running',
+      completedAt: null,
+    }).where(eq(broadcastCampaigns.id, id));
+
+    void this.runner.processDueJobs();
+    return this.getCampaign(sellerId, id);
+  }
 }

@@ -59,11 +59,12 @@ export class BroadcastRunnerService implements OnModuleInit {
         error: null,
       }).where(eq(broadcastJobs.id, jobId));
     } else {
+      const errMsg = [result.error, result.detail].filter(Boolean).join(': ');
       await this.db.update(broadcastJobs).set({
         status: 'failed',
-        error: result.error || 'send_failed',
+        error: errMsg.slice(0, 500),
       }).where(eq(broadcastJobs.id, jobId));
-      console.warn('[broadcast] send failed', phone, result.error);
+      console.warn('[broadcast] send failed', phone, errMsg);
     }
 
     await this.maybeCompleteCampaign(campaign.id);
