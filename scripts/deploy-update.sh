@@ -40,12 +40,20 @@ for svc in api web; do
 done
 
 if [ -f scripts/catagce-schema-patch.sql ]; then
-  echo "🗄️  Parche schema (idempotente)..."
+  echo "🗄️  Parche schema base (idempotente)..."
   db_cid="$(docker ps -qf name=catagce_db | head -1)"
   if [ -n "$db_cid" ]; then
     docker exec -i "$db_cid" psql -U catagce_admin -d catagce_prod < scripts/catagce-schema-patch.sql || true
   fi
 fi
+
+# Parches incrementales (planes / encuesta) — mismo patrón que schema-patch.sh
+for patch in scripts/schema-patch-plans.sql scripts/schema-patch-encuesta.sql; do
+  if [ -f "$patch" ]; then
+    echo "🗄️  Aplicando $patch ..."
+    bash scripts/schema-patch.sh "$patch" || true
+  fi
+done
 
 sleep 8
 curl -sf https://api.catagce.renace.tech/api/health && echo " ✅ API OK" || echo " ⏳ API arrancando..."
