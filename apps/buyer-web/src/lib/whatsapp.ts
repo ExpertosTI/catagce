@@ -1,8 +1,18 @@
+/** Prefijos RD (NANP +1) */
+export const DR_AREA_CODES = ['809', '829', '849'] as const;
+
 /** Normaliza teléfono para wa.me (solo dígitos, con código país) */
 export function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
   if (digits.length === 10) return `1${digits}`;
   return digits;
+}
+
+export function isDominicanPhone(phone: string): boolean {
+  const n = normalizePhone(phone);
+  if (n.length !== 11 || !n.startsWith('1')) return false;
+  return (DR_AREA_CODES as readonly string[]).includes(n.slice(1, 4));
 }
 
 export function buildWhatsAppUrl(phone: string, message: string): string {

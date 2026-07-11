@@ -158,9 +158,14 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
           label="Número de WhatsApp"
           value={phone}
           onChange={setPhone}
-          placeholder="8095551234 o +18095551234"
+          placeholder="809 / 829 / 849…"
           required
         />
+        <p className="text-[11px] text-gray-500 -mt-2">
+          República Dominicana: prefijos <span className="text-gray-300 font-semibold">809</span>,{' '}
+          <span className="text-gray-300 font-semibold">829</span> o{' '}
+          <span className="text-gray-300 font-semibold">849</span> · 10 dígitos
+        </p>
         {error && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{error}</p>}
         <AuthButton type="button" loading={loading} onClick={sendCode}>
           {loading ? 'Enviando...' : 'Enviar código'}

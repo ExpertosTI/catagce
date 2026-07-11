@@ -6,7 +6,12 @@ import * as bcrypt from 'bcryptjs';
 import { verificationCodes } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { isValidPhone, maskPhone, normalizePhoneDigits } from '../common/utils/phone.util';
+import {
+  isValidPhone,
+  maskPhone,
+  normalizePhoneDigits,
+  phoneValidationMessage,
+} from '../common/utils/phone.util';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_SENDS_PER_WINDOW = 3;
@@ -36,7 +41,10 @@ export class VerificationService {
 
   async sendCode(phoneRaw: string, purpose: 'register' | 'login') {
     const phone = normalizePhoneDigits(phoneRaw);
-    if (!isValidPhone(phone)) throw new BadRequestException('Número de WhatsApp inválido');
+    const phoneErr = phoneValidationMessage(phoneRaw);
+    if (phoneErr || !isValidPhone(phone)) {
+      throw new BadRequestException(phoneErr || 'Número de WhatsApp inválido');
+    }
     if (!this.whatsapp.configured()) {
       throw new BadRequestException('WhatsApp no está disponible en este momento');
     }
@@ -64,7 +72,7 @@ export class VerificationService {
     if (!sent.ok) {
       const detail = sent.error === 'not_configured'
         ? 'WhatsApp no está configurado en el servidor'
-        : `No se pudo enviar el código (${sent.error}). Verifica el número con código país, ej: 8494577463`;
+        : `No se pudo enviar el código (${sent.error}). En RD usa 809, 829 o 849 (10 dígitos), ej: 8295551234`;
       throw new BadRequestException(detail);
     }
 

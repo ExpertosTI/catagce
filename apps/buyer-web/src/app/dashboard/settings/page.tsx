@@ -185,7 +185,7 @@ export default function SettingsPage() {
             <input
               value={sellerSettings.whatsappNumber}
               onChange={(e) => setSellerSettings({ ...sellerSettings, whatsappNumber: e.target.value })}
-              placeholder="8095551234"
+              placeholder="809 / 829 / 849…"
               className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#00D1FF]"
             />
             <p className="text-xs text-gray-500 mt-1">Los clientes escriben / confirman pedidos a este número</p>
@@ -196,7 +196,7 @@ export default function SettingsPage() {
             <input
               value={sellerSettings.orderNotifyPhone}
               onChange={(e) => setSellerSettings({ ...sellerSettings, orderNotifyPhone: e.target.value })}
-              placeholder="Tu celular personal, ej: 8495551234"
+              placeholder="809, 829 o 849…"
               className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#00D1FF]"
             />
             <p className="text-xs text-gray-500 mt-1">
