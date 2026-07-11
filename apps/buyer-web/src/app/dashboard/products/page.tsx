@@ -62,6 +62,9 @@ export default function ProductsPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <h3 className="text-lg font-bold">{product.name}</h3>
+                {product.category && (
+                  <p className="text-xs text-[#FF8A00] mt-0.5">{product.category}</p>
+                )}
                 {product.sku && <p className="text-xs text-gray-400 font-mono">{product.sku}</p>}
               </div>
             </div>
