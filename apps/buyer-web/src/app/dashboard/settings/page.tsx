@@ -9,12 +9,14 @@ import { WhatsAppConnectPanel } from '@/components/WhatsAppConnectPanel';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useMe } from '@/lib/features';
 
 const WEBHOOK_EVENTS = ['order.created', 'order.updated', 'catalog.published', 'product.created', 'integration.synced'];
 
 export default function SettingsPage() {
   const router = useRouter();
   const { ensureAuth, onApiError } = useRequireAuth();
+  const { me } = useMe();
   const [tab, setTab] = useState<'whatsapp' | 'branding' | 'webhooks' | 'integrations' | 'ai'>('whatsapp');
   const [branding, setBranding] = useState<any>({});
   const [sellerSettings, setSellerSettings] = useState({ whatsappNumber: '', orderNotifyPhone: '' });
@@ -157,7 +159,13 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <h2 className="text-2xl font-bold mb-6">Configuración</h2>
+      <h2 className="text-2xl font-bold mb-2">Configuración</h2>
+      {me?.planName && (
+        <p className="mb-6 text-sm text-gray-400">
+          Plan actual: <span className="text-[#00D1FF] font-semibold">{me.planName}</span>
+          <span className="text-gray-600 font-mono ml-1">({me.planCode})</span>
+        </p>
+      )}
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
       {saveMsg && <p className="mb-4 text-sm text-green-400">{saveMsg}</p>}
       {saveErr && <p className="mb-4 text-sm text-red-400">{saveErr}</p>}

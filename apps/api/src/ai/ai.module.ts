@@ -10,6 +10,7 @@ import { AnalyticsModule } from '../analytics/analytics.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
     IntegrationsModule,
     SellersModule,
     WebhooksModule,
+    PlansModule,
   ],
   controllers: [AiController],
   providers: [AiAssistantService, AiToolsService],

@@ -52,9 +52,73 @@ export const sellers = pgTable('sellers', {
   slug: text('slug').notNull().unique(),
   email: text('email'),
   phone: text('phone'),
+  /** free | pro | business — ver tabla plans */
+  planCode: text('plan_code').notNull().default('free'),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// ─── Plans & platform admin ──────────────────────────────────────────────────
+export const plans = pgTable('plans', {
+  code: text('code').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  sortOrder: integer('sort_order').default(0),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const planFeatures = pgTable('plan_features', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  planCode: text('plan_code').references(() => plans.code).notNull(),
+  featureKey: text('feature_key').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  /** null = ilimitado; usado p.ej. max productos/catálogos */
+  limitValue: integer('limit_value'),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+  planFeatureIdx: uniqueIndex('plan_features_plan_feature_idx').on(t.planCode, t.featureKey),
+}));
+
+export const platformAdmins = pgTable('platform_admins', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Name survey (encuesta temporal) ─────────────────────────────────────────
+export const nameSurveyMeta = pgTable('name_survey_meta', {
+  id: serial('id').primaryKey(),
+  isOpen: boolean('is_open').notNull().default(true),
+  endsAt: timestamp('ends_at').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const nameSurveyOptions = pgTable('name_survey_options', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull().unique(),
+  sortOrder: integer('sort_order').default(0),
+  isActive: boolean('is_active').default(true),
+});
+
+export const nameSurveyVotes = pgTable('name_survey_votes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  voterKey: text('voter_key').notNull().unique(),
+  rank1: uuid('rank1').references(() => nameSurveyOptions.id).notNull(),
+  rank2: uuid('rank2').references(() => nameSurveyOptions.id).notNull(),
+  rank3: uuid('rank3').references(() => nameSurveyOptions.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const nameSurveySuggestions = pgTable('name_survey_suggestions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  voterKey: text('voter_key').notNull(),
+  suggestion: text('suggestion').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const sellerUsers = pgTable('seller_users', {
@@ -579,6 +643,7 @@ export const broadcastJobs = pgTable('broadcast_jobs', {
 export const sellersRelations = relations(sellers, ({ one, many }) => ({
   branding: one(sellerBranding, { fields: [sellers.id], references: [sellerBranding.sellerId] }),
   settings: one(sellerSettings, { fields: [sellers.id], references: [sellerSettings.sellerId] }),
+  plan: one(plans, { fields: [sellers.planCode], references: [plans.code] }),
   users: many(sellerUsers),
   apiKeys: many(sellerApiKeys),
   products: many(products),
@@ -594,6 +659,15 @@ export const sellersRelations = relations(sellers, ({ one, many }) => ({
   whatsappQuickReplies: many(whatsappQuickReplies),
   broadcastLists: many(broadcastLists),
   broadcastCampaigns: many(broadcastCampaigns),
+}));
+
+export const plansRelations = relations(plans, ({ many }) => ({
+  features: many(planFeatures),
+  sellers: many(sellers),
+}));
+
+export const planFeaturesRelations = relations(planFeatures, ({ one }) => ({
+  plan: one(plans, { fields: [planFeatures.planCode], references: [plans.code] }),
 }));
 
 export const sellerUsersRelations = relations(sellerUsers, ({ one }) => ({

@@ -6,6 +6,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
 import { AuditService } from '../common/services/audit.service';
+import { PlansService } from '../plans/plans.service';
 
 @Injectable()
 export class ProductsService {
@@ -14,6 +15,7 @@ export class ProductsService {
     @InjectQueue('media') private mediaQueue: Queue,
     private webhookDispatcher: WebhookDispatcherService,
     private auditService: AuditService,
+    private plans: PlansService,
   ) {}
 
   async findAll(sellerId: string) {
@@ -33,6 +35,12 @@ export class ProductsService {
   }
 
   async create(sellerId: string, data: any, actorUserId?: string) {
+    const existing = await this.db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.sellerId, sellerId), eq(products.isActive, true)));
+    await this.plans.assertLimit(sellerId, 'products', existing.length);
+
     let baseUomId = data.baseUomId;
     if (!baseUomId) {
       const [defaultUom] = await this.db

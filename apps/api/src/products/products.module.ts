@@ -4,9 +4,10 @@ import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
 import { AuditService } from '../common/services/audit.service';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: 'media' })],
+  imports: [BullModule.registerQueue({ name: 'media' }), PlansModule],
   controllers: [ProductsController],
   providers: [ProductsService, WebhookDispatcherService, AuditService],
   exports: [ProductsService],

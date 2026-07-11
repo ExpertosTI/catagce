@@ -1,35 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home, LayoutGrid, Package, FileOutput, Settings, LogOut, Warehouse,
-  BookOpen, MessageCircle, Radio, Users, MoreHorizontal, X,
+  BookOpen, MessageCircle, Radio, Users, MoreHorizontal, X, Shield,
 } from 'lucide-react';
 import { clearAuth } from '@/lib/api';
 import { AiAssistant } from '@/components/AiAssistant';
+import { clearMeCache, useMe } from '@/lib/features';
 
 type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  feature?: string;
 };
 
-/** Siempre visibles en la barra (4 + Más) — sin scroll oculto */
 const primaryNav: NavItem[] = [
   { href: '/dashboard/orders', icon: FileOutput, label: 'Pedidos' },
   { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'Inbox' },
-  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión' },
+  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión', feature: 'broadcast' },
   { href: '/dashboard/catalogs', icon: BookOpen, label: 'Catálogos' },
 ];
 
-/** Resto en hoja «Más» */
-const moreNav: NavItem[] = [
+const moreNavBase: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'Inicio' },
   { href: '/dashboard/products', icon: LayoutGrid, label: 'Productos' },
   { href: '/dashboard/contacts', icon: Users, label: 'Contactos' },
-  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario' },
+  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario', feature: 'inventory' },
   { href: '/dashboard/settings', icon: Settings, label: 'Config' },
 ];
 
@@ -41,6 +41,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isDifusion = pathname.startsWith('/dashboard/difusion');
   const [moreOpen, setMoreOpen] = useState(false);
+  const { me, hasFeature, isPlatformAdmin } = useMe();
+
+  const visiblePrimary = useMemo(
+    () => primaryNav.filter((item) => !item.feature || hasFeature(item.feature)),
+    [hasFeature, me],
+  );
+
+  const moreNav = useMemo(() => {
+    const items = moreNavBase.filter((item) => !item.feature || hasFeature(item.feature));
+    if (isPlatformAdmin) {
+      items.push({ href: '/dashboard/platform/plans', icon: Shield, label: 'Platform' });
+    }
+    return items;
+  }, [hasFeature, isPlatformAdmin, me]);
+
   const moreActive = moreNav.some((item) => isActive(pathname, item.href));
 
   useEffect(() => {
@@ -75,10 +90,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <>Catagce<span className="text-[#00D1FF]">.</span></>
             )}
           </h1>
+          {me?.planName && (
+            <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 shrink-0">
+              {me.planName}
+            </span>
+          )}
         </Link>
         <button
           type="button"
-          onClick={() => { clearAuth(); window.location.href = '/login'; }}
+          onClick={() => {
+            clearAuth();
+            clearMeCache();
+            window.location.href = '/login';
+          }}
           className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors p-2 -mr-2 min-h-[44px]"
           aria-label="Salir"
         >
@@ -138,7 +162,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
         <div className="max-w-2xl mx-auto glass rounded-[1.5rem] px-1.5 py-1.5 shadow-2xl">
           <div className="flex items-stretch gap-0.5">
-            {primaryNav.map(({ href, icon: Icon, label }) => {
+            {visiblePrimary.map(({ href, icon: Icon, label }) => {
               const active = isActive(pathname, href);
               return (
                 <Link
@@ -169,7 +193,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <AiAssistant hideFab={isDifusion} />
+      <AiAssistant hideFab={isDifusion || !hasFeature('ai')} />
     </div>
   );
 }

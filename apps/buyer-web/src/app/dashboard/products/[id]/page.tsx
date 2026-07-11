@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, Save } from 'lucide-react';
+import { Trash2, Save, MessageCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ImageUpload } from '@/components/ImageUpload';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { buildProductShareMessage, buildWhatsAppShareUrl } from '@/lib/whatsapp';
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -73,6 +74,27 @@ export default function EditProductPage() {
     }
   };
 
+  const shareWhatsApp = async () => {
+    setError('');
+    try {
+      const catalogs = await apiFetch<any[]>('/catalogs');
+      const withPub = catalogs.find((c) => c.publications?.[0]?.token) || catalogs[0];
+      if (!withPub) {
+        setError('Crea un catálogo primero para compartir el producto');
+        return;
+      }
+      const payload = await apiFetch<{ link: string }>(`/catalogs/id/${withPub.id}/share-payload`);
+      const message = buildProductShareMessage({
+        productName: name || 'Producto',
+        price,
+        catalogLink: payload.link,
+      });
+      window.open(buildWhatsAppShareUrl(message), '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setError(getErrorMessage(err, 'No se pudo preparar el link'));
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -126,13 +148,20 @@ export default function EditProductPage() {
         {msg && <p className="text-sm text-green-400">{msg}</p>}
         {error && <p className="text-sm text-red-400">{error}</p>}
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-wrap gap-3 pt-2">
           <button
             onClick={save}
             disabled={saving}
             className="flex items-center gap-2 px-6 py-3 bg-[#00D1FF] text-black font-bold rounded-xl disabled:opacity-50"
           >
             <Save className="w-4 h-4" /> {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+          <button
+            type="button"
+            onClick={shareWhatsApp}
+            className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-black font-bold rounded-xl"
+          >
+            <MessageCircle className="w-4 h-4" /> WhatsApp
           </button>
           <button
             onClick={remove}

@@ -21,6 +21,39 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
   return `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
 }
 
+/** Abre WhatsApp con mensaje; si no hay teléfono, el usuario elige el chat */
+export function buildWhatsAppShareUrl(message: string, phone?: string): string {
+  const text = encodeURIComponent(message);
+  if (phone) {
+    const num = normalizePhone(phone);
+    if (num) return `https://wa.me/${num}?text=${text}`;
+  }
+  return `https://wa.me/?text=${text}`;
+}
+
+export function buildCatalogShareMessage(opts: { catalogName: string; link: string }): string {
+  return (
+    `¡Hola! 👋 Te comparto nuestro catálogo *${opts.catalogName}*.\n\n` +
+    `👉 Ver y pedir aquí:\n${opts.link}\n\n` +
+    `Elige productos, confirma tu pedido y queda registrado automáticamente.`
+  );
+}
+
+export function buildProductShareMessage(opts: {
+  productName: string;
+  price?: number | string;
+  catalogLink: string;
+}): string {
+  const price =
+    opts.price != null && opts.price !== ''
+      ? `\nPrecio: $${Number(opts.price).toFixed(2)}`
+      : '';
+  return (
+    `¡Hola! Te muestro *${opts.productName}*${price}.\n\n` +
+    `👉 Ver catálogo y pedir:\n${opts.catalogLink}`
+  );
+}
+
 export function orderRefShort(orderId: string) {
   return orderId.replace(/-/g, '').slice(0, 8).toLowerCase();
 }

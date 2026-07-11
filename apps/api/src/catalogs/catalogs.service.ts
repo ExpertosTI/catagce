@@ -7,6 +7,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { PlansService } from '../plans/plans.service';
 import { isValidPhone, normalizePhoneDigits } from '../common/utils/phone.util';
 
 const WEB_URL = (process.env.PUBLIC_WEB_URL || 'https://catagce.renace.tech').replace(/\/$/, '');
@@ -18,6 +19,7 @@ export class CatalogsService {
     @InjectQueue('catalog-render') private renderQueue: Queue,
     private webhookDispatcher: WebhookDispatcherService,
     private whatsapp: WhatsAppService,
+    private plans: PlansService,
   ) {}
 
   async findAll(sellerId: string) {
@@ -88,6 +90,9 @@ export class CatalogsService {
   }
 
   async create(sellerId: string, data: { name: string; slug: string; description?: string; productIds?: string[] }) {
+    const existing = await this.db.select({ id: catalogs.id }).from(catalogs).where(eq(catalogs.sellerId, sellerId));
+    await this.plans.assertLimit(sellerId, 'catalogs', existing.length);
+
     const [catalog] = await this.db.insert(catalogs)
       .values({ name: data.name, slug: data.slug, description: data.description, sellerId }).returning();
 
@@ -99,6 +104,29 @@ export class CatalogsService {
 
     const publication = await this.publishInternal(catalog.id, sellerId);
     return { ...catalog, shareToken: publication.token };
+  }
+
+  /** Payload para compartir por wa.me o copiar enlace */
+  async getSharePayload(sellerId: string, catalogId: string) {
+    const catalog = await this.db.query.catalogs.findFirst({
+      where: eq(catalogs.id, catalogId),
+      with: { publications: true },
+    });
+    if (!catalog || catalog.sellerId !== sellerId) throw new NotFoundException('Catálogo no encontrado');
+
+    let token = catalog.publications?.[0]?.token;
+    if (!token) {
+      const pub = await this.publishInternal(catalogId, sellerId);
+      token = pub.token;
+    }
+
+    const link = `${WEB_URL}/order/${token}?src=wa&utm=share`;
+    const message =
+      `¡Hola! 👋 Te comparto nuestro catálogo *${catalog.name}*.\n\n` +
+      `👉 Ver y pedir aquí:\n${link}\n\n` +
+      `Elige productos, confirma tu pedido y queda registrado automáticamente.`;
+
+    return { catalogId, catalogName: catalog.name, slug: catalog.slug, token, link, message };
   }
 
   async publish(catalogId: string, sellerId: string) {

@@ -2,6 +2,7 @@ import { Controller, Post, Body, Get, ForbiddenException, BadRequestException } 
 import { AuthService } from './auth.service';
 import { VerificationService } from './verification.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { PlansService } from '../plans/plans.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Throttle } from '../common/security/security.util';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
@@ -12,7 +13,13 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly verification: VerificationService,
     private readonly whatsapp: WhatsAppService,
+    private readonly plans: PlansService,
   ) {}
+
+  @Get('me')
+  me(@CurrentUser() user: UserPayload) {
+    return this.plans.mePayload(user);
+  }
 
   @Get('whatsapp/status')
   @Public()

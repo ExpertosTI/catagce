@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, MessageCircle, UserPlus, Send, Radio } from 'lucide-react';
+import { X, MessageCircle, UserPlus, Send, Radio, ExternalLink, Copy, Check } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
-import { normalizePhone } from '@/lib/whatsapp';
+import { normalizePhone, buildWhatsAppShareUrl, buildCatalogShareMessage } from '@/lib/whatsapp';
 import { ImagePicker } from '@/components/ImagePicker';
 
 type Contact = { id: string; name: string; phone: string; source: string };
@@ -13,6 +13,7 @@ type BroadcastList = {
   name: string;
   members?: Array<{ id: string; name: string; phone: string }>;
 };
+type SharePayload = { link: string; message: string; catalogName: string };
 
 export function ShareCatalogModal({
   catalogId,
@@ -31,19 +32,31 @@ export function ShareCatalogModal({
   const [manualName, setManualName] = useState('');
   const [message, setMessage] = useState('');
   const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [payload, setPayload] = useState<SharePayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     Promise.all([
       apiFetch<Contact[]>('/contacts').catch(() => []),
       apiFetch<BroadcastList[]>('/broadcast/lists').catch(() => []),
-    ]).then(([c, l]) => {
+      apiFetch<SharePayload>(`/catalogs/id/${catalogId}/share-payload`).catch(() => null),
+    ]).then(([c, l, p]) => {
       setContacts(c || []);
       setLists(l || []);
+      if (p) {
+        setPayload(p);
+        setMessage(p.message);
+      } else {
+        setMessage(buildCatalogShareMessage({
+          catalogName,
+          link: `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog`,
+        }));
+      }
     });
-  }, []);
+  }, [catalogId, catalogName]);
 
   const toggle = (phone: string) => {
     setSelected((prev) => {
@@ -93,10 +106,24 @@ export function ShareCatalogModal({
     return Array.from(phones);
   };
 
+  const shareText = message.trim() || payload?.message || '';
+
+  const openWa = (phone?: string) => {
+    const url = buildWhatsAppShareUrl(shareText, phone);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const copyGeneric = async () => {
+    const url = buildWhatsAppShareUrl(shareText);
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const send = async () => {
     const phones = recipientPhones();
     if (!phones.length) {
-      setError('Selecciona una lista de difusión, contactos o escribe un número');
+      setError('Selecciona contactos o abre WhatsApp manualmente');
       return;
     }
     setLoading(true);
@@ -107,10 +134,10 @@ export function ShareCatalogModal({
         `/catalogs/${catalogId}/share-whatsapp`,
         { method: 'POST', body: JSON.stringify({ phones, message: message || undefined, imageUrl }) },
       );
-      setSuccess(`Enviado a ${res.sent} contacto(s) por WhatsApp`);
+      setSuccess(`Enviado a ${res.sent} contacto(s) por WhatsApp conectado`);
       if (res.failed) setError(`${res.failed} número(s) fallaron`);
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo enviar'));
+      setError(getErrorMessage(err, 'No se pudo enviar por Evolution — usa “Abrir WhatsApp”'));
     } finally {
       setLoading(false);
     }
@@ -133,6 +160,28 @@ export function ShareCatalogModal({
           <p className="text-sm text-gray-400">
             Catálogo: <strong className="text-white">{catalogName}</strong>
           </p>
+          {payload?.link && (
+            <p className="text-xs text-gray-500 break-all">Link: {payload.link}</p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => openWa()}
+              className="flex-1 min-w-[140px] py-2.5 rounded-xl bg-[#25D366] text-black font-bold text-sm flex items-center justify-center gap-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Abrir WhatsApp
+            </button>
+            <button
+              type="button"
+              onClick={copyGeneric}
+              className="px-4 py-2.5 rounded-xl bg-white/10 text-sm flex items-center gap-2"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+              Copiar wa.me
+            </button>
+          </div>
 
           <div>
             <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
@@ -160,14 +209,14 @@ export function ShareCatalogModal({
           </div>
 
           <div>
-            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Contactos de la app</p>
+            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Contactos — abrir chat</p>
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {contacts.length === 0 ? (
                 <p className="text-sm text-gray-600 py-2">
                   Sin contactos. <a href="/dashboard/contacts" className="text-[#00D1FF] underline">Crear contactos</a>
                 </p>
               ) : contacts.map((c) => (
-                <label key={c.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                <div key={c.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5">
                   <input
                     type="checkbox"
                     checked={selected.has(c.phone)}
@@ -175,8 +224,14 @@ export function ShareCatalogModal({
                     className="accent-[#25D366]"
                   />
                   <span className="flex-1 text-sm">{c.name}</span>
-                  <span className="text-xs text-gray-500">{c.phone}</span>
-                </label>
+                  <button
+                    type="button"
+                    onClick={() => openWa(c.phone)}
+                    className="text-xs px-2 py-1 rounded-lg bg-[#25D366]/20 text-[#25D366]"
+                  >
+                    Abrir
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -198,14 +253,23 @@ export function ShareCatalogModal({
               <UserPlus className="w-4 h-4" />
             </button>
           </div>
+          {manualPhone && normalizePhone(manualPhone).length >= 11 && (
+            <button
+              type="button"
+              onClick={() => openWa(manualPhone)}
+              className="w-full py-2 rounded-xl border border-[#25D366]/40 text-[#25D366] text-sm font-medium"
+            >
+              Abrir WhatsApp con este número
+            </button>
+          )}
 
           <ImagePicker value={imageUrl} onChange={setImageUrl} label="Imagen del catálogo (opcional)" />
 
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Mensaje personalizado (opcional)..."
-            rows={3}
+            placeholder="Mensaje personalizado..."
+            rows={4}
             className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm resize-none"
           />
 
@@ -216,10 +280,10 @@ export function ShareCatalogModal({
             type="button"
             onClick={send}
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-[#25D366] text-black font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-white/10 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
-            {loading ? 'Enviando...' : `Enviar a ${recipientPhones().length} contacto(s)`}
+            {loading ? 'Enviando...' : `Enviar vía WA conectado (${recipientPhones().length})`}
           </button>
         </div>
       </div>

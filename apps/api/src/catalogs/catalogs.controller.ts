@@ -26,6 +26,11 @@ export class CatalogsController {
     return this.catalogsService.create(user.sellerId, body);
   }
 
+  @Get('id/:id/share-payload')
+  async sharePayload(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    return this.catalogsService.getSharePayload(user.sellerId, id);
+  }
+
   @Put(':id/products')
   async setProducts(
     @Param('id') id: string,

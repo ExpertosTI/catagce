@@ -127,25 +127,23 @@ export default function CatalogsPage() {
                     <ExternalLink className="w-4 h-4" /> Ver
                   </a>
                   {token && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => copyShareLink(token)}
-                        className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-white/5 rounded-xl text-sm hover:bg-white/10 transition-colors"
-                      >
-                        {copied === token ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        {copied === token ? 'Copiado' : 'Copiar link'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShareCatalog({ id: catalog.id, name: catalog.name })}
-                        className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-[#25D366] text-black font-bold rounded-xl text-sm"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        WhatsApp
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => copyShareLink(token)}
+                      className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-white/5 rounded-xl text-sm hover:bg-white/10 transition-colors"
+                    >
+                      {copied === token ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copied === token ? 'Copiado' : 'Copiar link'}
+                    </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setShareCatalog({ id: catalog.id, name: catalog.name })}
+                    className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-[#25D366] text-black font-bold rounded-xl text-sm"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </button>
                 </div>
               </div>
             </motion.div>

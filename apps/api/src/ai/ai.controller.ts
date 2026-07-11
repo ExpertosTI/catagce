@@ -1,9 +1,13 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { AiAssistantService } from './ai-assistant.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
 import { Throttle } from '../common/security/security.util';
+import { RequireFeature } from '../common/decorators/feature.decorator';
+import { FeatureGuard } from '../common/guards/feature.guard';
 
 @Controller('ai')
+@RequireFeature('ai')
+@UseGuards(FeatureGuard)
 export class AiController {
   constructor(private readonly aiService: AiAssistantService) {}
 
