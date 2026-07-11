@@ -56,16 +56,21 @@ docker stack deploy -c docker-compose.yml catagce
 echo "🔄 Reiniciar servicios..."
 api_ok=1
 for svc in api web; do
-  if docker service update --force "catagce_${svc}"; then
-    # Detectar rollback (Swarm marca DesiredState=Shutdown en el task nuevo)
-    if docker service ps "catagce_${svc}" --format '{{.CurrentState}} {{.Error}}' 2>/dev/null | head -3 | grep -qi 'rollback\|failed\|rejected'; then
-      echo "  ✗ catagce_${svc} — rollback/falla detectada"
-      [ "$svc" = api ] && api_ok=0
-    else
-      echo "  ✓ catagce_${svc}"
-    fi
-  else
+  if ! docker service update --force "catagce_${svc}"; then
     echo "  ✗ catagce_${svc} — update falló"
+    [ "$svc" = api ] && api_ok=0
+    continue
+  fi
+  # Solo el UpdateStatus actual + task desired=running (ignorar Failed históricos)
+  update_state="$(docker service inspect "catagce_${svc}" --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}' 2>/dev/null || true)"
+  running="$(docker service ps "catagce_${svc}" --filter desired-state=running --format '{{.CurrentState}}' 2>/dev/null | head -1 || true)"
+  if echo "$update_state" | grep -qi 'rollback'; then
+    echo "  ✗ catagce_${svc} — UpdateStatus=$update_state"
+    [ "$svc" = api ] && api_ok=0
+  elif echo "$running" | grep -qi '^Running'; then
+    echo "  ✓ catagce_${svc} (UpdateStatus=${update_state:-n/a})"
+  else
+    echo "  ✗ catagce_${svc} — sin task Running (state=$running update=$update_state)"
     [ "$svc" = api ] && api_ok=0
   fi
 done
