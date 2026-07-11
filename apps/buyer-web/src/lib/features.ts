@@ -42,7 +42,8 @@ export function useMe() {
     if (!cachedMe) refresh();
   }, [refresh]);
 
-  const hasFeature = (key: string) => Boolean(me?.features?.[key]?.enabled);
+  const hasFeature = (key: string) =>
+    Boolean(me?.isPlatformAdmin) || Boolean(me?.features?.[key]?.enabled);
 
   return { me, loading, refresh, hasFeature, isPlatformAdmin: Boolean(me?.isPlatformAdmin) };
 }

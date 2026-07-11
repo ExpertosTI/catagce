@@ -260,6 +260,20 @@ export class PlansService implements OnModuleInit {
       .from(sellerUsers)
       .where(eq(sellerUsers.id, user.userId))
       .limit(1);
+
+    let features = entitlements.features;
+    if (isPlatformAdmin) {
+      // Super admin: acceso a todo (UI + FeatureGuard)
+      const allKeys = [
+        'products', 'catalogs', 'whatsapp_connect', 'catalog_wa_share',
+        'broadcast', 'orders', 'inbox', 'ai', 'inventory', 'analytics',
+      ];
+      features = { ...features };
+      for (const key of allKeys) {
+        features[key] = { enabled: true, limit: null };
+      }
+    }
+
     return {
       user: {
         id: user.userId,
@@ -275,7 +289,7 @@ export class PlansService implements OnModuleInit {
       },
       planCode: entitlements.planCode,
       planName: entitlements.planName,
-      features: entitlements.features,
+      features,
       isPlatformAdmin,
     };
   }

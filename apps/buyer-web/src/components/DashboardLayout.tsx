@@ -63,7 +63,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const allowedNav = useMemo(() => {
     const items = [...allNavBase];
     if (isPlatformAdmin) {
-      items.push({ href: '/dashboard/platform/requests', icon: Shield, label: 'Platform' });
+      // Primero en la barra para que no quede perdido en «Más»
+      items.unshift({ href: '/dashboard/platform/requests', icon: Shield, label: 'Admin' });
     }
     return items;
   }, [isPlatformAdmin]);

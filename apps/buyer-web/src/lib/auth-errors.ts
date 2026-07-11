@@ -10,10 +10,10 @@ export class ApiError extends Error {
 }
 
 export function isUnauthorizedError(err: unknown): boolean {
-  return err instanceof ApiError && (err.status === 401 || err.status === 403);
+  return err instanceof ApiError && err.status === 401;
 }
 
-/** Solo cerrar sesión en 401/403; otros errores se propagan al caller */
+/** Solo cerrar sesión en 401. Un 403 de plan/feature no debe botar al login. */
 export function handleAuthError(err: unknown, router: { push: (path: string) => void }): boolean {
   if (isUnauthorizedError(err)) {
     if (typeof window !== 'undefined') {

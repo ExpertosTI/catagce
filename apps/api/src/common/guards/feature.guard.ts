@@ -20,6 +20,9 @@ export class FeatureGuard implements CanActivate {
     if (!featureKey) return true;
 
     const request = context.switchToHttp().getRequest();
+    const email = request.user?.email as string | undefined;
+    if (email && (await this.plans.isPlatformAdmin(email))) return true;
+
     const sellerId = request.user?.sellerId;
     if (!sellerId) throw new ForbiddenException('Seller requerido');
 
