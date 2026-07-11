@@ -86,5 +86,9 @@ docker service inspect catagce_api --format '{{range .Spec.TaskTemplate.Containe
   | grep -E 'EVOLUTION_INSTANCE|SUPER_ADMIN' || true
 
 echo ""
+echo "═══ 6) Nombre visible en WhatsApp (no el número) ═══"
+bash scripts/set-corporate-wa-profile-name.sh
+
+echo ""
 echo "✅ Listo. Cierra sesión en la web y entra con ${ADMIN_EMAIL}."
-echo "   Debe verse el icono Admin y OTP debe salir desde ${INSTANCE}."
+echo "   Debe verse el icono Admin y OTP desde ${INSTANCE} con nombre «RENACE.TECH»."

@@ -175,6 +175,24 @@ export class WhatsAppService {
     return { ok: false, error: lastError, detail: lastDetail };
   }
 
+  /** Nombre visible en el chat (no el número). Evolution: POST /chat/updateProfileName/{instance} */
+  async updateProfileName(name: string, creds?: EvolutionCreds | null): Promise<SendResult> {
+    const c = creds || platformEvolution();
+    if (!c) return { ok: false, error: 'not_configured' };
+    const trimmed = String(name || '').trim();
+    if (!trimmed) return { ok: false, error: 'empty_name' };
+    const res = await this.evolutionFetch('/chat/updateProfileName/{instance}', {
+      method: 'POST',
+      body: JSON.stringify({ name: trimmed }),
+    }, c);
+    if (res.ok) return { ok: true };
+    return {
+      ok: false,
+      error: res.status ? `http_${res.status}` : 'profile_name_failed',
+      detail: res.detail || '',
+    };
+  }
+
   private resolveMedia(mediaUrl: string): { media: string; mediatype: string; mimetype: string; fileName: string } | null {
     const match = mediaUrl.match(/\/uploads\/([^/]+)\/([^/?#]+)/);
     if (match) {
