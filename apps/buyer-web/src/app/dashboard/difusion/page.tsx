@@ -74,6 +74,7 @@ export default function DifusionPage() {
   const [campaignForm, setCampaignForm] = useState(emptyForm);
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [manualContact, setManualContact] = useState({ name: '', phone: '' });
   const [contactQuery, setContactQuery] = useState('');
   const [addingMembers, setAddingMembers] = useState(false);
