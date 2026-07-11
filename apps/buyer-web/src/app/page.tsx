@@ -54,6 +54,9 @@ export default function LandingPage() {
           </span>
         </Link>
         <div className="flex items-center gap-2">
+          <a href="#precios" className="px-3 py-2 text-sm text-gray-400 hover:text-white hidden sm:inline">
+            Precios
+          </a>
           <Link href="/login" className="px-3 py-2 text-sm text-gray-400 hover:text-white">
             Entrar
           </Link>
@@ -108,7 +111,7 @@ export default function LandingPage() {
 
         {/* Visual feature picker */}
         <section id="funciones" className="px-5 md:px-10 pb-20 max-w-6xl mx-auto">
-          <div className="flex flex-wrap justify-center gap-2 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-8">
             {FEATURES.map((f) => {
               const Icon = f.icon;
               const on = feature === f.id;
@@ -118,23 +121,21 @@ export default function LandingPage() {
                   type="button"
                   onClick={() => {
                     setFeature(f.id);
-                    setInboxAction('idle');
                   }}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold border transition-all ${
+                  className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3 py-3 rounded-2xl text-xs font-bold border transition-all ${
                     on
-                      ? 'border-transparent text-black'
+                      ? 'border-[#FF8A00] bg-[#FF8A00]/15 text-[#FF8A00]'
                       : 'border-white/10 bg-white/[0.03] text-gray-400 hover:text-white hover:border-white/20'
                   }`}
-                  style={on ? { backgroundColor: f.accent } : undefined}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  {f.label}
+                  <Icon className="w-4 h-4 shrink-0" style={{ color: on ? f.accent : undefined }} />
+                  <span className="truncate">{f.label}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[#0c0c10]/95 overflow-hidden max-w-xl mx-auto">
+          <div className="rounded-2xl border border-white/10 bg-[#0c0c10]/95 overflow-hidden max-w-3xl mx-auto">
             <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
               <span
                 className="w-2 h-2 rounded-full"
@@ -190,6 +191,110 @@ export default function LandingPage() {
                 <p className="text-[#00D1FF] font-black text-2xl mb-1">{s.n}</p>
                 <p className="font-bold mb-1">{s.t}</p>
                 <p className="text-sm text-gray-500">{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Precios */}
+        <section id="precios" className="px-5 md:px-10 py-20 max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight mb-3">Planes</h2>
+            <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
+              Empieza gratis. Sube de plan cuando necesites más difusión, inventario o IA.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5 md:gap-6">
+            {[
+              {
+                code: 'free',
+                name: 'Gratuito',
+                price: 'Gratis',
+                blurb: 'Para empezar a vender por WhatsApp',
+                accent: '#00D1FF',
+                features: [
+                  'Hasta 50 productos',
+                  'Hasta 2 catálogos',
+                  'WhatsApp + compartir catálogo',
+                  'Difusión e inventario',
+                  'Pedidos e inbox',
+                ],
+                cta: 'Crear gratis',
+                href: '/register',
+                featured: false,
+              },
+              {
+                code: 'pro',
+                name: 'Pro',
+                price: 'Pro',
+                blurb: 'Más catálogos y capacidad',
+                accent: '#FF8A00',
+                features: [
+                  'Hasta 500 productos',
+                  'Hasta 20 catálogos',
+                  'Todo lo del Gratuito',
+                  'Analytics completo',
+                  'Prioridad de soporte',
+                ],
+                cta: 'Solicitar Pro',
+                href: '/register',
+                featured: true,
+              },
+              {
+                code: 'business',
+                name: 'Business',
+                price: 'Business',
+                blurb: 'Sin límites prácticos + IA',
+                accent: '#25D366',
+                features: [
+                  'Productos y catálogos ilimitados',
+                  'Todo lo de Pro',
+                  'Asistente IA incluido',
+                  'Operación multi-equipo',
+                  'Acompañamiento Renace',
+                ],
+                cta: 'Solicitar Business',
+                href: '/register',
+                featured: false,
+              },
+            ].map((plan) => (
+              <div
+                key={plan.code}
+                className={`rounded-3xl border p-6 md:p-8 flex flex-col ${
+                  plan.featured
+                    ? 'border-[#FF8A00]/50 bg-[#FF8A00]/[0.07] md:scale-[1.02] shadow-[0_0_40px_rgba(255,138,0,0.12)]'
+                    : 'border-white/10 bg-white/[0.03]'
+                }`}
+              >
+                {plan.featured && (
+                  <span className="self-start text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#FF8A00] text-black mb-4">
+                    Recomendado
+                  </span>
+                )}
+                <p className="text-sm font-semibold text-gray-400 mb-1">{plan.name}</p>
+                <p className="text-3xl font-black tracking-tight mb-2" style={{ color: plan.accent }}>
+                  {plan.price}
+                </p>
+                <p className="text-sm text-gray-500 mb-6">{plan.blurb}</p>
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                      <span
+                        className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: plan.accent }}
+                      />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={plan.href}
+                  className={`w-full text-center py-3 rounded-xl font-bold text-sm transition-transform hover:-translate-y-0.5 ${
+                    plan.featured ? 'bg-[#FF8A00] text-black' : 'bg-white/10 text-white hover:bg-white/15'
+                  }`}
+                >
+                  {plan.cta}
+                </Link>
               </div>
             ))}
           </div>
