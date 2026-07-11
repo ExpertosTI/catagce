@@ -1,20 +1,23 @@
-# Deploy: planes + encuesta
+# Update: planes + encuesta (QuickCtgo existente)
 
-Tras `git pull` en `/opt/QuickCtgo`:
+Flujo canónico en `/opt/QuickCtgo` — **no** usar `psql` del host ni inventar `.env`.
 
 ```bash
-# 1) Parches SQL (idempotentes)
-psql "$DATABASE_URL" -f scripts/schema-patch-plans.sql
-psql "$DATABASE_URL" -f scripts/schema-patch-encuesta.sql
+cd /opt/QuickCtgo
+git fetch --all && git reset --hard origin/main
 
-# 2) Super admin (no pisa .env; solo añade emails a platform_admins en runtime)
-# En el .env del API (o /etc/catagce/*.env) añade, sin borrar secretos:
-# SUPER_ADMIN_EMAILS=tu@email.com
+# Migraciones separadas del build (idempotentes, vía contenedor DB)
+bash scripts/schema-patch.sh scripts/schema-patch-plans.sql
+bash scripts/schema-patch.sh scripts/schema-patch-encuesta.sql
 
-# 3) Deploy normal
-./deploy.sh update
+# Deploy de código (api + web)
+bash scripts/deploy-update.sh
 ```
 
-URLs nuevas:
-- Encuesta pública: `https://catagce.renace.tech/encuesta`
-- Platform admin (mismo login seller, email en SUPER_ADMIN_EMAILS): `/dashboard/platform/plans`
+Si `deploy.sh` da Permission denied: usar `bash scripts/deploy-update.sh` (es el update de producción).
+
+**SUPER_ADMIN_EMAILS:** upsert en el `.env` ya existente del API (solo rellenar si está vacío), con el email de la cuenta seller que ya usas para entrar. El API lo lee en runtime y registra `platform_admins` sin pisar secretos.
+
+Tras el update:
+- Encuesta: `/encuesta`
+- Platform: `/dashboard/platform/plans` (mismo login; email en `SUPER_ADMIN_EMAILS` o en `platform_admins`)
