@@ -49,9 +49,9 @@ INSERT INTO plan_features (plan_code, feature_key, enabled, limit_value) VALUES
   ('free', 'catalogs', true, 2),
   ('free', 'whatsapp_connect', true, NULL),
   ('free', 'catalog_wa_share', true, NULL),
-  ('free', 'broadcast', false, NULL),
-  ('free', 'orders', false, NULL),
-  ('free', 'inbox', false, NULL),
+  ('free', 'broadcast', true, NULL),
+  ('free', 'orders', true, NULL),
+  ('free', 'inbox', true, NULL),
   ('free', 'ai', false, NULL),
   ('free', 'inventory', true, NULL),
   ('free', 'analytics', true, 1)

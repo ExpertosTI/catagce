@@ -15,19 +15,18 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  feature?: string;
 };
 
-/** Orden preferido: Pedidos/Inbox/Difusión (Pro+) primero; Free ve catálogos/productos */
+/** Todos los iconos visibles — no ocultar por plan (rompe el producto) */
 const allNavBase: NavItem[] = [
-  { href: '/dashboard/orders', icon: FileOutput, label: 'Pedidos', feature: 'orders' },
-  { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'Inbox', feature: 'inbox' },
-  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión', feature: 'broadcast' },
+  { href: '/dashboard/orders', icon: FileOutput, label: 'Pedidos' },
+  { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'Inbox' },
+  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión' },
   { href: '/dashboard/catalogs', icon: BookOpen, label: 'Catálogos' },
   { href: '/dashboard', icon: Home, label: 'Inicio' },
   { href: '/dashboard/products', icon: LayoutGrid, label: 'Productos' },
   { href: '/dashboard/contacts', icon: Users, label: 'Contactos' },
-  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario', feature: 'inventory' },
+  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario' },
   { href: '/dashboard/settings', icon: Settings, label: 'Config' },
 ];
 
@@ -62,18 +61,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { me, hasFeature, isPlatformAdmin } = useMe();
 
   const allowedNav = useMemo(() => {
-    const items = allNavBase.filter((item) => !item.feature || hasFeature(item.feature));
+    const items = [...allNavBase];
     if (isPlatformAdmin) {
       items.push({ href: '/dashboard/platform/requests', icon: Shield, label: 'Platform' });
     }
     return items;
-  }, [hasFeature, isPlatformAdmin]);
+  }, [isPlatformAdmin]);
 
-  /** Móvil: hasta 4 en barra + resto en «Más» */
   const primaryNav = useMemo(() => allowedNav.slice(0, 4), [allowedNav]);
   const moreNav = useMemo(() => allowedNav.slice(4), [allowedNav]);
-
-  /** Escritorio: todos los iconos visibles en la barra inferior */
   const desktopNav = allowedNav;
 
   const moreActive = moreNav.some((item) => isActive(pathname, item.href));
@@ -133,7 +129,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <main className="px-3 sm:px-6 md:px-8 lg:px-12 py-4 sm:py-8 max-w-6xl mx-auto w-full">{children}</main>
 
-      {/* Sheet «Más» solo móvil */}
       {moreOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end md:hidden">
           <button
@@ -182,7 +177,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
         <div className="max-w-5xl mx-auto glass rounded-[1.5rem] px-1.5 py-1.5 shadow-2xl">
-          {/* Móvil: 4 + Más */}
           <div className="flex items-stretch gap-0.5 md:hidden">
             {primaryNav.map((item) => (
               <NavLink key={item.href} {...item} active={isActive(pathname, item.href)} compact />
@@ -201,7 +195,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
-          {/* Escritorio: todos los iconos */}
           <div className="hidden md:flex items-stretch gap-0.5 overflow-x-auto">
             {desktopNav.map((item) => (
               <NavLink key={item.href} {...item} active={isActive(pathname, item.href)} />

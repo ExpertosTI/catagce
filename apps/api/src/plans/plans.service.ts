@@ -41,9 +41,9 @@ export class PlansService implements OnModuleInit {
         { planCode: 'free', featureKey: 'catalogs', enabled: true, limitValue: 2 },
         { planCode: 'free', featureKey: 'whatsapp_connect', enabled: true, limitValue: null },
         { planCode: 'free', featureKey: 'catalog_wa_share', enabled: true, limitValue: null },
-        { planCode: 'free', featureKey: 'broadcast', enabled: false, limitValue: null },
-        { planCode: 'free', featureKey: 'orders', enabled: false, limitValue: null },
-        { planCode: 'free', featureKey: 'inbox', enabled: false, limitValue: null },
+        { planCode: 'free', featureKey: 'broadcast', enabled: true, limitValue: null },
+        { planCode: 'free', featureKey: 'orders', enabled: true, limitValue: null },
+        { planCode: 'free', featureKey: 'inbox', enabled: true, limitValue: null },
         { planCode: 'free', featureKey: 'ai', enabled: false, limitValue: null },
         { planCode: 'free', featureKey: 'inventory', enabled: true, limitValue: null },
         { planCode: 'free', featureKey: 'analytics', enabled: true, limitValue: 1 },
@@ -72,11 +72,11 @@ export class PlansService implements OnModuleInit {
         await this.db.insert(planFeatures).values(f).onConflictDoNothing();
       }
 
-      // Política de producto: Free nunca incluye difusión / pedidos / inbox
+      // Free operativo: no bloquear difusión / pedidos / inbox (rompe el producto)
       for (const key of ['broadcast', 'orders', 'inbox'] as const) {
         await this.db
           .update(planFeatures)
-          .set({ enabled: false, updatedAt: new Date() })
+          .set({ enabled: true, updatedAt: new Date() })
           .where(and(eq(planFeatures.planCode, 'free'), eq(planFeatures.featureKey, key)));
         for (const planCode of ['pro', 'business'] as const) {
           await this.db

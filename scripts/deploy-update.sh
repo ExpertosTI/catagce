@@ -20,15 +20,25 @@ echo "🏗️  Build api + web..."
 set -a
 # shellcheck disable=SC1091
 [ -f .env ] && source .env
+# .evolution.local pisa EVOLUTION_* (instancia corporativa)
 if [ -f .evolution.local ]; then
   while IFS= read -r line; do
     [[ -z "$line" || "$line" =~ ^# ]] && continue
     key="${line%%=*}"
     val="${line#*=}"
-    [ -z "${!key:-}" ] && export "$key=$val"
+    key="$(echo "$key" | tr -d '[:space:]')"
+    case "$key" in
+      EVOLUTION_API_URL|EVOLUTION_API_KEY|EVOLUTION_INSTANCE)
+        [ -n "$val" ] && export "$key=$val"
+        ;;
+      *)
+        [ -z "${!key:-}" ] && export "$key=$val"
+        ;;
+    esac
   done < .evolution.local
 fi
 set +a
+echo "📱 Evolution INSTANCE=${EVOLUTION_INSTANCE:-∅}"
 
 docker compose build --parallel api web
 
@@ -52,6 +62,11 @@ done
 
 echo "🚢 Deploy stack..."
 docker stack deploy -c docker-compose.yml catagce
+
+if [ -f scripts/sync-evolution-env.sh ]; then
+  echo "📱 Sync Evolution → catagce_api..."
+  bash scripts/sync-evolution-env.sh || echo "⚠️  sync-evolution-env falló — revisa .evolution.local"
+fi
 
 echo "🔄 Reiniciar servicios..."
 api_ok=1
