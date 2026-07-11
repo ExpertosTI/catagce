@@ -1,23 +1,18 @@
-# Update: planes + encuesta (QuickCtgo existente)
+# Update producción Catagce (QuickCtgo)
 
-Flujo canónico en `/opt/QuickCtgo` — **no** usar `psql` del host ni inventar `.env`.
+Flujo canónico — **un solo comando**. No inventar `psql` del host ni regenerar `.env`.
 
 ```bash
 cd /opt/QuickCtgo
-git fetch --all && git reset --hard origin/main
-
-# Migraciones separadas del build (idempotentes, vía contenedor DB)
-bash scripts/schema-patch.sh scripts/schema-patch-plans.sql
-bash scripts/schema-patch.sh scripts/schema-patch-encuesta.sql
-
-# Deploy de código (api + web)
 bash scripts/deploy-update.sh
 ```
 
-Si `deploy.sh` da Permission denied: usar `bash scripts/deploy-update.sh` (es el update de producción).
+Ese script ya hace: `git fetch` + `reset --hard origin/main`, build api/web, stack deploy, force por servicio, y parches SQL idempotentes (`schema-patch-plans`, `encuesta`, `plan-requests`) vía `scripts/schema-patch.sh`.
 
-**SUPER_ADMIN_EMAILS:** upsert en el `.env` ya existente del API (solo rellenar si está vacío), con el email de la cuenta seller que ya usas para entrar. El API lo lee en runtime y registra `platform_admins` sin pisar secretos.
+Si hace falta solo un parche SQL (sin rebuild):
 
-Tras el update:
-- Encuesta: `/encuesta`
-- Platform: `/dashboard/platform/plans` (mismo login; email en `SUPER_ADMIN_EMAILS` o en `platform_admins`)
+```bash
+bash scripts/schema-patch.sh scripts/<parche>.sql
+```
+
+**SUPER_ADMIN_EMAILS / PLATFORM_NOTIFY_PHONES:** upsert en el `.env` existente (solo claves vacías). No pisar secretos.
