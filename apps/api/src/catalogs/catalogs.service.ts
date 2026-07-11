@@ -8,7 +8,6 @@ import { Queue } from 'bullmq';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { isValidPhone, normalizePhoneDigits } from '../common/utils/phone.util';
-import { platformEvolution } from '../whatsapp/evolution-config';
 
 const WEB_URL = (process.env.PUBLIC_WEB_URL || 'https://catagce.renace.tech').replace(/\/$/, '');
 
@@ -98,7 +97,7 @@ export class CatalogsService {
     });
     const creds = settings?.evolutionInstance && settings?.evolutionToken
       ? { instance: settings.evolutionInstance, apiKey: settings.evolutionToken }
-      : platformEvolution();
+      : null;
 
     if (!creds) {
       throw new BadRequestException('Conecta tu WhatsApp en Configuración para compartir');
@@ -116,9 +115,11 @@ export class CatalogsService {
       token = pub.token;
     }
 
-    const link = `${WEB_URL}/order/${token}`;
+    const link = `${WEB_URL}/order/${token}?src=wa&utm=share`;
     const text = body.message?.trim()
-      || `¡Hola! 👋 Te comparto nuestro catálogo *${catalog.name}*:\n\n${link}\n\nPuedes ver productos y hacer tu pedido desde el enlace.`;
+      || `¡Hola! 👋 Te comparto nuestro catálogo *${catalog.name}*.\n\n` +
+        `👉 Ver y pedir aquí:\n${link}\n\n` +
+        `Elige productos, confirma tu pedido y queda registrado automáticamente. Luego puedes escribirnos por este chat con tu Ref.`;
 
     const results: Array<{ phone: string; ok: boolean; error?: string }> = [];
     for (const raw of body.phones || []) {

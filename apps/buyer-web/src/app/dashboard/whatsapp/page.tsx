@@ -10,6 +10,15 @@ import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 
+type LinkedOrder = {
+  id: string;
+  ref: string;
+  status: string;
+  totalAmount?: string;
+  source?: string;
+  items?: Array<{ name?: string; quantity?: string; unitPrice?: string }>;
+};
+
 type Ticket = {
   id: string;
   phone: string;
@@ -19,6 +28,7 @@ type Ticket = {
   lastMessageAt?: string;
   lastMessagePreview?: string;
   unreadCount?: number;
+  linkedOrder?: LinkedOrder | null;
 };
 
 type Label = { id: string; name: string; color: string };
@@ -56,6 +66,7 @@ export default function WhatsAppInboxPage() {
   const [error, setError] = useState('');
   const [waReady, setWaReady] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [linkedOrder, setLinkedOrder] = useState<LinkedOrder | null>(null);
   const [newQuickTitle, setNewQuickTitle] = useState('');
   const [newQuickBody, setNewQuickBody] = useState('');
 
@@ -110,12 +121,47 @@ export default function WhatsAppInboxPage() {
   const openTicket = async (ticket: Ticket) => {
     setSelected(ticket);
     setMessages([]);
+    setLinkedOrder(ticket.linkedOrder || null);
     try {
-      const data = await apiFetch<{ messages: Message[] }>(`/whatsapp-inbox/tickets/${ticket.id}/messages`);
+      const data = await apiFetch<{ messages: Message[]; order?: LinkedOrder | null }>(`/whatsapp-inbox/tickets/${ticket.id}/messages`);
       setMessages(data.messages || []);
+      setLinkedOrder(data.order || ticket.linkedOrder || null);
       setTickets((prev) => prev.map((t) => (t.id === ticket.id ? { ...t, unreadCount: 0 } : t)));
     } catch (err) {
       if (!onApiError(err)) setError(getErrorMessage(err));
+    }
+  };
+
+  const confirmLinkedOrder = async (status: string) => {
+    if (!selected) return;
+    await apiFetch(`/whatsapp-inbox/tickets/${selected.id}/order/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+    setLinkedOrder((prev) => (prev ? { ...prev, status } : prev));
+  };
+
+  const sendReorderLink = async () => {
+    if (!selected) return;
+    const res = await apiFetch<{ ok: boolean; link?: string; error?: string }>(
+      `/whatsapp-inbox/tickets/${selected.id}/reorder-link`,
+      { method: 'POST' },
+    );
+    if (!res.ok) setError(res.error || 'No se pudo enviar el enlace');
+    else await openTicket(selected);
+  };
+
+  const parseOrderAi = async () => {
+    if (!selected) return;
+    setError('');
+    const res = await apiFetch<{ ok: boolean; message?: string; draft?: LinkedOrder }>(
+      `/whatsapp-inbox/tickets/${selected.id}/parse-order`,
+      { method: 'POST' },
+    );
+    if (!res.ok) setError(res.message || 'No se detectó pedido');
+    else {
+      setLinkedOrder(res.draft || null);
+      await loadTickets();
     }
   };
 
@@ -296,6 +342,11 @@ export default function WhatsAppInboxPage() {
                   )}
                 </div>
                 <p className="text-sm text-gray-400 mt-2 line-clamp-2">{ticket.lastMessagePreview || '—'}</p>
+                {ticket.linkedOrder && (
+                  <p className="text-[10px] mt-1 text-[#25D366] font-semibold">
+                    Pedido #{ticket.linkedOrder.ref} · ${ticket.linkedOrder.totalAmount || '—'}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-1 mt-2">
                   <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: `${st.color}22`, color: st.color }}>{st.label}</span>
                   {(ticket.labelIds || []).map((lid) => {
@@ -362,6 +413,29 @@ export default function WhatsAppInboxPage() {
                     </button>
                   );
                 })}
+              </div>
+
+              <div className="px-4 py-3 border-b border-white/10 bg-white/[0.03] space-y-2">
+                {linkedOrder ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Pedido vinculado</p>
+                      <p className="text-sm font-semibold text-[#25D366]">
+                        #{linkedOrder.ref} · ${linkedOrder.totalAmount || '—'} · {linkedOrder.status}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => confirmLinkedOrder('confirmed')} className="text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400">Confirmar</button>
+                      <button type="button" onClick={() => confirmLinkedOrder('rejected')} className="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400">Rechazar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">Sin pedido vinculado a este chat</p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={sendReorderLink} className="text-xs px-3 py-1.5 rounded-lg bg-[#00D1FF]/15 text-[#00D1FF]">Reenviar catálogo</button>
+                  <button type="button" onClick={parseOrderAi} className="text-xs px-3 py-1.5 rounded-lg bg-purple-500/15 text-purple-300">IA: crear borrador</button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">

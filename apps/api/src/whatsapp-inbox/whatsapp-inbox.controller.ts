@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { WhatsAppInboxService } from './whatsapp-inbox.service';
+import { WhatsAppConnectService } from '../whatsapp-connect/whatsapp-connect.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
 
@@ -8,11 +9,13 @@ export class WhatsAppInboxController {
   constructor(
     private readonly inbox: WhatsAppInboxService,
     private readonly whatsapp: WhatsAppService,
+    private readonly connect: WhatsAppConnectService,
   ) {}
 
   @Get('status')
-  async status() {
-    return this.whatsapp.status();
+  async status(@CurrentUser() user: UserPayload) {
+    const creds = await this.connect.getCreds(user.sellerId);
+    return this.whatsapp.status(creds);
   }
 
   @Post('sync')
@@ -42,6 +45,30 @@ export class WhatsAppInboxController {
   @Get('tickets/:id/messages')
   messages(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.inbox.getMessages(user.sellerId, id);
+  }
+
+  @Get('tickets/:id/order')
+  ticketOrder(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.inbox.getTicketOrder(user.sellerId, id);
+  }
+
+  @Patch('tickets/:id/order/status')
+  ticketOrderStatus(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    return this.inbox.updateLinkedOrderStatus(user.sellerId, id, status, user.userId);
+  }
+
+  @Post('tickets/:id/reorder-link')
+  reorderLink(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.inbox.createReorderLink(user.sellerId, id);
+  }
+
+  @Post('tickets/:id/parse-order')
+  parseOrder(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.inbox.parseOrderFromChat(user.sellerId, id);
   }
 
   @Patch('tickets/:id/status')

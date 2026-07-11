@@ -4,7 +4,7 @@ import { broadcastCampaigns, broadcastJobs, sellerSettings } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { parseMediaUrls } from './media-urls.util';
-import { EvolutionCreds, platformEvolution } from '../whatsapp/evolution-config';
+import { EvolutionCreds } from '../whatsapp/evolution-config';
 
 @Injectable()
 export class BroadcastRunnerService implements OnModuleInit {
@@ -26,7 +26,7 @@ export class BroadcastRunnerService implements OnModuleInit {
     if (settings?.evolutionInstance && settings?.evolutionToken) {
       return { instance: settings.evolutionInstance, apiKey: settings.evolutionToken };
     }
-    return platformEvolution();
+    return null;
   }
 
   async processDueJobs() {
@@ -60,6 +60,13 @@ export class BroadcastRunnerService implements OnModuleInit {
   ) {
     const mediaUrls = parseMediaUrls(campaign.mediaUrl);
     const creds = await this.sellerCreds(campaign.sellerId);
+    if (!creds) {
+      await this.db.update(broadcastJobs).set({
+        status: 'failed',
+        error: 'Conecta WhatsApp del negocio en Configuración',
+      }).where(eq(broadcastJobs.id, jobId));
+      return;
+    }
     const result = await this.whatsapp.sendBundle(phone, {
       text: campaign.messageText,
       mediaUrls,

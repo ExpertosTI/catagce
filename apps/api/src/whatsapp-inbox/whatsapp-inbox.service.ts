@@ -1,15 +1,36 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { whatsappLabels, whatsappQuickReplies, whatsappTickets } from '@catagce/db';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import {
+  catalogs,
+  orders,
+  products,
+  whatsappLabels,
+  whatsappMessageEvents,
+  whatsappQuickReplies,
+  whatsappTickets,
+} from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { WhatsAppConnectService } from '../whatsapp-connect/whatsapp-connect.service';
+import { OrdersService } from '../orders/orders.service';
+import { OrderWhatsAppSyncService } from '../common/services/order-whatsapp-sync.service';
 import { normalizePhoneDigits } from '../common/utils/phone.util';
+import { orderRef, signBuyerPrefill } from '../common/utils/signed-prefill';
+
+const WEB_URL = (process.env.PUBLIC_WEB_URL || 'https://catagce.renace.tech').replace(/\/$/, '');
 
 const DEFAULT_LABELS = [
   { name: 'Nuevo', color: '#00D1FF' },
   { name: 'Pedido', color: '#22c55e' },
   { name: 'Soporte', color: '#FF8A00' },
   { name: 'VIP', color: '#a855f7' },
+];
+
+const DEFAULT_QUICK_REPLIES = [
+  { title: 'Pedido recibido', body: '✅ Pedido recibido. Lo estamos revisando y te confirmamos en breve.', shortcut: 'recibido' },
+  { title: 'En camino', body: '🚚 Tu pedido ya está en camino. ¡Gracias por tu compra!', shortcut: 'camino' },
+  { title: 'Pago pendiente', body: '💳 Quedamos pendientes de tu pago para confirmar el pedido. ¿Me confirmas el método?', shortcut: 'pago' },
 ];
 
 function jidToPhone(remoteJid: string) {
@@ -45,7 +66,14 @@ export class WhatsAppInboxService {
   constructor(
     @Inject(DRIZZLE) private db: any,
     private whatsapp: WhatsAppService,
+    private connect: WhatsAppConnectService,
+    private ordersService: OrdersService,
+    private orderSync: OrderWhatsAppSyncService,
   ) {}
+
+  private async sellerCreds(sellerId: string) {
+    return this.connect.getCreds(sellerId);
+  }
 
   async ensureDefaultLabels(sellerId: string) {
     const existing = await this.db.query.whatsappLabels.findMany({
@@ -59,16 +87,27 @@ export class WhatsAppInboxService {
     return inserted;
   }
 
+  async ensureDefaultQuickReplies(sellerId: string) {
+    const existing = await this.db.query.whatsappQuickReplies.findMany({
+      where: eq(whatsappQuickReplies.sellerId, sellerId),
+    });
+    if (existing.length) return existing;
+    return this.db.insert(whatsappQuickReplies).values(
+      DEFAULT_QUICK_REPLIES.map((r) => ({ sellerId, ...r })),
+    ).returning();
+  }
+
   async listLabels(sellerId: string) {
     await this.ensureDefaultLabels(sellerId);
     const local = await this.db.query.whatsappLabels.findMany({
       where: eq(whatsappLabels.sellerId, sellerId),
     });
-    const evolution = await this.whatsapp.findLabels();
+    const creds = await this.sellerCreds(sellerId);
+    const evolution = await this.whatsapp.findLabels(creds);
     return {
       local: local.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
       evolution: evolution.ok ? evolution.labels : [],
-      whatsappReady: this.whatsapp.configured(),
+      whatsappReady: Boolean(creds),
     };
   }
 
@@ -82,7 +121,8 @@ export class WhatsAppInboxService {
   }
 
   async syncTickets(sellerId: string) {
-    const { chats, ok, error } = await this.whatsapp.findChats();
+    const creds = await this.sellerCreds(sellerId);
+    const { chats, ok, error } = await this.whatsapp.findChats(creds);
     if (!ok) return { synced: 0, error };
 
     let synced = 0;
@@ -144,7 +184,25 @@ export class WhatsAppInboxService {
       result = result.filter((t: any) => (t.labelIds || []).includes(filters.labelId));
     }
 
-    return result.sort((a: any, b: any) => {
+    const withOrders = await Promise.all(result.map(async (t: any) => {
+      const order = await this.db.query.orders.findFirst({
+        where: and(eq(orders.sellerId, sellerId), eq(orders.whatsappTicketId, t.id)),
+      });
+      return {
+        ...t,
+        linkedOrder: order
+          ? {
+              id: order.id,
+              ref: orderRef(order.id),
+              status: order.status,
+              totalAmount: order.totalAmount,
+              source: order.source,
+            }
+          : null,
+      };
+    }));
+
+    return withOrders.sort((a: any, b: any) => {
       const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
       const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
       return tb - ta;
@@ -159,9 +217,31 @@ export class WhatsAppInboxService {
     return ticket;
   }
 
+  async getTicketOrder(sellerId: string, ticketId: string) {
+    await this.getTicket(sellerId, ticketId);
+    const order = await this.db.query.orders.findFirst({
+      where: and(eq(orders.sellerId, sellerId), eq(orders.whatsappTicketId, ticketId)),
+      with: { items: { with: { product: true } } },
+    });
+    if (!order) return { order: null };
+    return {
+      order: {
+        ...order,
+        ref: orderRef(order.id),
+        items: (order.items || []).map((i: any) => ({
+          id: i.id,
+          name: i.product?.name,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+        })),
+      },
+    };
+  }
+
   async getMessages(sellerId: string, ticketId: string) {
     const ticket = await this.getTicket(sellerId, ticketId);
-    const { messages, ok } = await this.whatsapp.findMessages(ticket.remoteJid);
+    const creds = await this.sellerCreds(sellerId);
+    const { messages, ok } = await this.whatsapp.findMessages(ticket.remoteJid, creds);
 
     const normalized = (ok ? messages : []).map((m: any) => {
       const fromMe = Boolean(m?.key?.fromMe ?? m?.fromMe);
@@ -181,7 +261,8 @@ export class WhatsAppInboxService {
     await this.db.update(whatsappTickets).set({ unreadCount: 0, updatedAt: new Date() })
       .where(eq(whatsappTickets.id, ticketId));
 
-    return { ticket, messages: normalized };
+    const { order } = await this.getTicketOrder(sellerId, ticketId);
+    return { ticket, messages: normalized, order };
   }
 
   async updateStatus(sellerId: string, ticketId: string, status: string) {
@@ -204,8 +285,9 @@ export class WhatsAppInboxService {
     const has = current.includes(labelId);
     const labelIds = has ? current.filter((id) => id !== labelId) : [...current, labelId];
 
+    const creds = await this.sellerCreds(sellerId);
     if (label.evolutionLabelId) {
-      await this.whatsapp.handleLabel(ticket.phone, label.evolutionLabelId, has ? 'remove' : 'add');
+      await this.whatsapp.handleLabel(ticket.phone, label.evolutionLabelId, has ? 'remove' : 'add', creds);
     }
 
     const [updated] = await this.db.update(whatsappTickets).set({
@@ -218,7 +300,8 @@ export class WhatsAppInboxService {
 
   async sendReply(sellerId: string, ticketId: string, text: string) {
     const ticket = await this.getTicket(sellerId, ticketId);
-    const result = await this.whatsapp.sendText(ticket.phone, text);
+    const creds = await this.sellerCreds(sellerId);
+    const result = await this.whatsapp.sendText(ticket.phone, text, creds);
     if (!result.ok) return result;
 
     await this.db.update(whatsappTickets).set({
@@ -231,7 +314,141 @@ export class WhatsAppInboxService {
     return { ok: true as const };
   }
 
+  async updateLinkedOrderStatus(sellerId: string, ticketId: string, status: string, actorUserId?: string) {
+    const { order } = await this.getTicketOrder(sellerId, ticketId);
+    if (!order) throw new NotFoundException('Este chat no tiene pedido vinculado');
+    return this.ordersService.updateStatus(order.id, sellerId, status, actorUserId);
+  }
+
+  async createReorderLink(sellerId: string, ticketId: string) {
+    const ticket = await this.getTicket(sellerId, ticketId);
+    const catalog = await this.db.query.catalogs.findFirst({
+      where: eq(catalogs.sellerId, sellerId),
+      with: { publications: true },
+    });
+    if (!catalog) throw new NotFoundException('No hay catálogo para compartir');
+
+    let token = catalog.publications?.find((p: any) => p.isActive)?.token
+      || catalog.publications?.[0]?.token;
+    if (!token) {
+      throw new BadRequestException('Publica el catálogo antes de reenviar el enlace');
+    }
+
+    const prefill = signBuyerPrefill(ticket.phone, ticket.contactName || undefined);
+    const link = `${WEB_URL}/order/${token}?src=wa&p=${encodeURIComponent(prefill)}`;
+    const message =
+      `¡Hola${ticket.contactName ? ` ${ticket.contactName}` : ''}! 👋\n\n` +
+      `Aquí puedes ver el catálogo y hacer tu pedido:\n${link}\n\n` +
+      `Al confirmar, queda registrado en nuestro sistema automáticamente.`;
+
+    const creds = await this.sellerCreds(sellerId);
+    const sent = await this.whatsapp.sendText(ticket.phone, message, creds);
+    return { ok: sent.ok, link, error: sent.ok ? undefined : (sent as any).error };
+  }
+
+  /** Phase C: Gemini extracts draft order from recent chat text */
+  async parseOrderFromChat(sellerId: string, ticketId: string) {
+    const ticket = await this.getTicket(sellerId, ticketId);
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) throw new BadRequestException('GOOGLE_AI_API_KEY no configurada');
+
+    const events = await this.db.query.whatsappMessageEvents.findMany({
+      where: and(
+        eq(whatsappMessageEvents.sellerId, sellerId),
+        eq(whatsappMessageEvents.ticketId, ticketId),
+      ),
+    });
+    const recent = (events || [])
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 12)
+      .reverse()
+      .map((e: any) => `${e.direction}: ${e.textPreview || ''}`)
+      .join('\n');
+
+    const productRows = await this.db.query.products.findMany({
+      where: eq(products.sellerId, sellerId),
+    });
+    const catalog = productRows.slice(0, 80).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      price: p.b2bPrice || p.basePrice,
+    }));
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: process.env.GOOGLE_AI_MODEL || 'gemini-2.5-flash',
+    });
+    const prompt = `Eres un extractor de pedidos B2B. Del chat de WhatsApp, identifica productos y cantidades.
+Responde SOLO JSON: {"items":[{"productId":"...","quantity":1}],"notes":"..."}
+Si no hay pedido claro: {"items":[],"notes":"sin pedido"}
+
+Productos disponibles:
+${JSON.stringify(catalog)}
+
+Chat:
+${recent || ticket.lastMessagePreview || '(vacío)'}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text() || '{}';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    let parsed: { items?: Array<{ productId: string; quantity: number }>; notes?: string } = {};
+    try {
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+    } catch {
+      throw new BadRequestException('No se pudo interpretar el pedido del chat');
+    }
+
+    const items = (parsed.items || []).filter((i) => i.productId && i.quantity > 0);
+    if (!items.length) {
+      return { ok: false, message: 'No detecté un pedido claro en el chat', draft: null };
+    }
+
+    let total = 0;
+    const orderItemsData = [];
+    for (const item of items) {
+      const product = catalog.find((p: any) => p.id === item.productId)
+        || productRows.find((p: any) => p.id === item.productId);
+      if (!product) continue;
+      const unitPrice = parseFloat(String(product.price || product.b2bPrice || product.basePrice || 0));
+      total += unitPrice * item.quantity;
+      orderItemsData.push({
+        productId: item.productId,
+        quantity: String(item.quantity),
+        unitPrice: String(unitPrice),
+      });
+    }
+    if (!orderItemsData.length) {
+      return { ok: false, message: 'Los productos detectados no coinciden con el catálogo', draft: null };
+    }
+
+    const order = await this.ordersService.create({
+      sellerId,
+      buyerName: ticket.contactName || ticket.phone,
+      buyerPhone: ticket.phone,
+      totalAmount: String(total.toFixed(2)),
+      notes: parsed.notes || 'Borrador desde WhatsApp (IA)',
+      source: 'whatsapp_chat',
+      whatsappTicketId: ticket.id,
+      status: 'draft_capture',
+      items: orderItemsData,
+    });
+
+    await this.orderSync.tagPedidoLabel(sellerId, ticket.id);
+    await this.orderSync.linkOrderToTicket(order.id, ticket.id);
+
+    return {
+      ok: true,
+      draft: {
+        ...order,
+        ref: orderRef(order.id),
+        status: 'draft_capture',
+      },
+      message: 'Borrador creado — revisa y confirma en Pedidos o aquí en Inbox',
+    };
+  }
+
   async listQuickReplies(sellerId: string) {
+    await this.ensureDefaultQuickReplies(sellerId);
     return this.db.query.whatsappQuickReplies.findMany({
       where: eq(whatsappQuickReplies.sellerId, sellerId),
     });

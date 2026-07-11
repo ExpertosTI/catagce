@@ -36,6 +36,10 @@ export class OrdersService {
     buyerEmail?: string;
     totalAmount: string;
     notes?: string;
+    source?: string;
+    whatsappTicketId?: string;
+    externalMessageId?: string;
+    status?: string;
     items?: Array<{ productId: string; quantity: string; unitPrice: string; uomId?: number }>;
   }) {
     const [order] = await this.db.insert(orders).values({
@@ -48,27 +52,32 @@ export class OrdersService {
       buyerEmail: data.buyerEmail,
       totalAmount: data.totalAmount,
       notes: data.notes,
-      status: 'submitted',
+      source: data.source || 'web',
+      whatsappTicketId: data.whatsappTicketId || null,
+      externalMessageId: data.externalMessageId || null,
+      status: (data.status as any) || 'submitted',
     }).returning();
 
     if (data.items?.length) {
       await this.db.insert(orderEvents).values({
-        orderId: order.id, eventType: 'created', payload: { items: data.items },
+        orderId: order.id, eventType: 'created', payload: { items: data.items, source: data.source || 'web' },
       });
 
       await this.db.insert(orderItems).values(
         data.items.map((item) => ({ ...item, orderId: order.id })),
       );
 
-      const reservations = await this.inventoryService.reserveForOrder(
-        data.sellerId,
-        order.id,
-        data.items.map((i) => ({ productId: i.productId, quantity: parseFloat(i.quantity) })),
-      );
+      if (order.status !== 'draft_capture') {
+        const reservations = await this.inventoryService.reserveForOrder(
+          data.sellerId,
+          order.id,
+          data.items.map((i) => ({ productId: i.productId, quantity: parseFloat(i.quantity) })),
+        );
 
-      if (reservations.length > 0) {
-        await this.db.update(orders).set({ status: 'reserved' }).where(eq(orders.id, order.id));
-        order.status = 'reserved';
+        if (reservations.length > 0) {
+          await this.db.update(orders).set({ status: 'reserved' }).where(eq(orders.id, order.id));
+          order.status = 'reserved';
+        }
       }
     }
 

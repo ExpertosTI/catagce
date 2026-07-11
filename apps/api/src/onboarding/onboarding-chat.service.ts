@@ -448,7 +448,7 @@ export class OnboardingChatService {
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: process.env.GOOGLE_AI_MODEL || 'gemini-2.5-flash' });
     const transcript = history.slice(-10).map((m) => `${m.role}: ${m.content}`).join('\n');
     const prompt = `${PROMPT}
 

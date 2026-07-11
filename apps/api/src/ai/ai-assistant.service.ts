@@ -88,7 +88,7 @@ export class AiAssistantService {
     });
     return {
       aiEnabled: settings?.aiEnabled ?? true,
-      aiModel: settings?.aiModel ?? 'gemini-2.5-flash',
+      aiModel: settings?.aiModel ?? process.env.GOOGLE_AI_MODEL ?? 'gemini-2.5-flash',
       hasApiKey: !!settings?.googleAiApiKey,
       apiKeyPreview: settings?.googleAiApiKey
         ? `${settings.googleAiApiKey.slice(0, 6)}...${settings.googleAiApiKey.slice(-4)}`
@@ -143,7 +143,7 @@ export class AiAssistantService {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: settings?.aiModel || 'gemini-2.5-flash',
+      model: settings?.aiModel || process.env.GOOGLE_AI_MODEL || 'gemini-2.5-flash',
       systemInstruction: SYSTEM_PROMPT,
       tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
     });

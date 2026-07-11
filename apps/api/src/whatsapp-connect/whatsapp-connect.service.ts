@@ -31,6 +31,12 @@ function extractHash(data: any): string | null {
   return null;
 }
 
+function webhookUrlForCatagce() {
+  const base = (process.env.PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api.catagce.renace.tech/api')
+    .replace(/\/$/, '');
+  return `${base}/webhooks/evolution`;
+}
+
 /** Evolution 401 suele ser clave de instancia, no la AUTHENTICATION_API_KEY global. */
 function evolutionAdminError(detail?: string): string {
   const d = String(detail || '').toLowerCase();
@@ -79,6 +85,15 @@ export class WhatsAppConnectService {
     return null;
   }
 
+  private async registerWebhook(creds: EvolutionCreds) {
+    const url = webhookUrlForCatagce();
+    const res = await this.whatsapp.setInstanceWebhook(creds, url);
+    if (!res.ok) {
+      console.warn('[whatsapp-connect] webhook set failed', res.detail || res.status);
+    }
+    return res;
+  }
+
   async status(sellerId: string) {
     const platformOk = evolutionConfigured();
     let adminOk = false;
@@ -117,8 +132,11 @@ export class WhatsAppConnectService {
         evolutionStatus: 'open',
         evolutionPhone: settings?.evolutionPhone || settings?.whatsappNumber || null,
       });
+      await this.registerWebhook(creds);
     } else if (!connected && settings?.evolutionStatus === 'open') {
       await this.upsertSettings(sellerId, { evolutionStatus: state });
+    } else if (connected) {
+      await this.registerWebhook(creds);
     }
 
     return {
@@ -206,6 +224,7 @@ export class WhatsAppConnectService {
     const live = await this.whatsapp.status(creds);
     if (live.connected) {
       await this.upsertSettings(sellerId, { evolutionStatus: 'open' });
+      await this.registerWebhook(creds);
       return {
         connected: true,
         qr: null,

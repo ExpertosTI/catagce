@@ -11,6 +11,8 @@ read_env() {
 DB_PASSWORD=$(read_env DB_PASSWORD)
 JWT_SECRET=$(read_env JWT_SECRET)
 GOOGLE_AI_API_KEY=$(read_env GOOGLE_AI_API_KEY)
+GOOGLE_AI_MODEL=$(read_env GOOGLE_AI_MODEL)
+GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL:-gemini-2.5-flash}
 
 if [ -z "$DB_PASSWORD" ]; then
   echo "❌ DB_PASSWORD vacío en .env"
@@ -40,6 +42,7 @@ docker service update \
   --env-add "REDIS_PORT=6379" \
   --env-add "JWT_SECRET=${JWT_SECRET}" \
   --env-add "GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}" \
+  --env-add "GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL}" \
   catagce_api 2>&1 | tail -8
 
 echo "⏳ Esperando 40s..."

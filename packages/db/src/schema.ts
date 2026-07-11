@@ -281,6 +281,10 @@ export const orders = pgTable('orders', {
   publicationToken: text('publication_token'),
   idempotencyKey: text('idempotency_key'),
   status: orderStatusEnum('status').default('submitted'),
+  /** web | whatsapp_link | whatsapp_chat | api */
+  source: text('source').default('web'),
+  whatsappTicketId: uuid('whatsapp_ticket_id'),
+  externalMessageId: text('external_message_id'),
   buyerName: text('buyer_name').notNull(),
   buyerPhone: text('buyer_phone').notNull(),
   buyerEmail: text('buyer_email'),
@@ -506,6 +510,21 @@ export const whatsappQuickReplies = pgTable('whatsapp_quick_replies', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const whatsappMessageEvents = pgTable('whatsapp_message_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  ticketId: uuid('ticket_id').references(() => whatsappTickets.id),
+  orderId: uuid('order_id').references(() => orders.id),
+  evolutionMessageId: text('evolution_message_id'),
+  remoteJid: text('remote_jid').notNull(),
+  direction: text('direction').notNull(), // inbound | outbound
+  textPreview: text('text_preview'),
+  rawPayload: jsonb('raw_payload'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (t) => ({
+  evoMsgIdx: uniqueIndex('whatsapp_message_events_evo_msg_idx').on(t.sellerId, t.evolutionMessageId),
+}));
+
 // ─── WhatsApp Difusión (listas de difusión) ─────────────────────────────────
 export const broadcastLists = pgTable('broadcast_lists', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -645,9 +664,11 @@ export const catalogPublicationsRelations = relations(catalogPublications, ({ on
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   seller: one(sellers, { fields: [orders.sellerId], references: [sellers.id] }),
   catalog: one(catalogs, { fields: [orders.catalogId], references: [catalogs.id] }),
+  whatsappTicket: one(whatsappTickets, { fields: [orders.whatsappTicketId], references: [whatsappTickets.id] }),
   items: many(orderItems),
   events: many(orderEvents),
   reservations: many(stockReservations),
+  messageEvents: many(whatsappMessageEvents),
 }));
 
 export const orderItemsRelations = relations(orderItems, ({ one, many }) => ({
@@ -683,13 +704,21 @@ export const whatsappLabelsRelations = relations(whatsappLabels, ({ one }) => ({
   seller: one(sellers, { fields: [whatsappLabels.sellerId], references: [sellers.id] }),
 }));
 
-export const whatsappTicketsRelations = relations(whatsappTickets, ({ one }) => ({
+export const whatsappTicketsRelations = relations(whatsappTickets, ({ one, many }) => ({
   seller: one(sellers, { fields: [whatsappTickets.sellerId], references: [sellers.id] }),
   assignedUser: one(sellerUsers, { fields: [whatsappTickets.assignedUserId], references: [sellerUsers.id] }),
+  orders: many(orders),
+  messageEvents: many(whatsappMessageEvents),
 }));
 
 export const whatsappQuickRepliesRelations = relations(whatsappQuickReplies, ({ one }) => ({
   seller: one(sellers, { fields: [whatsappQuickReplies.sellerId], references: [sellers.id] }),
+}));
+
+export const whatsappMessageEventsRelations = relations(whatsappMessageEvents, ({ one }) => ({
+  seller: one(sellers, { fields: [whatsappMessageEvents.sellerId], references: [sellers.id] }),
+  ticket: one(whatsappTickets, { fields: [whatsappMessageEvents.ticketId], references: [whatsappTickets.id] }),
+  order: one(orders, { fields: [whatsappMessageEvents.orderId], references: [orders.id] }),
 }));
 
 export const broadcastListsRelations = relations(broadcastLists, ({ one, many }) => ({

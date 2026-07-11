@@ -19,6 +19,8 @@ import { WhatsAppInboxModule } from './whatsapp-inbox/whatsapp-inbox.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
 import { WhatsAppConnectModule } from './whatsapp-connect/whatsapp-connect.module';
+import { EvolutionWebhookModule } from './evolution-webhook/evolution-webhook.module';
+import { OrderSyncModule } from './order-sync/order-sync.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { BullModule } from '@nestjs/bullmq';
 
@@ -42,6 +44,8 @@ import { BullModule } from '@nestjs/bullmq';
     ContactsModule,
     BroadcastModule,
     WhatsAppConnectModule,
+    EvolutionWebhookModule,
+    OrderSyncModule,
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST || 'localhost',

@@ -11,6 +11,10 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
   return `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
 }
 
+export function orderRefShort(orderId: string) {
+  return orderId.replace(/-/g, '').slice(0, 8).toLowerCase();
+}
+
 export function buildOrderMessage(opts: {
   buyerName: string;
   catalogName: string;
@@ -18,12 +22,15 @@ export function buildOrderMessage(opts: {
   total: number;
   orderId?: string;
   notes?: string;
+  trackingUrl?: string;
 }): string {
   const lines = opts.items.map(
     (i) => `• ${i.name} x${i.qty} — $${i.lineTotal.toFixed(2)}`,
   );
+  const ref = opts.orderId ? orderRefShort(opts.orderId) : '';
   let msg = `¡Hola! Soy *${opts.buyerName}*.\n\nQuiero confirmar mi pedido en *${opts.catalogName}*:\n\n${lines.join('\n')}\n\n*Total: $${opts.total.toFixed(2)}*`;
-  if (opts.orderId) msg += `\n\nRef: #${opts.orderId.slice(0, 8)}`;
+  if (ref) msg += `\n\nRef: #${ref}`;
+  if (opts.trackingUrl) msg += `\nSeguimiento: ${opts.trackingUrl}`;
   if (opts.notes) msg += `\n\nNotas: ${opts.notes}`;
   msg += '\n\n¡Gracias! Quedo atento/a.';
   return msg;
@@ -36,5 +43,6 @@ export function buildSellerNewOrderMessage(opts: {
   orderId: string;
   itemCount: number;
 }): string {
-  return `🛒 *Nuevo pedido Catagce*\n\nCliente: ${opts.buyerName}\nWhatsApp: ${opts.buyerPhone}\nProductos: ${opts.itemCount}\nTotal: $${opts.total.toFixed(2)}\nRef: #${opts.orderId.slice(0, 8)}`;
+  const ref = orderRefShort(opts.orderId);
+  return `🛒 *Nuevo pedido Catagce*\n\nCliente: ${opts.buyerName}\nWhatsApp: ${opts.buyerPhone}\nProductos: ${opts.itemCount}\nTotal: $${opts.total.toFixed(2)}\nRef: #${ref}`;
 }

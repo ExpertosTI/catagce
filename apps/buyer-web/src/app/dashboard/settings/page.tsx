@@ -304,7 +304,7 @@ export default function SettingsPage() {
 
           <input
             type="password"
-            placeholder="Google AI API Key (AIza...)"
+            placeholder="Google AI API Key (AIza... o AQ....)"
             value={aiConfig.googleAiApiKey}
             onChange={(e) => setAiConfig({ ...aiConfig, googleAiApiKey: e.target.value })}
             className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#00D1FF] font-mono text-sm"

@@ -7,17 +7,36 @@ import { ShoppingCart, Send, User, Phone, CheckCircle2, MessageCircle, Minus, Pl
 import { publicFetch } from '@/lib/api';
 import { buildOrderMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
 
+function stockOf(product: any) {
+  const levels = product?.stockLevels || [];
+  if (!levels.length) return null;
+  return levels.reduce((s: number, l: any) => s + Number(l.quantityOnHand || l.available || 0), 0);
+}
+
 function OrderContent({ token }: { token: string }) {
   const searchParams = useSearchParams();
+  const src = searchParams.get('src') || 'web';
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ name: '', phone: '' });
   const [catalogData, setCatalogData] = useState<any>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderRef, setOrderRef] = useState<string | null>(null);
+  const [trackingUrl, setTrackingUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    publicFetch(`/public/catalog/${token}`).then(setCatalogData).catch(console.error);
+    const p = searchParams.get('p');
+    const qs = p ? `?p=${encodeURIComponent(p)}` : '';
+    publicFetch(`/public/catalog/${token}${qs}`).then((data: any) => {
+      setCatalogData(data);
+      if (data?.prefill) {
+        setFormData((f) => ({
+          name: data.prefill.name || f.name,
+          phone: data.prefill.phone || f.phone,
+        }));
+      }
+    }).catch(console.error);
     const cartParam = searchParams.get('cart');
     if (cartParam) {
       try { setCart(JSON.parse(cartParam)); } catch { /* ignore */ }
@@ -45,6 +64,7 @@ function OrderContent({ token }: { token: string }) {
 
   const catalogName = catalogData?.catalog?.name || 'Catálogo';
   const sellerWhatsApp = catalogData?.whatsappNumber || catalogData?.seller?.phone || '';
+  const primaryColor = catalogData?.branding?.primaryColor || '#00D1FF';
 
   const orderItems = displayProducts.map((p: any) => ({
     name: p.name,
@@ -58,6 +78,7 @@ function OrderContent({ token }: { token: string }) {
     items: orderItems,
     total,
     orderId: orderId || undefined,
+    trackingUrl: trackingUrl || undefined,
   });
 
   const whatsappUrl = sellerWhatsApp ? buildWhatsAppUrl(sellerWhatsApp, whatsappMessage) : '';
@@ -78,10 +99,13 @@ function OrderContent({ token }: { token: string }) {
           buyerName: formData.name,
           buyerPhone: formData.phone,
           items,
+          source: src === 'wa' ? 'whatsapp_link' : 'web',
         }),
       });
 
       setOrderId(order?.id || null);
+      setOrderRef(order?.ref || (order?.id ? String(order.id).replace(/-/g, '').slice(0, 8) : null));
+      setTrackingUrl(order?.trackingUrl || null);
       setStep(3);
     } catch {
       alert('Error al enviar el pedido. Intenta de nuevo.');
@@ -90,72 +114,83 @@ function OrderContent({ token }: { token: string }) {
     }
   };
 
-  const primaryColor = catalogData?.branding?.primaryColor || '#00D1FF';
-
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8">
+    <div className="min-h-screen bg-[#0A0A0A] text-white p-4 md:p-8 pb-28">
       <div className="max-w-2xl mx-auto">
-        <header className="flex items-center justify-between mb-12">
+        <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
               <ShoppingCart className="text-black w-5 h-5" />
             </div>
-            <h1 className="font-bold text-xl">{catalogName}</h1>
+            <div>
+              <h1 className="font-bold text-xl">{catalogName}</h1>
+              <p className="text-xs text-gray-500">Pedido sincronizado con WhatsApp</p>
+            </div>
           </div>
         </header>
 
         {step === 1 && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <h2 className="text-2xl font-bold mb-6">Revisa tu selección</h2>
-            <div className="space-y-4 mb-10">
-              {displayProducts.map((product: any) => (
-                <div key={product.id} className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/10">
-                  <img
-                    src={product.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=200'}
-                    alt={product.name}
-                    className="w-16 h-16 rounded-2xl object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold truncate">{product.name}</h3>
-                    <p className="text-sm text-gray-400">${product.b2bPrice || product.basePrice}</p>
+            <h2 className="text-2xl font-bold mb-6">Tu carrito</h2>
+            <div className="space-y-4 mb-6">
+              {displayProducts.map((product: any) => {
+                const stock = stockOf(product);
+                return (
+                  <div key={product.id} className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/10">
+                    <img
+                      src={product.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=200'}
+                      alt={product.name}
+                      className="w-16 h-16 rounded-2xl object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold truncate">{product.name}</h3>
+                      <p className="text-sm text-gray-400">${product.b2bPrice || product.basePrice}</p>
+                      {stock !== null && (
+                        <p className="text-[10px] text-gray-500 mt-0.5">Stock: {stock}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQty(product.id, getQty(product.id) - 1)}
+                        className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="w-6 text-center font-bold">{getQty(product.id)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setQty(product.id, getQty(product.id) + 1)}
+                        className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setQty(product.id, getQty(product.id) - 1)}
-                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-6 text-center font-bold">{getQty(product.id)}</span>
-                    <button
-                      type="button"
-                      onClick={() => setQty(product.id, getQty(product.id) + 1)}
-                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <div className="flex justify-between items-center mb-6 text-lg">
-              <span className="text-gray-400">Total</span>
-              <span className="font-bold text-2xl" style={{ color: primaryColor }}>${total.toFixed(2)}</span>
+
+            <div className="sticky bottom-4 z-10 rounded-3xl border border-white/10 bg-black/80 backdrop-blur p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Total</p>
+                <p className="font-bold text-2xl" style={{ color: primaryColor }}>${total.toFixed(2)}</p>
+              </div>
+              <button
+                onClick={() => setStep(2)}
+                className="px-6 py-4 text-black rounded-2xl font-bold flex items-center gap-2"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Continuar <Send className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={() => setStep(2)}
-              className="w-full py-5 text-black rounded-3xl font-bold text-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Continuar <Send className="w-5 h-5" />
-            </button>
           </motion.div>
         )}
 
         {step === 2 && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <h2 className="text-2xl font-bold mb-6">Tus datos</h2>
+            <h2 className="text-2xl font-bold mb-2">Tus datos</h2>
+            <p className="text-sm text-gray-500 mb-6">El pedido se guarda en la app del vendedor al confirmar.</p>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-400 flex items-center gap-2">
@@ -189,7 +224,7 @@ function OrderContent({ token }: { token: string }) {
                 className="w-full py-5 text-black rounded-3xl font-bold text-lg transition-colors disabled:opacity-50"
                 style={{ backgroundColor: primaryColor }}
               >
-                {submitting ? 'Registrando...' : 'Confirmar Pedido'}
+                {submitting ? 'Registrando...' : 'Confirmar pedido'}
               </button>
             </form>
           </motion.div>
@@ -204,10 +239,15 @@ function OrderContent({ token }: { token: string }) {
             <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
               <CheckCircle2 className="w-12 h-12" />
             </div>
-            <h2 className="text-3xl font-bold mb-4">¡Pedido Registrado!</h2>
-            <p className="text-gray-400 mb-8 leading-relaxed">
+            <h2 className="text-3xl font-bold mb-4">¡Pedido registrado!</h2>
+            <p className="text-gray-400 mb-4 leading-relaxed">
               Gracias {formData.name}. Total: <strong className="text-white">${total.toFixed(2)}</strong>
-              {orderId && <><br /><span className="text-xs font-mono text-gray-500">Ref: #{orderId.slice(0, 8)}</span></>}
+            </p>
+            {orderRef && (
+              <p className="text-sm font-mono text-[#00D1FF] mb-2">Ref: #{orderRef}</p>
+            )}
+            <p className="text-xs text-gray-500 mb-8">
+              Ya está en el sistema del vendedor (Inbox + Pedidos). Continúa por WhatsApp para hablar con ellos.
             </p>
 
             {whatsappUrl ? (
@@ -218,7 +258,7 @@ function OrderContent({ token }: { token: string }) {
                 className="inline-flex items-center justify-center gap-3 w-full py-5 bg-[#25D366] text-white rounded-3xl font-bold text-lg hover:scale-[1.02] transition-transform mb-4"
               >
                 <MessageCircle className="w-6 h-6" />
-                Enviar pedido por WhatsApp
+                Continuar en WhatsApp
               </a>
             ) : (
               <p className="text-yellow-400 text-sm mb-4">
@@ -226,9 +266,11 @@ function OrderContent({ token }: { token: string }) {
               </p>
             )}
 
-            <p className="text-xs text-gray-500">
-              Al tocar el botón se abre WhatsApp con el resumen del pedido listo para enviar.
-            </p>
+            {trackingUrl && (
+              <a href={trackingUrl} className="text-sm text-[#00D1FF] underline">
+                Ver seguimiento del pedido
+              </a>
+            )}
           </motion.div>
         )}
       </div>

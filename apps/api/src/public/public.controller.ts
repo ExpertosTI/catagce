@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { PublicService } from './public.service';
 import { Public } from '../common/decorators/public.decorator';
 
@@ -8,8 +8,11 @@ export class PublicController {
   constructor(private readonly publicService: PublicService) {}
 
   @Get('catalog/:token')
-  async getCatalog(@Param('token') token: string) {
-    return this.publicService.getCatalogByToken(token);
+  async getCatalog(
+    @Param('token') token: string,
+    @Query('p') prefillToken?: string,
+  ) {
+    return this.publicService.getCatalogByToken(token, prefillToken);
   }
 
   @Post('orders')
@@ -21,8 +24,14 @@ export class PublicController {
       buyerPhone: string;
       items: Array<{ productId: string; quantity: number }>;
       notes?: string;
+      source?: string;
     },
   ) {
     return this.publicService.createOrder(body);
+  }
+
+  @Get('orders/:id')
+  async getOrder(@Param('id') id: string) {
+    return this.publicService.getOrderPublic(id);
   }
 }

@@ -277,4 +277,42 @@ export class WhatsAppService {
     if (!res.ok) return { ok: false as const, error: `http_${res.status}` };
     return { ok: true as const };
   }
+
+  /** Register inbound webhook on Evolution instance (MESSAGES_UPSERT etc.) */
+  async setInstanceWebhook(creds: EvolutionCreds, webhookUrl: string) {
+    const body = {
+      webhook: {
+        enabled: true,
+        url: webhookUrl,
+        webhookByEvents: true,
+        webhookBase64: false,
+        events: [
+          'MESSAGES_UPSERT',
+          'MESSAGES_UPDATE',
+          'CONNECTION_UPDATE',
+        ],
+      },
+      // Evolution v2 alternate shape
+      url: webhookUrl,
+      webhook_by_events: true,
+      webhookBase64: false,
+      events: [
+        'MESSAGES_UPSERT',
+        'MESSAGES_UPDATE',
+        'CONNECTION_UPDATE',
+      ],
+    };
+    const res = await this.evolutionFetch('/webhook/set/{instance}', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, creds);
+    if (!res.ok) {
+      // Fallback older path
+      return this.evolutionFetch('/webhook/instance/{instance}', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }, creds);
+    }
+    return res;
+  }
 }
