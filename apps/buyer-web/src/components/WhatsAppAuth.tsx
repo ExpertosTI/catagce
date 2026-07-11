@@ -28,7 +28,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
   useEffect(() => {
     fetch(`${API_URL}/auth/whatsapp/status`)
       .then((r) => r.json())
-      .then((d) => setAvailable(Boolean(d.ready || d.whatsapp)))
+      .then((d) => setAvailable(Boolean(d.ready)))
       .catch(() => setAvailable(false));
   }, []);
 

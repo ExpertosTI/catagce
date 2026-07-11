@@ -33,13 +33,24 @@ export class WhatsAppService {
       return { whatsapp: false, ready: false, instance: null, state: null, connected: false };
     }
     const conn = await this.evolutionFetch('/instance/connectionState/{instance}', { method: 'GET' }, c);
+    if (!conn.ok && conn.status === 404) {
+      return {
+        whatsapp: true,
+        ready: false,
+        instance: c.instance,
+        state: 'missing',
+        connected: false,
+        error: 'instance_not_found',
+      };
+    }
     const state = conn.ok
       ? (conn.data?.instance?.state || conn.data?.state || conn.data?.status || 'unknown')
       : 'unreachable';
     const ready = conn.ok && String(state).toLowerCase() === 'open';
     return {
       whatsapp: true,
-      ready: ready || Boolean(c),
+      // Solo "ready" si la sesión está open — no basta con tener credenciales
+      ready,
       instance: c.instance,
       state,
       connected: ready,

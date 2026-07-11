@@ -48,6 +48,17 @@ export class VerificationService {
     if (!this.whatsapp.configured()) {
       throw new BadRequestException('WhatsApp no está disponible en este momento');
     }
+    const wa = await this.whatsapp.status();
+    if (wa.error === 'instance_not_found' || wa.state === 'missing') {
+      throw new BadRequestException(
+        'La instancia WhatsApp del servidor no existe en Evolution. Configura EVOLUTION_INSTANCE con un nombre válido y conectado.',
+      );
+    }
+    if (!wa.connected && String(wa.state).toLowerCase() !== 'open') {
+      throw new BadRequestException(
+        `WhatsApp de plataforma no conectado (estado: ${wa.state || 'desconocido'}). Reconecta la instancia en Evolution.`,
+      );
+    }
 
     this.assertSendRate(phone);
 
@@ -70,9 +81,17 @@ export class VerificationService {
 
     const sent = await this.whatsapp.sendText(phone, text);
     if (!sent.ok) {
-      const detail = sent.error === 'not_configured'
-        ? 'WhatsApp no está configurado en el servidor'
-        : `No se pudo enviar el código (${sent.error}). En RD usa 809, 829 o 849 (10 dígitos), ej: 8295551234`;
+      let detail: string;
+      if (sent.error === 'not_configured') {
+        detail = 'WhatsApp no está configurado en el servidor';
+      } else if (sent.error === 'invalid_phone') {
+        detail = 'Número inválido. En RD usa 809, 829 o 849 (10 dígitos)';
+      } else if (/instance does not exist/i.test(sent.detail || '') || sent.error === 'http_404') {
+        detail =
+          'La instancia WhatsApp del servidor no está disponible. Revisa Evolution (EVOLUTION_INSTANCE) o vuelve a vincular el número de plataforma.';
+      } else {
+        detail = `No se pudo enviar el código (${sent.error}${sent.detail ? `: ${sent.detail.slice(0, 120)}` : ''}). En RD: 809, 829 o 849.`;
+      }
       throw new BadRequestException(detail);
     }
 
