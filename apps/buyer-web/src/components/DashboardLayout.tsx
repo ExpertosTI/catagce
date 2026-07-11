@@ -64,7 +64,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const allowedNav = useMemo(() => {
     const items = allNavBase.filter((item) => !item.feature || hasFeature(item.feature));
     if (isPlatformAdmin) {
-      items.push({ href: '/dashboard/platform/plans', icon: Shield, label: 'Platform' });
+      items.push({ href: '/dashboard/platform/requests', icon: Shield, label: 'Platform' });
     }
     return items;
   }, [hasFeature, isPlatformAdmin]);

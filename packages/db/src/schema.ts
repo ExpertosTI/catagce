@@ -90,6 +90,24 @@ export const platformAdmins = pgTable('platform_admins', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+/** Solicitudes de upgrade / pago reportado por el seller */
+export const planChangeRequests = pgTable('plan_change_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+  fromPlan: text('from_plan').notNull(),
+  toPlan: text('to_plan').notNull(),
+  /** pending | approved | rejected */
+  status: text('status').notNull().default('pending'),
+  paymentNote: text('payment_note'),
+  paymentMethod: text('payment_method'),
+  amountClaimed: text('amount_claimed'),
+  adminNote: text('admin_note'),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // ─── Name survey (encuesta temporal) ─────────────────────────────────────────
 export const nameSurveyMeta = pgTable('name_survey_meta', {
   id: serial('id').primaryKey(),

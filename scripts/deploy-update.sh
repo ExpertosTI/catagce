@@ -48,7 +48,7 @@ if [ -f scripts/catagce-schema-patch.sql ]; then
 fi
 
 # Parches incrementales (planes / encuesta) — mismo patrón que schema-patch.sh
-for patch in scripts/schema-patch-plans.sql scripts/schema-patch-encuesta.sql; do
+for patch in scripts/schema-patch-plans.sql scripts/schema-patch-encuesta.sql scripts/schema-patch-plan-requests.sql; do
   if [ -f "$patch" ]; then
     echo "🗄️  Aplicando $patch ..."
     bash scripts/schema-patch.sh "$patch" || true

@@ -161,10 +161,16 @@ export default function SettingsPage() {
     <DashboardLayout>
       <h2 className="text-2xl font-bold mb-2">Configuración</h2>
       {me?.planName && (
-        <p className="mb-6 text-sm text-gray-400">
-          Plan actual: <span className="text-[#00D1FF] font-semibold">{me.planName}</span>
-          <span className="text-gray-600 font-mono ml-1">({me.planCode})</span>
-        </p>
+        <div className="mb-6 glass rounded-2xl p-5 border border-white/10 max-w-lg space-y-3">
+          <p className="text-sm text-gray-400">
+            Plan actual:{' '}
+            <span className="text-[#00D1FF] font-semibold">{me.planName}</span>
+            <span className="text-gray-600 font-mono ml-1">({me.planCode})</span>
+          </p>
+          {me.planCode !== 'business' && (
+            <PlanUpgradeForm currentPlan={me.planCode} onDone={flash} onError={setSaveErr} />
+          )}
+        </div>
       )}
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
       {saveMsg && <p className="mb-4 text-sm text-green-400">{saveMsg}</p>}
@@ -422,5 +428,103 @@ export default function SettingsPage() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+function PlanUpgradeForm({
+  currentPlan,
+  onDone,
+  onError,
+}: {
+  currentPlan: string;
+  onDone: (msg: string) => void;
+  onError: (msg: string) => void;
+}) {
+  const [toPlan, setToPlan] = useState(currentPlan === 'pro' ? 'business' : 'pro');
+  const [paymentMethod, setPaymentMethod] = useState('transferencia');
+  const [amountClaimed, setAmountClaimed] = useState(toPlan === 'business' ? '$25 USD' : '$6 USD');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    apiFetch<Array<{ status: string }>>('/platform/plan-requests/mine')
+      .then((rows) => setPending(rows.some((r) => r.status === 'pending')))
+      .catch(() => setPending(false));
+  }, []);
+
+  useEffect(() => {
+    setAmountClaimed(toPlan === 'business' ? '$25 USD' : '$6 USD');
+  }, [toPlan]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    onError('');
+    try {
+      await apiFetch('/platform/plan-requests', {
+        method: 'POST',
+        body: JSON.stringify({ toPlan, paymentMethod, amountClaimed, paymentNote }),
+      });
+      setPending(true);
+      setPaymentNote('');
+      onDone('Solicitud enviada. El equipo la revisará al confirmar el pago.');
+    } catch (err) {
+      onError(getErrorMessage(err, 'No se pudo enviar la solicitud'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (pending) {
+    return (
+      <p className="text-sm text-[#FF8A00]">
+        Tienes una solicitud de upgrade pendiente. Te avisamos cuando se confirme el pago.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <p className="text-sm text-gray-300 font-medium">¿Pagaste o quieres subir de plan?</p>
+      <select
+        value={toPlan}
+        onChange={(e) => setToPlan(e.target.value)}
+        className="w-full h-11 px-3 bg-black/40 border border-white/10 rounded-xl text-sm"
+      >
+        {currentPlan === 'free' && <option value="pro">Pro — $6 USD/mes</option>}
+        <option value="business">Enterprise — $25 USD/mes</option>
+      </select>
+      <select
+        value={paymentMethod}
+        onChange={(e) => setPaymentMethod(e.target.value)}
+        className="w-full h-11 px-3 bg-black/40 border border-white/10 rounded-xl text-sm"
+      >
+        <option value="transferencia">Transferencia</option>
+        <option value="paypal">PayPal</option>
+        <option value="tarjeta">Tarjeta</option>
+        <option value="otro">Otro</option>
+      </select>
+      <input
+        value={amountClaimed}
+        onChange={(e) => setAmountClaimed(e.target.value)}
+        placeholder="Monto"
+        className="w-full h-11 px-3 bg-black/40 border border-white/10 rounded-xl text-sm"
+      />
+      <textarea
+        value={paymentNote}
+        onChange={(e) => setPaymentNote(e.target.value)}
+        placeholder="Referencia de pago, captura o detalle…"
+        rows={3}
+        className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-sm resize-none"
+      />
+      <button
+        type="submit"
+        disabled={busy}
+        className="w-full py-3 rounded-xl bg-[#FF8A00] text-black font-bold text-sm disabled:opacity-50"
+      >
+        {busy ? 'Enviando…' : 'Notificar pago / pedir upgrade'}
+      </button>
+    </form>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PlatformNav } from '@/components/PlatformNav';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -90,11 +90,7 @@ export default function PlatformPlansPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-wrap gap-2 mb-6 text-sm">
-        <Link href="/dashboard/platform/plans" className="px-3 py-1.5 rounded-lg bg-[#00D1FF]/20 text-[#00D1FF]">Planes</Link>
-        <Link href="/dashboard/platform/sellers" className="px-3 py-1.5 rounded-lg bg-white/5 text-gray-300">Sellers</Link>
-        <Link href="/dashboard/platform/encuesta" className="px-3 py-1.5 rounded-lg bg-white/5 text-gray-300">Encuesta</Link>
-      </div>
+      <PlatformNav active="/dashboard/platform/plans" />
 
       <h2 className="text-2xl font-bold mb-2">Planes y features</h2>
       <p className="text-sm text-gray-400 mb-6">Activa o desactiva módulos por plan. Límite vacío = ilimitado.</p>
