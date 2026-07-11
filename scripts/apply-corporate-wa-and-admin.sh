@@ -53,7 +53,18 @@ fi
 
 echo ""
 echo "═══ 3) Sync Evolution → Swarm catagce_api ═══"
+# También pisa .env EVOLUTION_INSTANCE=renace-biz si aún estaba
+if [ -f "$ENV_FILE" ]; then
+  upsert_kv "$ENV_FILE" "EVOLUTION_INSTANCE" "$INSTANCE"
+fi
 bash scripts/sync-evolution-env.sh
+
+got="$(docker service inspect catagce_api --format '{{range .Spec.TaskTemplate.ContainerSpec.Env}}{{println .}}{{end}}' | grep '^EVOLUTION_INSTANCE=' || true)"
+echo "   Swarm: ${got}"
+if [ "$got" != "EVOLUTION_INSTANCE=${INSTANCE}" ]; then
+  echo "❌ Swarm no quedó en ${INSTANCE} (sigue: ${got:-vacío})" >&2
+  exit 1
+fi
 
 echo ""
 echo "═══ 4) platform_admins en DB ═══"
