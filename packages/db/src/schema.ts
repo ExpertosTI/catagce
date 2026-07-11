@@ -102,6 +102,8 @@ export const sellerSettings = pgTable('seller_settings', {
   evolutionToken: text('evolution_token'),
   evolutionStatus: text('evolution_status'),
   evolutionPhone: text('evolution_phone'),
+  /** Teléfono personal del admin para avisos de pedidos nuevos (distinto del WA del negocio) */
+  orderNotifyPhone: text('order_notify_phone'),
   autoConfirmOrders: boolean('auto_confirm_orders').default(false),
   reservationTtlMinutes: integer('reservation_ttl_minutes').default(60),
   googleAiApiKey: text('google_ai_api_key'),

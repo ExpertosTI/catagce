@@ -22,3 +22,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS whatsapp_message_events_evo_msg_idx
 
 CREATE INDEX IF NOT EXISTS orders_whatsapp_ticket_idx ON orders (whatsapp_ticket_id);
 CREATE INDEX IF NOT EXISTS orders_source_idx ON orders (seller_id, source);
+
+ALTER TABLE seller_settings ADD COLUMN IF NOT EXISTS order_notify_phone text;
+

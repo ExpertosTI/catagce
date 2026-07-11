@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const { ensureAuth, onApiError } = useRequireAuth();
   const [tab, setTab] = useState<'whatsapp' | 'branding' | 'webhooks' | 'integrations' | 'ai'>('whatsapp');
   const [branding, setBranding] = useState<any>({});
-  const [sellerSettings, setSellerSettings] = useState({ whatsappNumber: '' });
+  const [sellerSettings, setSellerSettings] = useState({ whatsappNumber: '', orderNotifyPhone: '' });
   const [aiConfig, setAiConfig] = useState({ googleAiApiKey: '', aiModel: 'gemini-2.5-flash', aiEnabled: true, hasApiKey: false, apiKeyPreview: null as string | null });
   const [webhooks, setWebhooks] = useState<any[]>([]);
   const [integrations, setIntegrations] = useState<any[]>([]);
@@ -44,7 +44,7 @@ export default function SettingsPage() {
       apiFetch<any>('/ai/config'),
     ]).then(([b, s, w, i, ai]) => {
       setBranding(b || {});
-      setSellerSettings(s || { whatsappNumber: '' });
+      setSellerSettings(s || { whatsappNumber: '', orderNotifyPhone: '' });
       setWebhooks(w);
       setIntegrations(i);
       setAiConfig((prev) => ({ ...prev, ...ai, googleAiApiKey: '' }));
@@ -70,11 +70,14 @@ export default function SettingsPage() {
         }),
         apiFetch('/sellers/settings', {
           method: 'PATCH',
-          body: JSON.stringify({ whatsappNumber: sellerSettings.whatsappNumber }),
+          body: JSON.stringify({
+            whatsappNumber: sellerSettings.whatsappNumber,
+            orderNotifyPhone: sellerSettings.orderNotifyPhone,
+          }),
         }),
       ]);
       setBranding(updated);
-      setSellerSettings(settings as { whatsappNumber: string });
+      setSellerSettings(settings as { whatsappNumber: string; orderNotifyPhone: string });
       flash('Configuración guardada');
     } catch (err) {
       setSaveErr(getErrorMessage(err, 'No se pudo guardar'));
@@ -185,7 +188,20 @@ export default function SettingsPage() {
               placeholder="8095551234"
               className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#00D1FF]"
             />
-            <p className="text-xs text-gray-500 mt-1">Los clientes enviarán el pedido a este número</p>
+            <p className="text-xs text-gray-500 mt-1">Los clientes escriben / confirman pedidos a este número</p>
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-400 mb-1 block">WhatsApp admin (avisos de pedidos) *</label>
+            <input
+              value={sellerSettings.orderNotifyPhone}
+              onChange={(e) => setSellerSettings({ ...sellerSettings, orderNotifyPhone: e.target.value })}
+              placeholder="Tu celular personal, ej: 8495551234"
+              className="w-full h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-[#00D1FF]"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Recibes un WhatsApp automático cuando alguien hace un pedido. Debe ser distinto al del cliente.
+            </p>
           </div>
 
           <ImageUpload

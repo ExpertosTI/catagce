@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import {
   orders,
+  sellers,
   sellerSettings,
   whatsappLabels,
   whatsappTickets,
@@ -132,10 +133,13 @@ export class OrderWhatsAppSyncService {
     const settings = await this.db.query.sellerSettings.findFirst({
       where: eq(sellerSettings.sellerId, opts.sellerId),
     });
-    // Notify seller's own connected number if known; otherwise skip outbound-to-self
-    const sellerPhone = settings?.evolutionPhone || settings?.whatsappNumber;
+    const seller = await this.db.query.sellers.findFirst({
+      where: eq(sellers.id, opts.sellerId),
+    });
+
     const ref = orderRef(opts.orderId);
     const track = `${WEB_URL}/pedido/${opts.orderId}`;
+    const dashboard = `${WEB_URL}/dashboard/orders`;
     const text =
       `🛒 *Nuevo pedido Catagce*\n\n` +
       `Cliente: ${opts.buyerName}\n` +
@@ -143,9 +147,9 @@ export class OrderWhatsAppSyncService {
       `Productos: ${opts.itemCount}\n` +
       `Total: $${opts.totalAmount}\n` +
       `Ref: #${ref}\n` +
-      `Ver: ${track}`;
+      `Seguimiento: ${track}\n` +
+      `App: ${dashboard}`;
 
-    // Update ticket preview for seller inbox
     const ticket = await this.ensureTicket(opts.sellerId, opts.buyerPhone, opts.buyerName);
     if (ticket) {
       await this.linkOrderToTicket(opts.orderId, ticket.id);
@@ -158,19 +162,38 @@ export class OrderWhatsAppSyncService {
       }).where(eq(whatsappTickets.id, ticket.id));
     }
 
-    // Optional: send confirmation to buyer from business WhatsApp
+    // Confirmación al cliente
     const buyerSend = await this.whatsapp.sendText(
       opts.buyerPhone,
       `✅ Pedido recibido (*Ref: #${ref}*).\nTotal: $${opts.totalAmount}\nSeguimiento: ${track}\n\nTe contactamos por este chat.`,
       creds,
     );
 
-    // If seller has a different notify number configured, ping it
-    if (sellerPhone && normalizePhoneDigits(sellerPhone) !== normalizePhoneDigits(opts.buyerPhone)) {
-      await this.whatsapp.sendText(sellerPhone, text, creds).catch(() => null);
+    // Aviso al admin (número personal / notify) — nunca al mismo número del comprador
+    const buyerNorm = normalizePhoneDigits(opts.buyerPhone);
+    const candidates = [
+      settings?.orderNotifyPhone,
+      seller?.phone,
+      settings?.whatsappNumber,
+    ]
+      .map((p) => (p ? normalizePhoneDigits(String(p)) : ''))
+      .filter((p) => isValidPhone(p) && p !== buyerNorm);
+
+    const unique = [...new Set(candidates)];
+    let adminNotified = 0;
+    for (const phone of unique) {
+      const sent = await this.whatsapp.sendText(phone, text, creds).catch(() => ({ ok: false as const }));
+      if (sent.ok) adminNotified += 1;
     }
 
-    return { ok: true as const, ticketId: ticket?.id || null, buyerNotified: buyerSend.ok, ref };
+    return {
+      ok: true as const,
+      ticketId: ticket?.id || null,
+      buyerNotified: buyerSend.ok,
+      adminNotified,
+      ref,
+      warnNoAdminPhone: unique.length === 0,
+    };
   }
 
   async findOrderByRef(sellerId: string, ref: string) {

@@ -100,19 +100,27 @@ export class SellersService {
     });
     return {
       whatsappNumber: settings?.whatsappNumber ?? '',
+      orderNotifyPhone: settings?.orderNotifyPhone ?? '',
       currency: settings?.currency ?? 'USD',
     };
   }
 
-  async updateSettings(sellerId: string, data: { whatsappNumber?: string; currency?: string }) {
+  async updateSettings(sellerId: string, data: {
+    whatsappNumber?: string;
+    orderNotifyPhone?: string;
+    currency?: string;
+  }) {
     const existing = await this.db.query.sellerSettings.findFirst({
       where: eq(sellerSettings.sellerId, sellerId),
     });
-    const payload = {
-      whatsappNumber: data.whatsappNumber?.trim() || null,
-      currency: data.currency,
-      updatedAt: new Date(),
-    };
+    const payload: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.whatsappNumber !== undefined) {
+      payload.whatsappNumber = data.whatsappNumber?.trim() || null;
+    }
+    if (data.orderNotifyPhone !== undefined) {
+      payload.orderNotifyPhone = data.orderNotifyPhone?.trim() || null;
+    }
+    if (data.currency !== undefined) payload.currency = data.currency;
     if (existing) {
       await this.db.update(sellerSettings)
         .set(payload)

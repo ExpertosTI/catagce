@@ -64,7 +64,7 @@ export class SellersController {
   @Patch('settings')
   async updateSettings(
     @CurrentUser() user: UserPayload,
-    @Body() body: { whatsappNumber?: string; currency?: string },
+    @Body() body: { whatsappNumber?: string; orderNotifyPhone?: string; currency?: string },
   ) {
     return this.sellersService.updateSettings(user.sellerId, body);
   }
