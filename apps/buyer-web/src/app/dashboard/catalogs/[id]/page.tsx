@@ -84,7 +84,7 @@ export default function EditCatalogProductsPage() {
     try {
       const updated = await apiFetch<CatalogDetail>(`/catalogs/${id}/products`, {
         method: 'PUT',
-        body: JSON.stringify({ productIds: [...selected] }),
+        body: JSON.stringify({ productIds: Array.from(selected) }),
       });
       setCatalog(updated);
       setMsg(`Guardado: ${selected.size} producto(s) en el catálogo`);
