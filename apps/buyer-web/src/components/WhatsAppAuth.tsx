@@ -14,6 +14,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>('phone');
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [statusHint, setStatusHint] = useState('');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [masked, setMasked] = useState('');
@@ -28,8 +29,18 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
   useEffect(() => {
     fetch(`${API_URL}/auth/whatsapp/status`)
       .then((r) => r.json())
-      .then((d) => setAvailable(Boolean(d.ready)))
-      .catch(() => setAvailable(false));
+      .then((d) => {
+        setAvailable(Boolean(d.ready));
+        setStatusHint(
+          d.ready
+            ? ''
+            : `Instancia ${d.instance || '—'} · estado ${d.state || 'desconocido'} (Evolution remoto).`,
+        );
+      })
+      .catch(() => {
+        setAvailable(false);
+        setStatusHint('No se pudo consultar /auth/whatsapp/status');
+      });
   }, []);
 
   const afterAuth = async (token: string, apiKey: string) => {
@@ -144,6 +155,9 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
           El acceso por WhatsApp no está disponible en este momento.
           {mode === 'register' ? ' Usa correo electrónico.' : ' Usa email o API Key.'}
         </p>
+        {statusHint && (
+          <p className="text-xs text-gray-500 mt-2 font-mono">{statusHint}</p>
+        )}
       </div>
     );
   }
