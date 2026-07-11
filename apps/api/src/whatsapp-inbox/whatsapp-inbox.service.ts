@@ -171,7 +171,7 @@ export class WhatsAppInboxService {
     return { synced, error: null };
   }
 
-  async listTickets(sellerId: string, filters?: { status?: string; labelId?: string }) {
+  async listTickets(sellerId: string, filters?: { status?: string; labelId?: string; withOrder?: boolean }) {
     const all = await this.db.query.whatsappTickets.findMany({
       where: eq(whatsappTickets.sellerId, sellerId),
     });
@@ -202,7 +202,12 @@ export class WhatsAppInboxService {
       };
     }));
 
-    return withOrders.sort((a: any, b: any) => {
+    // Por defecto (y con withOrder=true): solo chats con pedido vinculado
+    const filtered = filters?.withOrder === false
+      ? withOrders
+      : withOrders.filter((t: any) => Boolean(t.linkedOrder));
+
+    return filtered.sort((a: any, b: any) => {
       const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
       const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
       return tb - ta;
@@ -221,19 +226,37 @@ export class WhatsAppInboxService {
     await this.getTicket(sellerId, ticketId);
     const order = await this.db.query.orders.findFirst({
       where: and(eq(orders.sellerId, sellerId), eq(orders.whatsappTicketId, ticketId)),
-      with: { items: { with: { product: true } } },
+      with: { items: true },
     });
     if (!order) return { order: null };
+
+    const items = [];
+    for (const i of order.items || []) {
+      let name = 'Producto';
+      try {
+        const product = await this.db.query.products.findFirst({
+          where: eq(products.id, i.productId),
+        });
+        if (product?.name) name = product.name;
+      } catch { /* ignore */ }
+      items.push({
+        id: i.id,
+        name,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+      });
+    }
+
     return {
       order: {
-        ...order,
+        id: order.id,
         ref: orderRef(order.id),
-        items: (order.items || []).map((i: any) => ({
-          id: i.id,
-          name: i.product?.name,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-        })),
+        status: order.status,
+        totalAmount: order.totalAmount,
+        source: order.source,
+        buyerName: order.buyerName,
+        buyerPhone: order.buyerPhone,
+        items,
       },
     };
   }
@@ -241,27 +264,62 @@ export class WhatsAppInboxService {
   async getMessages(sellerId: string, ticketId: string) {
     const ticket = await this.getTicket(sellerId, ticketId);
     const creds = await this.sellerCreds(sellerId);
-    const { messages, ok } = await this.whatsapp.findMessages(ticket.remoteJid, creds);
 
-    const normalized = (ok ? messages : []).map((m: any) => {
-      const fromMe = Boolean(m?.key?.fromMe ?? m?.fromMe);
-      const ts = m?.messageTimestamp || m?.message?.messageTimestamp;
-      return {
-        id: m?.key?.id || m?.id,
-        fromMe,
-        text: previewFromMessage(m),
-        timestamp: ts ? new Date(Number(ts) * (String(ts).length > 10 ? 1 : 1000)) : null,
-      };
-    }).sort((a: any, b: any) => {
-      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return ta - tb;
-    });
+    let normalized: Array<{ id?: string; fromMe: boolean; text: string; timestamp: Date | null }> = [];
+    try {
+      const { messages, ok } = await this.whatsapp.findMessages(ticket.remoteJid, creds);
+      const list = ok && Array.isArray(messages) ? messages : [];
+      normalized = list.map((m: any) => {
+        const fromMe = Boolean(m?.key?.fromMe ?? m?.fromMe);
+        const ts = m?.messageTimestamp || m?.message?.messageTimestamp;
+        return {
+          id: m?.key?.id || m?.id,
+          fromMe,
+          text: previewFromMessage(m),
+          timestamp: ts ? new Date(Number(ts) * (String(ts).length > 10 ? 1 : 1000)) : null,
+        };
+      }).sort((a: any, b: any) => {
+        const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return ta - tb;
+      });
+    } catch (err: any) {
+      console.warn('[whatsapp-inbox] findMessages failed', err?.message);
+    }
+
+    // Fallback: eventos guardados por webhook
+    if (!normalized.length) {
+      const events = await this.db.query.whatsappMessageEvents.findMany({
+        where: and(
+          eq(whatsappMessageEvents.sellerId, sellerId),
+          eq(whatsappMessageEvents.ticketId, ticketId),
+        ),
+      });
+      normalized = (events || [])
+        .map((e: any) => ({
+          id: e.evolutionMessageId || e.id,
+          fromMe: e.direction === 'outbound',
+          text: e.textPreview || '—',
+          timestamp: e.createdAt ? new Date(e.createdAt) : null,
+        }))
+        .sort((a: any, b: any) => {
+          const ta = a.timestamp ? a.timestamp.getTime() : 0;
+          const tb = b.timestamp ? b.timestamp.getTime() : 0;
+          return ta - tb;
+        });
+    }
 
     await this.db.update(whatsappTickets).set({ unreadCount: 0, updatedAt: new Date() })
       .where(eq(whatsappTickets.id, ticketId));
 
-    const { order } = await this.getTicketOrder(sellerId, ticketId);
+    let order = null;
+    try {
+      const res = await this.getTicketOrder(sellerId, ticketId);
+      order = res.order;
+    } catch (err: any) {
+      console.warn('[whatsapp-inbox] getTicketOrder failed', err?.message);
+    }
+
     return { ticket, messages: normalized, order };
   }
 

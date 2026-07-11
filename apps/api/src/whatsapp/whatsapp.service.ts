@@ -253,8 +253,21 @@ export class WhatsAppService {
       body: JSON.stringify({ where: { key: { remoteJid } } }),
     }, c);
     if (!res.ok) return { ok: false as const, error: `http_${res.status}`, messages: [] as any[] };
-    const messages = Array.isArray(res.data) ? res.data : (res.data?.messages ?? res.data?.records ?? []);
-    return { ok: true as const, messages };
+    let raw: any = res.data;
+    if (Array.isArray(raw)) {
+      // ok
+    } else if (Array.isArray(raw?.messages)) {
+      raw = raw.messages;
+    } else if (Array.isArray(raw?.messages?.records)) {
+      raw = raw.messages.records;
+    } else if (Array.isArray(raw?.records)) {
+      raw = raw.records;
+    } else if (Array.isArray(raw?.data)) {
+      raw = raw.data;
+    } else {
+      raw = [];
+    }
+    return { ok: true as const, messages: raw as any[] };
   }
 
   async findLabels(creds?: EvolutionCreds | null) {

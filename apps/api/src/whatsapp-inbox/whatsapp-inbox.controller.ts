@@ -38,8 +38,11 @@ export class WhatsAppInboxController {
     @CurrentUser() user: UserPayload,
     @Query('status') status?: string,
     @Query('labelId') labelId?: string,
+    @Query('withOrder') withOrder?: string,
   ) {
-    return this.inbox.listTickets(user.sellerId, { status, labelId });
+    // withOrder=0|false → todos; por defecto solo con pedido vinculado
+    const onlyOrders = !(withOrder === '0' || withOrder === 'false');
+    return this.inbox.listTickets(user.sellerId, { status, labelId, withOrder: onlyOrders });
   }
 
   @Get('tickets/:id/messages')

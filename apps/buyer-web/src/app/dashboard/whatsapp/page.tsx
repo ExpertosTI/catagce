@@ -61,7 +61,6 @@ export default function WhatsAppInboxPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [reply, setReply] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [labelFilter, setLabelFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -71,7 +70,7 @@ export default function WhatsAppInboxPage() {
   const [linkedOrder, setLinkedOrder] = useState<LinkedOrder | null>(null);
   const [newQuickTitle, setNewQuickTitle] = useState('');
   const [newQuickBody, setNewQuickBody] = useState('');
-  const [ordersOnly, setOrdersOnly] = useState(false);
+  const [ordersOnly, setOrdersOnly] = useState(true);
 
   const loadMeta = useCallback(async () => {
     const [statusRes, labelsRes, qrRes] = await Promise.all([
@@ -87,11 +86,12 @@ export default function WhatsAppInboxPage() {
   const loadTickets = useCallback(async () => {
     const params = new URLSearchParams();
     if (statusFilter) params.set('status', statusFilter);
-    if (labelFilter) params.set('labelId', labelFilter);
+    // Solo pedidos vinculados por defecto; withOrder=0 carga todos
+    params.set('withOrder', ordersOnly ? '1' : '0');
     const qs = params.toString();
-    const data = await apiFetch<Ticket[]>(`/whatsapp-inbox/tickets${qs ? `?${qs}` : ''}`);
+    const data = await apiFetch<Ticket[]>(`/whatsapp-inbox/tickets?${qs}`);
     setTickets(data);
-  }, [statusFilter, labelFilter]);
+  }, [statusFilter, ordersOnly]);
 
   const refresh = useCallback(async () => {
     if (!ensureAuth()) return;
@@ -125,15 +125,16 @@ export default function WhatsAppInboxPage() {
     setSelected(ticket);
     setMessages([]);
     setLinkedOrder(ticket.linkedOrder || null);
+    setError('');
     try {
       const data = await apiFetch<{ messages: Message[]; order?: LinkedOrder | null }>(
         `/whatsapp-inbox/tickets/${ticket.id}/messages`,
       );
-      setMessages(data.messages || []);
+      setMessages(Array.isArray(data.messages) ? data.messages : []);
       setLinkedOrder(data.order || ticket.linkedOrder || null);
       setTickets((prev) => prev.map((t) => (t.id === ticket.id ? { ...t, unreadCount: 0 } : t)));
     } catch (err) {
-      if (!onApiError(err)) setError(getErrorMessage(err));
+      if (!onApiError(err)) setError(getErrorMessage(err, 'No se pudieron cargar los mensajes'));
     }
   };
 
@@ -225,15 +226,9 @@ export default function WhatsAppInboxPage() {
   };
 
   const labelById = (id: string) => labels.find((l) => l.id === id);
-  const pedidoLabel = labels.find((l) => l.name.toLowerCase() === 'pedido');
 
-  const visibleTickets = ordersOnly
-    ? tickets.filter((t) => t.linkedOrder || (pedidoLabel && (t.labelIds || []).includes(pedidoLabel.id)))
-    : tickets;
-
-  const orderTicketsCount = tickets.filter(
-    (t) => t.linkedOrder || (pedidoLabel && (t.labelIds || []).includes(pedidoLabel.id)),
-  ).length;
+  const visibleTickets = tickets;
+  const orderTicketsCount = tickets.length;
 
   if (loading) {
     return (
@@ -316,8 +311,12 @@ export default function WhatsAppInboxPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-[40vh]">
-        {messages.map((m, i) => (
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-[45vh] max-h-[55vh]">
+        {messages.length === 0 ? (
+          <p className="text-center text-sm text-gray-500 py-8">
+            Sin mensajes aún. Si el cliente escribió por WhatsApp, pulsa Sync o espera el webhook.
+          </p>
+        ) : messages.map((m, i) => (
           <div key={m.id || i} className={`flex ${m.fromMe ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] px-4 py-2 rounded-2xl text-sm ${
               m.fromMe ? 'bg-[#005C4B] text-white rounded-br-sm' : 'bg-white/10 rounded-bl-sm'
@@ -431,10 +430,7 @@ export default function WhatsAppInboxPage() {
       <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar pb-1">
         <button
           type="button"
-          onClick={() => {
-            setOrdersOnly(true);
-            if (pedidoLabel) setLabelFilter(pedidoLabel.id);
-          }}
+          onClick={() => { setOrdersOnly(true); setStatusFilter(''); }}
           className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold border ${
             ordersOnly ? 'bg-[#25D366] text-black border-[#25D366]' : 'border-[#25D366]/40 text-[#25D366]'
           }`}
@@ -443,18 +439,18 @@ export default function WhatsAppInboxPage() {
         </button>
         <button
           type="button"
-          onClick={() => { setOrdersOnly(false); setLabelFilter(''); }}
+          onClick={() => { setOrdersOnly(false); setStatusFilter(''); }}
           className={`shrink-0 px-3 py-2 rounded-full text-xs font-medium border ${
-            !ordersOnly && !labelFilter && !statusFilter ? 'bg-[#00D1FF]/20 border-[#00D1FF] text-[#00D1FF]' : 'border-white/10 text-gray-400'
+            !ordersOnly && !statusFilter ? 'bg-[#00D1FF]/20 border-[#00D1FF] text-[#00D1FF]' : 'border-white/10 text-gray-400'
           }`}
         >
-          Todos
+          Todos los chats
         </button>
         {STATUS_FILTERS.filter((f) => f.key).map((f) => (
           <button
             key={f.key}
             type="button"
-            onClick={() => { setOrdersOnly(false); setStatusFilter(statusFilter === f.key ? '' : f.key); }}
+            onClick={() => { setStatusFilter(statusFilter === f.key ? '' : f.key); }}
             className={`shrink-0 px-3 py-2 rounded-full text-xs font-medium border ${
               statusFilter === f.key ? 'bg-[#00D1FF]/20 border-[#00D1FF] text-[#00D1FF]' : 'border-white/10 text-gray-400'
             }`}
