@@ -1,13 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, MessageCircle, UserPlus, Send } from 'lucide-react';
+import { X, MessageCircle, UserPlus, Send, Radio } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { getErrorMessage } from '@/lib/auth-errors';
 import { normalizePhone } from '@/lib/whatsapp';
 import { ImagePicker } from '@/components/ImagePicker';
 
 type Contact = { id: string; name: string; phone: string; source: string };
+type BroadcastList = {
+  id: string;
+  name: string;
+  members?: Array<{ id: string; name: string; phone: string }>;
+};
 
 export function ShareCatalogModal({
   catalogId,
@@ -19,7 +24,9 @@ export function ShareCatalogModal({
   onClose: () => void;
 }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [lists, setLists] = useState<BroadcastList[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedLists, setSelectedLists] = useState<Set<string>>(new Set());
   const [manualPhone, setManualPhone] = useState('');
   const [manualName, setManualName] = useState('');
   const [message, setMessage] = useState('');
@@ -29,7 +36,13 @@ export function ShareCatalogModal({
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    apiFetch<Contact[]>('/contacts').then(setContacts).catch(() => {});
+    Promise.all([
+      apiFetch<Contact[]>('/contacts').catch(() => []),
+      apiFetch<BroadcastList[]>('/broadcast/lists').catch(() => []),
+    ]).then(([c, l]) => {
+      setContacts(c || []);
+      setLists(l || []);
+    });
   }, []);
 
   const toggle = (phone: string) => {
@@ -37,6 +50,27 @@ export function ShareCatalogModal({
       const next = new Set(prev);
       if (next.has(phone)) next.delete(phone);
       else next.add(phone);
+      return next;
+    });
+  };
+
+  const toggleList = (list: BroadcastList) => {
+    const phones = (list.members || []).map((m) => m.phone).filter(Boolean);
+    setSelectedLists((prev) => {
+      const next = new Set(prev);
+      const turningOn = !next.has(list.id);
+      if (turningOn) next.add(list.id);
+      else next.delete(list.id);
+
+      setSelected((phonesPrev) => {
+        const p = new Set(phonesPrev);
+        for (const phone of phones) {
+          if (turningOn) p.add(phone);
+          else p.delete(phone);
+        }
+        return p;
+      });
+
       return next;
     });
   };
@@ -62,7 +96,7 @@ export function ShareCatalogModal({
   const send = async () => {
     const phones = recipientPhones();
     if (!phones.length) {
-      setError('Selecciona al menos un contacto o escribe un número');
+      setError('Selecciona una lista de difusión, contactos o escribe un número');
       return;
     }
     setLoading(true);
@@ -99,6 +133,31 @@ export function ShareCatalogModal({
           <p className="text-sm text-gray-400">
             Catálogo: <strong className="text-white">{catalogName}</strong>
           </p>
+
+          <div>
+            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+              <Radio className="w-3.5 h-3.5 text-[#FF8A00]" /> Listas de difusión
+            </p>
+            <div className="space-y-1 max-h-36 overflow-y-auto">
+              {lists.length === 0 ? (
+                <p className="text-sm text-gray-600 py-2">
+                  Sin listas.{' '}
+                  <a href="/dashboard/difusion" className="text-[#00D1FF] underline">Crear en Difusión</a>
+                </p>
+              ) : lists.map((list) => (
+                <label key={list.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 cursor-pointer touch-manipulation">
+                  <input
+                    type="checkbox"
+                    checked={selectedLists.has(list.id)}
+                    onChange={() => toggleList(list)}
+                    className="accent-[#FF8A00]"
+                  />
+                  <span className="flex-1 text-sm font-medium">{list.name}</span>
+                  <span className="text-xs text-gray-500">{list.members?.length || 0} contactos</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div>
             <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Contactos de la app</p>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Radio, Plus, Users, Play, Pause, List, MessageCircle, RotateCcw, Copy, Pencil, X, Trash2,
+  Radio, Plus, Users, Play, Pause, List, MessageCircle, RotateCcw, Copy, Pencil, X, Trash2, BookOpen,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ImagePicker } from '@/components/ImagePicker';
@@ -29,10 +29,41 @@ type Campaign = {
   jobs?: CampaignJob[];
 };
 type Contact = { id: string; name: string; phone: string; source?: string };
+type CatalogOption = {
+  id: string;
+  name: string;
+  slug: string;
+  publications?: Array<{ token?: string }>;
+  shareToken?: string;
+};
 
 const emptyForm = {
-  listId: '', name: '', messageText: '', mediaUrls: [] as string[], delayMinSec: 45, delayMaxSec: 90,
+  listId: '',
+  catalogId: '',
+  name: '',
+  messageText: '',
+  mediaUrls: [] as string[],
+  delayMinSec: 45,
+  delayMaxSec: 90,
 };
+
+function catalogOrderLink(catalog: CatalogOption) {
+  const token = catalog.publications?.[0]?.token || catalog.shareToken;
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://catagce.renace.tech';
+  if (token) return `${origin}/order/${token}?src=wa&utm=broadcast`;
+  return `${origin}/catalog/${catalog.slug}`;
+}
+
+function stripCatalogBlock(text: string) {
+  return text.replace(/\n*\n👉 Ver catálogo[\s\S]*?(?=\n\n|$)/g, '').trim();
+}
+
+function withCatalogLink(text: string, catalog: CatalogOption) {
+  const link = catalogOrderLink(catalog);
+  const base = stripCatalogBlock(text);
+  const block = `👉 Ver catálogo *${catalog.name}*:\n${link}`;
+  return base ? `${base}\n\n${block}` : block;
+}
 
 function formatPhone(phone: string) {
   const d = phone.replace(/\D/g, '');
@@ -67,6 +98,7 @@ export default function DifusionPage() {
   const [lists, setLists] = useState<ListRow[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [catalogs, setCatalogs] = useState<CatalogOption[]>([]);
   const [error, setError] = useState('');
   const [newListName, setNewListName] = useState('');
   const [selectedList, setSelectedList] = useState<string | null>(null);
@@ -83,15 +115,17 @@ export default function DifusionPage() {
   const refresh = useCallback(async () => {
     if (!ensureAuth()) return;
     try {
-      const [l, c, ct, wa] = await Promise.all([
+      const [l, c, ct, cats, wa] = await Promise.all([
         apiFetch<ListRow[]>('/broadcast/lists'),
         apiFetch<Campaign[]>('/broadcast/campaigns'),
         apiFetch<Contact[]>('/contacts'),
+        apiFetch<CatalogOption[]>('/catalogs').catch(() => []),
         apiFetch<{ instance?: string; state?: string; connected?: boolean; ready?: boolean }>('/auth/whatsapp/status').catch(() => null),
       ]);
       setLists(l);
       setCampaigns(c);
       setContacts(ct);
+      setCatalogs(cats || []);
       if (wa) setWaStatus(wa);
     } catch (err) {
       if (!onApiError(err)) setError(getErrorMessage(err));
@@ -127,9 +161,14 @@ export default function DifusionPage() {
       setError('Pausa la campaña antes de editarla');
       return;
     }
+    const matchedCatalog = catalogs.find((cat) => {
+      const link = catalogOrderLink(cat);
+      return c.messageText?.includes(link) || c.messageText?.includes(`/catalog/${cat.slug}`);
+    });
     setEditingId(c.id);
     setCampaignForm({
       listId: c.listId || c.list?.id || '',
+      catalogId: matchedCatalog?.id || '',
       name: c.name,
       messageText: c.messageText,
       mediaUrls: parseMediaUrls(c.mediaUrl, c.mediaUrls),
@@ -138,6 +177,25 @@ export default function DifusionPage() {
     });
     setShowCampaignForm(true);
     setTab('campaigns');
+  };
+
+  const applyCatalogToForm = (catalogId: string) => {
+    if (!catalogId) {
+      setCampaignForm((prev) => ({
+        ...prev,
+        catalogId: '',
+        messageText: stripCatalogBlock(prev.messageText),
+      }));
+      return;
+    }
+    const catalog = catalogs.find((c) => c.id === catalogId);
+    if (!catalog) return;
+    setCampaignForm((prev) => ({
+      ...prev,
+      catalogId,
+      name: prev.name.trim() || `Difusión · ${catalog.name}`,
+      messageText: withCatalogLink(prev.messageText, catalog),
+    }));
   };
 
   const createList = async () => {
@@ -508,6 +566,27 @@ export default function DifusionPage() {
                     <option key={l.id} value={l.id}>{l.name} ({l.members?.length || 0})</option>
                   ))}
                 </select>
+                <div>
+                  <label className="text-[11px] text-gray-500 mb-1 flex items-center gap-1">
+                    <BookOpen className="w-3.5 h-3.5 text-[#00D1FF]" /> Catálogo (opcional)
+                  </label>
+                  <select
+                    value={campaignForm.catalogId}
+                    onChange={(e) => applyCatalogToForm(e.target.value)}
+                    className="w-full min-h-[48px] bg-black/40 border border-white/10 rounded-2xl px-4 text-base"
+                  >
+                    <option value="">Sin catálogo · solo mensaje</option>
+                    {catalogs.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  {catalogs.length === 0 && (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      No hay catálogos.{' '}
+                      <Link href="/dashboard/catalogs" className="text-[#00D1FF] underline">Crear uno</Link>
+                    </p>
+                  )}
+                </div>
                 <input
                   value={campaignForm.name}
                   onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })}
