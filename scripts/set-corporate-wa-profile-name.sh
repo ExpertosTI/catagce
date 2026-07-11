@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Cliente HTTP → Evolution remoto (https://evoapi.renace.tech).
-# Evolution NO corre en /opt/QuickCtgo; este script no toca Docker local de Evolution.
-# Objetivo: POST /chat/updateProfileName en instancia RENACE.TECH (18495684958).
+# Solo HTTP remoto a https://evoapi.renace.tech (Evolution NO está en QuickCtgo).
+# Evidencia del fallo: connectionState.state=close → updateProfileName = Connection Closed.
 set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd "$(dirname "$0")/.."
 
@@ -31,37 +30,64 @@ read_kv .evolution.local
 URL="${URL%/}"
 
 if [ -z "$URL" ] || [ -z "$KEY" ]; then
-  echo "❌ Faltan EVOLUTION_API_URL / EVOLUTION_API_KEY en .env o .evolution.local" >&2
+  echo "❌ Faltan EVOLUTION_API_URL / EVOLUTION_API_KEY" >&2
   exit 1
 fi
-
-# Seguridad: no apuntar a localhost / mismo host por error
 case "$URL" in
-  http://127.*|http://localhost*|https://127.*|https://localhost*)
-    echo "❌ EVOLUTION_API_URL=$URL parece local. Evolution es remoto (evoapi.renace.tech)." >&2
+  *evoapi.renace.tech*) ;;
+  *)
+    echo "❌ EVOLUTION_API_URL inesperado: ${URL}" >&2
+    echo "   Debe ser https://evoapi.renace.tech (host remoto de Evolution)." >&2
     exit 1
     ;;
 esac
 
 ENC="$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${INSTANCE}'''))")"
 
-echo "── Cliente QuickCtgo → Evolution remoto ──"
-echo "   EVOLUTION_API_URL=${URL}"
-echo "   instance=${INSTANCE}"
-echo "   displayName=${DISPLAY_NAME}"
+evo_get() { curl -sS "$1" -H "apikey: ${KEY}"; }
+evo_post() { curl -sS -X POST "$1" -H "Content-Type: application/json" -H "apikey: ${KEY}" ${2:+-d "$2"}; }
+evo_put()  { curl -sS -X PUT  "$1" -H "apikey: ${KEY}"; }
 
-echo "── GET connectionState (remoto) ──"
-STATE_JSON="$(curl -sS "${URL}/instance/connectionState/${ENC}" -H "apikey: ${KEY}" || true)"
-echo "$STATE_JSON" | head -c 500; echo
-STATE="$(echo "$STATE_JSON" | python3 -c "import sys,json
+state_of() {
+  evo_get "${URL}/instance/connectionState/${ENC}" | python3 -c "import sys,json
 try:
  d=json.load(sys.stdin)
- print(d.get('instance',{}).get('state') or d.get('state') or d.get('status') or '')
+ print((d.get('instance') or {}).get('state') or d.get('state') or '')
 except Exception:
- print('')" 2>/dev/null || true)"
-echo "   state=${STATE:-desconocido}"
+ print('')" 2>/dev/null || true
+}
 
-echo "── POST updateProfileName (remoto) ──"
+echo "── Remoto ${URL} / ${INSTANCE} ──"
+STATE="$(state_of)"
+echo "   connectionState=${STATE:-desconocido}"
+
+if [ "$(echo "$STATE" | tr '[:upper:]' '[:lower:]')" != "open" ]; then
+  echo "── Sesión close → restart + connect en evoapi (API remota) ──"
+  evo_put "${URL}/instance/restart/${ENC}" >/tmp/evo-restart.json 2>/dev/null || true
+  echo "   restart: $(head -c 200 /tmp/evo-restart.json 2>/dev/null || true)"
+  sleep 4
+  evo_get "${URL}/instance/connect/${ENC}" >/tmp/evo-connect.json 2>/dev/null || true
+  echo "   connect: $(head -c 200 /tmp/evo-connect.json 2>/dev/null || true)"
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    sleep 3
+    STATE="$(state_of)"
+    echo "   poll ${i}: ${STATE:-…}"
+    [ "$(echo "$STATE" | tr '[:upper:]' '[:lower:]')" = "open" ] && break
+  done
+fi
+
+STATE="$(state_of)"
+if [ "$(echo "$STATE" | tr '[:upper:]' '[:lower:]')" != "open" ]; then
+  echo "❌ Sigue state=${STATE:-close} en evoapi." >&2
+  echo "   Hay que escanear QR / Connect en https://evoapi.renace.tech → RENACE.TECH" >&2
+  echo "   (QuickCtgo no hospeda Evolution; solo puede llamar la API.)" >&2
+  if grep -q 'base64\|qrcode' /tmp/evo-connect.json 2>/dev/null; then
+    echo "   connect devolvió QR — ábrelo en el Manager de evoapi." >&2
+  fi
+  exit 1
+fi
+
+echo "── updateProfileName → ${DISPLAY_NAME} ──"
 HTTP="$(curl -sS -o /tmp/evo-profile-name.json -w '%{http_code}' \
   -X POST "${URL}/chat/updateProfileName/${ENC}" \
   -H "Content-Type: application/json" \
@@ -70,21 +96,9 @@ HTTP="$(curl -sS -o /tmp/evo-profile-name.json -w '%{http_code}' \
 echo "   HTTP ${HTTP}"
 cat /tmp/evo-profile-name.json; echo
 
-BODY="$(cat /tmp/evo-profile-name.json 2>/dev/null || true)"
-if echo "$BODY" | grep -qi 'Connection Closed'; then
-  echo "" >&2
-  echo "❌ Evolution remoto respondió Connection Closed al cambiar el nombre." >&2
-  echo "   Eso es la sesión WhatsApp en el servidor de evoapi (no en QuickCtgo)." >&2
-  echo "   En https://evoapi.renace.tech → instancia RENACE.TECH:" >&2
-  echo "   Connected debe estar estable; si hace falta RESTART ahí (en evoapi), luego:" >&2
-  echo "   bash scripts/set-corporate-wa-profile-name.sh" >&2
-  exit 1
-fi
-
 if [ "$HTTP" != "200" ] && [ "$HTTP" != "201" ]; then
-  echo "❌ updateProfileName falló HTTP ${HTTP} contra ${URL}" >&2
+  echo "❌ Falló updateProfileName con sesión open (HTTP ${HTTP})." >&2
   exit 1
 fi
 
-echo "✅ Nombre «${DISPLAY_NAME}» pedido a Evolution remoto."
-echo "   WhatsApp puede seguir mostrando el número en chats viejos o contactos guardados como número."
+echo "✅ Nombre «${DISPLAY_NAME}» aplicado en Evolution remoto."
