@@ -87,4 +87,9 @@ export class BroadcastController {
   retryFailed(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.broadcast.retryFailed(user.sellerId, id);
   }
+
+  @Delete('campaigns/:id')
+  deleteCampaign(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.broadcast.deleteCampaign(user.sellerId, id);
+  }
 }

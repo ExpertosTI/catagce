@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Radio, Plus, Users, Play, Pause, List, MessageCircle, RotateCcw, Copy, Pencil, X,
+  Radio, Plus, Users, Play, Pause, List, MessageCircle, RotateCcw, Copy, Pencil, X, Trash2,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ImagePicker } from '@/components/ImagePicker';
@@ -255,6 +255,23 @@ export default function DifusionPage() {
       const copy = await apiFetch<Campaign>(`/broadcast/campaigns/${id}/duplicate`, { method: 'POST' });
       await refresh();
       openEditCampaign(copy);
+    } catch (err) {
+      if (!onApiError(err)) setError(getErrorMessage(err));
+    }
+  };
+
+  const deleteCampaign = async (id: string, name: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!window.confirm(`¿Eliminar la campaña "${name}"? Esta acción no se puede deshacer.`)) return;
+    setError('');
+    try {
+      await apiFetch(`/broadcast/campaigns/${id}`, { method: 'DELETE' });
+      if (editingId === id) {
+        setEditingId(null);
+        setShowCampaignForm(false);
+        setCampaignForm(emptyForm);
+      }
+      await refresh();
     } catch (err) {
       if (!onApiError(err)) setError(getErrorMessage(err));
     }
@@ -567,7 +584,7 @@ export default function DifusionPage() {
               ))}
 
               {/* Bottom action bar — thumb friendly */}
-              <div className="grid grid-cols-4 gap-1.5 mt-3 pt-3 border-t border-white/10">
+              <div className="grid grid-cols-5 gap-1.5 mt-3 pt-3 border-t border-white/10">
                 <button
                   type="button"
                   onClick={(e) => duplicateCampaign(c.id, e)}
@@ -595,6 +612,15 @@ export default function DifusionPage() {
                     <span className="text-[9px]">Editar</span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={(e) => deleteCampaign(c.id, c.name, e)}
+                  className="min-h-[44px] rounded-xl bg-red-500/10 text-red-400 flex flex-col items-center justify-center gap-0.5 touch-manipulation"
+                  aria-label={`Eliminar ${c.name}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-[9px]">Borrar</span>
+                </button>
                 {c.status === 'running' ? (
                   <button
                     type="button"

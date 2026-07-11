@@ -307,4 +307,19 @@ export class BroadcastService {
     void this.runner.processDueJobs();
     return this.getCampaign(sellerId, id);
   }
+
+  async deleteCampaign(sellerId: string, id: string) {
+    const campaign = await this.db.query.broadcastCampaigns.findFirst({
+      where: and(eq(broadcastCampaigns.id, id), eq(broadcastCampaigns.sellerId, sellerId)),
+      columns: { id: true },
+    });
+    if (!campaign) throw new NotFoundException('Campaña no encontrada');
+
+    await this.db.delete(broadcastJobs).where(eq(broadcastJobs.campaignId, id));
+    await this.db.delete(broadcastCampaigns).where(
+      and(eq(broadcastCampaigns.id, id), eq(broadcastCampaigns.sellerId, sellerId)),
+    );
+
+    return { ok: true, id };
+  }
 }
