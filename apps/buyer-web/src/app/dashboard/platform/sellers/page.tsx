@@ -17,7 +17,11 @@ type SellerRow = {
   isActive?: boolean;
 };
 
-const PLAN_CODES = ['free', 'pro', 'business'];
+const PLAN_CODES = [
+  { code: 'free', label: 'Free' },
+  { code: 'pro', label: 'Pro ($6)' },
+  { code: 'business', label: 'Enterprise ($25)' },
+];
 
 export default function PlatformSellersPage() {
   const { ensureAuth, onApiError } = useRequireAuth();
@@ -94,8 +98,8 @@ export default function PlatformSellersPage() {
               onChange={(e) => assign(s.id, e.target.value)}
               className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm"
             >
-              {PLAN_CODES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {PLAN_CODES.map((p) => (
+                <option key={p.code} value={p.code}>{p.label}</option>
               ))}
             </select>
           </div>

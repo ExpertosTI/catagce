@@ -1,10 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { WhatsAppInboxService } from './whatsapp-inbox.service';
 import { WhatsAppConnectService } from '../whatsapp-connect/whatsapp-connect.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
+import { RequireFeature } from '../common/decorators/feature.decorator';
+import { FeatureGuard } from '../common/guards/feature.guard';
 
 @Controller('whatsapp-inbox')
+@RequireFeature('inbox')
+@UseGuards(FeatureGuard)
 export class WhatsAppInboxController {
   constructor(
     private readonly inbox: WhatsAppInboxService,

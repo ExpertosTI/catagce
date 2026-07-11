@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   Box, ArrowRight, MessageCircle, Radio, Package, Warehouse,
   FileOutput, BookOpen, Send, ShoppingBag, Play, Users, Settings,
+  Check, X, Smartphone, Monitor, Building2,
 } from 'lucide-react';
 
 const ORDER_STATUSES = [
@@ -201,23 +202,30 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-4xl font-black tracking-tight mb-3">Planes</h2>
             <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
-              Empieza gratis. Sube de plan cuando necesites más difusión, inventario o IA.
+              Empieza gratis. Difusión, pedidos e inbox desde Pro.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-5 md:gap-6">
+          <div className="grid md:grid-cols-3 gap-5 md:gap-6 items-stretch">
             {[
               {
                 code: 'free',
-                name: 'Gratuito',
-                price: 'Gratis',
-                blurb: 'Para empezar a vender por WhatsApp',
+                name: 'Free',
+                price: 'Free',
+                priceSub: '',
+                blurb: 'Catálogo y compartir por WhatsApp',
                 accent: '#00D1FF',
-                features: [
+                Icon: Smartphone,
+                included: [
                   'Hasta 50 productos',
                   'Hasta 2 catálogos',
-                  'WhatsApp + compartir catálogo',
-                  'Difusión e inventario',
-                  'Pedidos e inbox',
+                  'Compartir catálogo por WhatsApp',
+                  'Contactos básicos',
+                ],
+                excluded: [
+                  'Difusión',
+                  'Pedidos e Inbox',
+                  'Inventario avanzado',
+                  'Asistente IA',
                 ],
                 cta: 'Crear gratis',
                 href: '/register',
@@ -226,77 +234,106 @@ export default function LandingPage() {
               {
                 code: 'pro',
                 name: 'Pro',
-                price: 'Pro',
-                blurb: 'Más catálogos y capacidad',
+                price: '$6',
+                priceSub: 'USD / mes',
+                blurb: 'Difusión, pedidos e inbox incluidos',
                 accent: '#FF8A00',
-                features: [
+                Icon: Monitor,
+                included: [
                   'Hasta 500 productos',
                   'Hasta 20 catálogos',
-                  'Todo lo del Gratuito',
+                  'Difusión por WhatsApp',
+                  'Pedidos e Inbox',
+                  'Inventario',
                   'Analytics completo',
-                  'Prioridad de soporte',
                 ],
-                cta: 'Solicitar Pro',
+                excluded: [
+                  'Asistente IA',
+                ],
+                cta: 'Elegir Pro',
                 href: '/register',
                 featured: true,
               },
               {
                 code: 'business',
-                name: 'Business',
-                price: 'Business',
+                name: 'Enterprise',
+                price: '$25',
+                priceSub: 'USD / mes',
                 blurb: 'Sin límites prácticos + IA',
                 accent: '#25D366',
-                features: [
+                Icon: Building2,
+                included: [
                   'Productos y catálogos ilimitados',
                   'Todo lo de Pro',
+                  'Difusión + Pedidos + Inbox',
                   'Asistente IA incluido',
-                  'Operación multi-equipo',
+                  'Multi-equipo',
                   'Acompañamiento Renace',
                 ],
-                cta: 'Solicitar Business',
+                excluded: [] as string[],
+                cta: 'Elegir Enterprise',
                 href: '/register',
                 featured: false,
               },
-            ].map((plan) => (
-              <div
-                key={plan.code}
-                className={`rounded-3xl border p-6 md:p-8 flex flex-col ${
-                  plan.featured
-                    ? 'border-[#FF8A00]/50 bg-[#FF8A00]/[0.07] md:scale-[1.02] shadow-[0_0_40px_rgba(255,138,0,0.12)]'
-                    : 'border-white/10 bg-white/[0.03]'
-                }`}
-              >
-                {plan.featured && (
-                  <span className="self-start text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#FF8A00] text-black mb-4">
-                    Recomendado
-                  </span>
-                )}
-                <p className="text-sm font-semibold text-gray-400 mb-1">{plan.name}</p>
-                <p className="text-3xl font-black tracking-tight mb-2" style={{ color: plan.accent }}>
-                  {plan.price}
-                </p>
-                <p className="text-sm text-gray-500 mb-6">{plan.blurb}</p>
-                <ul className="space-y-2.5 mb-8 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                      <span
-                        className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ backgroundColor: plan.accent }}
-                      />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={plan.href}
-                  className={`w-full text-center py-3 rounded-xl font-bold text-sm transition-transform hover:-translate-y-0.5 ${
-                    plan.featured ? 'bg-[#FF8A00] text-black' : 'bg-white/10 text-white hover:bg-white/15'
+            ].map((plan) => {
+              const PlanIcon = plan.Icon;
+              return (
+                <div
+                  key={plan.code}
+                  className={`relative rounded-3xl border p-6 md:p-8 flex flex-col ${
+                    plan.featured
+                      ? 'border-[#FF8A00] bg-[#FF8A00]/[0.08] md:-mt-2 md:mb-0 shadow-[0_0_48px_rgba(255,138,0,0.15)]'
+                      : 'border-white/15 bg-white/[0.04]'
                   }`}
                 >
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
+                  {plan.featured && (
+                    <span className="absolute -top-3 left-6 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-[#FF8A00] text-black">
+                      Recomendado
+                    </span>
+                  )}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                      style={{ backgroundColor: `${plan.accent}22`, color: plan.accent }}
+                    >
+                      <PlanIcon className="w-5 h-5" />
+                    </div>
+                    <p className="text-lg font-black tracking-tight">{plan.name}</p>
+                  </div>
+                  <div className="mb-2 flex items-baseline gap-2">
+                    <p className="text-4xl font-black tracking-tight" style={{ color: plan.accent }}>
+                      {plan.price}
+                    </p>
+                    {plan.priceSub && (
+                      <span className="text-sm text-gray-500 font-medium">{plan.priceSub}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mb-6">{plan.blurb}</p>
+                  <ul className="space-y-2.5 mb-4 flex-1">
+                    {plan.included.map((f) => (
+                      <li key={f} className="flex items-start gap-2.5 text-sm text-gray-200">
+                        <Check className="w-4 h-4 mt-0.5 shrink-0 text-[#22c55e]" strokeWidth={3} />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                    {plan.excluded.map((f) => (
+                      <li key={f} className="flex items-start gap-2.5 text-sm text-gray-500">
+                        <X className="w-4 h-4 mt-0.5 shrink-0 text-[#ef4444]" strokeWidth={3} />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={plan.href}
+                    className={`w-full text-center py-3.5 rounded-xl font-bold text-sm transition-transform hover:-translate-y-0.5 ${
+                      plan.featured ? 'bg-[#FF8A00] text-black' : 'bg-white text-black hover:bg-gray-100'
+                    }`}
+                  >
+                    {plan.cta}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </section>
 

@@ -18,19 +18,16 @@ type NavItem = {
   feature?: string;
 };
 
-/** Barra principal (móvil); en escritorio se unen con moreNav */
-const primaryNav: NavItem[] = [
-  { href: '/dashboard/orders', icon: FileOutput, label: 'Pedidos' },
-  { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'Inbox' },
-  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión' },
+/** Orden preferido: Pedidos/Inbox/Difusión (Pro+) primero; Free ve catálogos/productos */
+const allNavBase: NavItem[] = [
+  { href: '/dashboard/orders', icon: FileOutput, label: 'Pedidos', feature: 'orders' },
+  { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'Inbox', feature: 'inbox' },
+  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión', feature: 'broadcast' },
   { href: '/dashboard/catalogs', icon: BookOpen, label: 'Catálogos' },
-];
-
-const moreNavBase: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'Inicio' },
   { href: '/dashboard/products', icon: LayoutGrid, label: 'Productos' },
   { href: '/dashboard/contacts', icon: Users, label: 'Contactos' },
-  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario' },
+  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario', feature: 'inventory' },
   { href: '/dashboard/settings', icon: Settings, label: 'Config' },
 ];
 
@@ -64,25 +61,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const { me, hasFeature, isPlatformAdmin } = useMe();
 
-  const moreNav = useMemo(() => {
-    const items = [...moreNavBase];
+  const allowedNav = useMemo(() => {
+    const items = allNavBase.filter((item) => !item.feature || hasFeature(item.feature));
     if (isPlatformAdmin) {
       items.push({ href: '/dashboard/platform/plans', icon: Shield, label: 'Platform' });
     }
     return items;
-  }, [isPlatformAdmin]);
+  }, [hasFeature, isPlatformAdmin]);
 
-  /** Escritorio: todos los iconos en la barra inferior */
-  const desktopNav = useMemo(() => {
-    const seen = new Set<string>();
-    const out: NavItem[] = [];
-    for (const item of [...primaryNav, ...moreNav]) {
-      if (seen.has(item.href)) continue;
-      seen.add(item.href);
-      out.push(item);
-    }
-    return out;
-  }, [moreNav]);
+  /** Móvil: hasta 4 en barra + resto en «Más» */
+  const primaryNav = useMemo(() => allowedNav.slice(0, 4), [allowedNav]);
+  const moreNav = useMemo(() => allowedNav.slice(4), [allowedNav]);
+
+  /** Escritorio: todos los iconos visibles en la barra inferior */
+  const desktopNav = allowedNav;
 
   const moreActive = moreNav.some((item) => isActive(pathname, item.href));
 

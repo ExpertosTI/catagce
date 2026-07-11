@@ -15,45 +15,74 @@ export class PlansService implements OnModuleInit {
     await this.ensureSeed();
   }
 
-  /** Seed planes/features y SUPER_ADMIN_EMAILS sin pisar datos existentes */
+  /** Seed / sync planes+features (idempotente) y SUPER_ADMIN_EMAILS */
   async ensureSeed() {
     try {
-      const existing = await this.db.select({ code: plans.code }).from(plans).limit(1);
-      if (!existing.length) {
-        await this.db.insert(plans).values([
-          { code: 'free', name: 'Gratuito', description: 'Para empezar: catálogos básicos y WhatsApp', sortOrder: 0 },
-          { code: 'pro', name: 'Pro', description: 'Difusión, inventario y más catálogos', sortOrder: 1 },
-          { code: 'business', name: 'Business', description: 'Todo incluido: IA, sin límites prácticos', sortOrder: 2 },
-        ]).onConflictDoNothing();
+      const planRows = [
+        { code: 'free', name: 'Free', description: 'Catálogo y compartir por WhatsApp', sortOrder: 0 },
+        { code: 'pro', name: 'Pro', description: 'Difusión, pedidos e inbox — $6 USD/mes', sortOrder: 1 },
+        { code: 'business', name: 'Enterprise', description: 'Sin límites + IA — $25 USD/mes', sortOrder: 2 },
+      ];
+      for (const p of planRows) {
+        await this.db.insert(plans).values(p).onConflictDoNothing();
+        await this.db
+          .update(plans)
+          .set({
+            name: p.name,
+            description: p.description,
+            sortOrder: p.sortOrder,
+            updatedAt: new Date(),
+          })
+          .where(eq(plans.code, p.code));
+      }
 
-        const seedFeatures: Array<{ planCode: string; featureKey: string; enabled: boolean; limitValue: number | null }> = [
-          { planCode: 'free', featureKey: 'products', enabled: true, limitValue: 50 },
-          { planCode: 'free', featureKey: 'catalogs', enabled: true, limitValue: 2 },
-          { planCode: 'free', featureKey: 'whatsapp_connect', enabled: true, limitValue: null },
-          { planCode: 'free', featureKey: 'catalog_wa_share', enabled: true, limitValue: null },
-          { planCode: 'free', featureKey: 'broadcast', enabled: true, limitValue: null },
-          { planCode: 'free', featureKey: 'ai', enabled: false, limitValue: null },
-          { planCode: 'free', featureKey: 'inventory', enabled: true, limitValue: null },
-          { planCode: 'free', featureKey: 'analytics', enabled: true, limitValue: 1 },
-          { planCode: 'pro', featureKey: 'products', enabled: true, limitValue: 500 },
-          { planCode: 'pro', featureKey: 'catalogs', enabled: true, limitValue: 20 },
-          { planCode: 'pro', featureKey: 'whatsapp_connect', enabled: true, limitValue: null },
-          { planCode: 'pro', featureKey: 'catalog_wa_share', enabled: true, limitValue: null },
-          { planCode: 'pro', featureKey: 'broadcast', enabled: true, limitValue: null },
-          { planCode: 'pro', featureKey: 'ai', enabled: false, limitValue: null },
-          { planCode: 'pro', featureKey: 'inventory', enabled: true, limitValue: null },
-          { planCode: 'pro', featureKey: 'analytics', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'products', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'catalogs', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'whatsapp_connect', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'catalog_wa_share', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'broadcast', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'ai', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'inventory', enabled: true, limitValue: null },
-          { planCode: 'business', featureKey: 'analytics', enabled: true, limitValue: null },
-        ];
-        for (const f of seedFeatures) {
-          await this.db.insert(planFeatures).values(f).onConflictDoNothing();
+      const seedFeatures: Array<{ planCode: string; featureKey: string; enabled: boolean; limitValue: number | null }> = [
+        { planCode: 'free', featureKey: 'products', enabled: true, limitValue: 50 },
+        { planCode: 'free', featureKey: 'catalogs', enabled: true, limitValue: 2 },
+        { planCode: 'free', featureKey: 'whatsapp_connect', enabled: true, limitValue: null },
+        { planCode: 'free', featureKey: 'catalog_wa_share', enabled: true, limitValue: null },
+        { planCode: 'free', featureKey: 'broadcast', enabled: false, limitValue: null },
+        { planCode: 'free', featureKey: 'orders', enabled: false, limitValue: null },
+        { planCode: 'free', featureKey: 'inbox', enabled: false, limitValue: null },
+        { planCode: 'free', featureKey: 'ai', enabled: false, limitValue: null },
+        { planCode: 'free', featureKey: 'inventory', enabled: true, limitValue: null },
+        { planCode: 'free', featureKey: 'analytics', enabled: true, limitValue: 1 },
+        { planCode: 'pro', featureKey: 'products', enabled: true, limitValue: 500 },
+        { planCode: 'pro', featureKey: 'catalogs', enabled: true, limitValue: 20 },
+        { planCode: 'pro', featureKey: 'whatsapp_connect', enabled: true, limitValue: null },
+        { planCode: 'pro', featureKey: 'catalog_wa_share', enabled: true, limitValue: null },
+        { planCode: 'pro', featureKey: 'broadcast', enabled: true, limitValue: null },
+        { planCode: 'pro', featureKey: 'orders', enabled: true, limitValue: null },
+        { planCode: 'pro', featureKey: 'inbox', enabled: true, limitValue: null },
+        { planCode: 'pro', featureKey: 'ai', enabled: false, limitValue: null },
+        { planCode: 'pro', featureKey: 'inventory', enabled: true, limitValue: null },
+        { planCode: 'pro', featureKey: 'analytics', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'products', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'catalogs', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'whatsapp_connect', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'catalog_wa_share', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'broadcast', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'orders', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'inbox', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'ai', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'inventory', enabled: true, limitValue: null },
+        { planCode: 'business', featureKey: 'analytics', enabled: true, limitValue: null },
+      ];
+      for (const f of seedFeatures) {
+        await this.db.insert(planFeatures).values(f).onConflictDoNothing();
+      }
+
+      // Política de producto: Free nunca incluye difusión / pedidos / inbox
+      for (const key of ['broadcast', 'orders', 'inbox'] as const) {
+        await this.db
+          .update(planFeatures)
+          .set({ enabled: false, updatedAt: new Date() })
+          .where(and(eq(planFeatures.planCode, 'free'), eq(planFeatures.featureKey, key)));
+        for (const planCode of ['pro', 'business'] as const) {
+          await this.db
+            .update(planFeatures)
+            .set({ enabled: true, updatedAt: new Date() })
+            .where(and(eq(planFeatures.planCode, planCode), eq(planFeatures.featureKey, key)));
         }
       }
 

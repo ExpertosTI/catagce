@@ -1,9 +1,13 @@
-import { Controller, Get, Post, Body, Param, Patch, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, ForbiddenException, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
 import { Throttle } from '../common/security/security.util';
+import { RequireFeature } from '../common/decorators/feature.decorator';
+import { FeatureGuard } from '../common/guards/feature.guard';
 
 @Controller('orders')
+@RequireFeature('orders')
+@UseGuards(FeatureGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
