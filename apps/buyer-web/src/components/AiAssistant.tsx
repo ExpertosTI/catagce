@@ -11,7 +11,7 @@ interface Message {
   actions?: string[];
 }
 
-export function AiAssistant() {
+export function AiAssistant({ hideFab = false }: { hideFab?: boolean }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -73,13 +73,15 @@ export function AiAssistant() {
 
   return (
     <>
+      {!hideFab && (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-28 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-[#00D1FF] to-[#0099cc] text-black shadow-[0_0_30px_rgba(0,209,255,0.5)] flex items-center justify-center hover:scale-110 transition-transform"
+        className="fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-3 z-30 w-12 h-12 rounded-full bg-gradient-to-br from-[#00D1FF] to-[#0099cc] text-black shadow-[0_0_24px_rgba(0,209,255,0.4)] flex items-center justify-center active:scale-95 transition-transform"
         aria-label="Abrir asistente AI"
       >
-        <Sparkles className="w-6 h-6" />
+        <Sparkles className="w-5 h-5" />
       </button>
+      )}
 
       <AnimatePresence>
         {open && (
@@ -87,7 +89,7 @@ export function AiAssistant() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-44 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[70vh] glass rounded-3xl flex flex-col shadow-2xl border border-[#00D1FF]/20 overflow-hidden"
+            className="fixed bottom-44 left-3 right-3 sm:left-auto sm:right-6 z-50 w-auto sm:w-[380px] max-w-[calc(100vw-1.5rem)] h-[520px] max-h-[70vh] glass rounded-3xl flex flex-col shadow-2xl border border-[#00D1FF]/20 overflow-hidden"
           >
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-[#00D1FF]/10 to-transparent">
               <div className="flex items-center gap-2">

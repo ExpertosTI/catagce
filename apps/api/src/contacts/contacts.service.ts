@@ -25,10 +25,10 @@ export class ContactsService {
 
     for (const b of buyers) {
       const phone = normalizePhoneDigits(b.phone);
-      if (!phone) continue;
+      if (!isValidPhone(phone)) continue;
       map.set(phone, {
         id: b.id,
-        name: b.name,
+        name: b.name?.trim() || phone,
         phone,
         email: b.email || undefined,
         source: this.contactSource(b),
@@ -38,10 +38,13 @@ export class ContactsService {
 
     for (const t of tickets) {
       const phone = normalizePhoneDigits(t.phone);
-      if (!phone || map.has(phone)) continue;
+      if (!isValidPhone(phone) || map.has(phone)) continue;
+      const rawName = String(t.contactName || '').trim();
+      // Evitar "nombres" basura (solo dígitos parciales / LID)
+      const nameLooksGarbage = !rawName || /^\d{3,12}$/.test(rawName) || rawName.length < 2;
       map.set(phone, {
-        id: t.id,
-        name: t.contactName || phone,
+        id: `wa-${t.id}`,
+        name: nameLooksGarbage ? phone : rawName,
         phone,
         source: 'whatsapp',
         canDelete: false,

@@ -76,7 +76,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <AiAssistant />
+      <AiAssistant hideFab={isDifusion} />
 
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }

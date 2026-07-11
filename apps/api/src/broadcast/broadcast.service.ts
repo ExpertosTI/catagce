@@ -44,9 +44,13 @@ export class BroadcastService {
     if (!list) throw new NotFoundException('Lista no encontrada');
 
     const inserted = [];
+    const skipped: string[] = [];
     for (const m of members) {
       const phone = normalizePhoneDigits(m.phone);
-      if (!isValidPhone(phone)) continue;
+      if (!isValidPhone(phone)) {
+        skipped.push(m.phone || m.name || 'sin número');
+        continue;
+      }
       const exists = await this.db.query.broadcastListMembers.findFirst({
         where: and(eq(broadcastListMembers.listId, listId), eq(broadcastListMembers.phone, phone)),
       });
@@ -54,12 +58,19 @@ export class BroadcastService {
       const [row] = await this.db.insert(broadcastListMembers).values({
         listId,
         phone,
-        name: m.name.trim() || phone,
+        name: (m.name || '').trim() || phone,
         buyerContactId: m.buyerContactId || null,
       }).returning();
       inserted.push(row);
     }
-    return inserted;
+    if (!inserted.length && members.length) {
+      throw new BadRequestException(
+        skipped.length
+          ? `Ningún número válido (RD: 809/829/849). Revisa: ${skipped.slice(0, 3).join(', ')}`
+          : 'Esos contactos ya están en la lista',
+      );
+    }
+    return { added: inserted, count: inserted.length, skipped: skipped.length };
   }
 
   async removeMember(listId: string, sellerId: string, memberId: string) {

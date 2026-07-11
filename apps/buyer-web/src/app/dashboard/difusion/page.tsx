@@ -28,11 +28,18 @@ type Campaign = {
   stats: { total: number; sent: number; pending: number; failed: number };
   jobs?: CampaignJob[];
 };
-type Contact = { id: string; name: string; phone: string };
+type Contact = { id: string; name: string; phone: string; source?: string };
 
 const emptyForm = {
   listId: '', name: '', messageText: '', mediaUrls: [] as string[], delayMinSec: 45, delayMaxSec: 90,
 };
+
+function formatPhone(phone: string) {
+  const d = phone.replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) return `+1 ${d.slice(1, 4)} ${d.slice(4, 7)} ${d.slice(7)}`;
+  if (d.length === 10) return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+  return phone;
+}
 
 function parseMediaUrls(raw?: string | null, urls?: string[]): string[] {
   if (urls?.length) return urls;
@@ -67,7 +74,9 @@ export default function DifusionPage() {
   const [campaignForm, setCampaignForm] = useState(emptyForm);
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [manualContact, setManualContact] = useState({ name: '', phone: '' });
+  const [contactQuery, setContactQuery] = useState('');
+  const [addingMembers, setAddingMembers] = useState(false);
   const [waStatus, setWaStatus] = useState<{ instance?: string; state?: string; connected?: boolean; ready?: boolean } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -138,16 +147,67 @@ export default function DifusionPage() {
   };
 
   const addToList = async (listId: string) => {
+    const list = lists.find((l) => l.id === listId);
+    const already = new Set((list?.members || []).map((m) => m.phone));
     const members = contacts
-      .filter((c) => selectedContacts.has(c.phone))
-      .map((c) => ({ phone: c.phone, name: c.name, buyerContactId: c.id.startsWith('manual') ? undefined : c.id }));
-    if (!members.length) return;
-    await apiFetch(`/broadcast/lists/${listId}/members`, {
-      method: 'POST',
-      body: JSON.stringify({ members }),
-    });
-    setSelectedContacts(new Set());
-    refresh();
+      .filter((c) => selectedContacts.has(c.phone) && !already.has(c.phone))
+      .map((c) => ({
+        phone: c.phone,
+        name: c.name,
+        buyerContactId: c.id.startsWith('wa-') || c.id.startsWith('manual') ? undefined : c.id,
+      }));
+    if (!members.length) {
+      setError(selectedContacts.size ? 'Esos contactos ya están en la lista' : 'Selecciona al menos un contacto');
+      return;
+    }
+    setAddingMembers(true);
+    setError('');
+    try {
+      const res = await apiFetch<{ count?: number }>(`/broadcast/lists/${listId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ members }),
+      });
+      setSelectedContacts(new Set());
+      await refresh();
+      setError('');
+      if (res?.count === 0) setError('No se agregó nadie (ya estaban o número inválido)');
+    } catch (err) {
+      if (!onApiError(err)) setError(getErrorMessage(err, 'No se pudo agregar'));
+    } finally {
+      setAddingMembers(false);
+    }
+  };
+
+  const addManualToList = async (listId: string) => {
+    const name = manualContact.name.trim();
+    const phone = manualContact.phone.trim();
+    if (!name || !phone) {
+      setError('Nombre y WhatsApp (809/829/849) son obligatorios');
+      return;
+    }
+    setAddingMembers(true);
+    setError('');
+    try {
+      // Crear en contactos si es válido; si ya existe, igual se agrega a la lista
+      try {
+        await apiFetch('/contacts', {
+          method: 'POST',
+          body: JSON.stringify({ name, phone }),
+        });
+      } catch {
+        // conflicto / ya existe — ok
+      }
+      await apiFetch(`/broadcast/lists/${listId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ members: [{ name, phone }] }),
+      });
+      setManualContact({ name: '', phone: '' });
+      await refresh();
+    } catch (err) {
+      if (!onApiError(err)) setError(getErrorMessage(err, 'No se pudo agregar el contacto'));
+    } finally {
+      setAddingMembers(false);
+    }
   };
 
   const saveCampaign = async () => {
@@ -288,7 +348,14 @@ export default function DifusionPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedList(selectedList === list.id ? null : list.id)}
+                  onClick={() => {
+                    const next = selectedList === list.id ? null : list.id;
+                    setSelectedList(next);
+                    setSelectedContacts(new Set());
+                    setContactQuery('');
+                    setManualContact({ name: '', phone: '' });
+                    setError('');
+                  }}
                   className="min-h-[40px] px-3 rounded-xl bg-white/10 text-xs font-semibold shrink-0 touch-manipulation"
                 >
                   {selectedList === list.id ? 'Cerrar' : 'Agregar'}
@@ -305,32 +372,88 @@ export default function DifusionPage() {
               </div>
 
               {selectedList === list.id && (
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <div className="max-h-40 overflow-y-auto space-y-1 mb-3 overscroll-contain">
-                    {contacts.map((c) => (
-                      <label key={c.id} className="flex items-center gap-3 text-sm min-h-[44px] px-1 touch-manipulation">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 accent-[#25D366]"
-                          checked={selectedContacts.has(c.phone)}
-                          onChange={() => {
-                            setSelectedContacts((prev) => {
-                              const n = new Set(prev);
-                              if (n.has(c.phone)) n.delete(c.phone); else n.add(c.phone);
-                              return n;
-                            });
-                          }}
-                        />
-                        <span className="truncate">{c.name}</span>
-                      </label>
-                    ))}
+                <div className="mt-3 pt-3 border-t border-white/10 space-y-3 relative z-20">
+                  <div className="rounded-xl bg-black/30 border border-white/10 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-gray-300">Agregar por WhatsApp</p>
+                    <input
+                      value={manualContact.name}
+                      onChange={(e) => setManualContact({ ...manualContact, name: e.target.value })}
+                      placeholder="Nombre"
+                      className="w-full min-h-[44px] bg-black/40 border border-white/10 rounded-xl px-3 text-sm"
+                    />
+                    <input
+                      value={manualContact.phone}
+                      onChange={(e) => setManualContact({ ...manualContact, phone: e.target.value })}
+                      placeholder="809 / 829 / 849…"
+                      inputMode="tel"
+                      className="w-full min-h-[44px] bg-black/40 border border-white/10 rounded-xl px-3 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={addingMembers}
+                      onClick={() => addManualToList(list.id)}
+                      className="w-full min-h-[44px] rounded-xl bg-[#00D1FF] text-black text-sm font-bold disabled:opacity-50 touch-manipulation"
+                    >
+                      {addingMembers ? 'Agregando…' : 'Agregar este contacto'}
+                    </button>
+                  </div>
+
+                  <input
+                    value={contactQuery}
+                    onChange={(e) => setContactQuery(e.target.value)}
+                    placeholder="Buscar en tus contactos…"
+                    className="w-full min-h-[40px] bg-black/40 border border-white/10 rounded-xl px-3 text-sm"
+                  />
+
+                  <div className="max-h-48 overflow-y-auto space-y-0.5 overscroll-contain">
+                    {(() => {
+                      const already = new Set((list.members || []).map((m) => m.phone));
+                      const q = contactQuery.trim().toLowerCase();
+                      const visible = contacts.filter((c) => {
+                        if (already.has(c.phone)) return false;
+                        if (!q) return true;
+                        return c.name.toLowerCase().includes(q) || c.phone.includes(q.replace(/\D/g, ''));
+                      });
+                      if (!visible.length) {
+                        return (
+                          <p className="text-xs text-gray-500 py-3 text-center">
+                            {contacts.length ? 'No hay más contactos para agregar' : 'No hay contactos. Usa el formulario de arriba.'}
+                          </p>
+                        );
+                      }
+                      return visible.map((c) => (
+                        <label
+                          key={c.id}
+                          className="flex items-center gap-3 text-sm min-h-[48px] px-2 rounded-xl active:bg-white/5 touch-manipulation"
+                        >
+                          <input
+                            type="checkbox"
+                            className="w-5 h-5 accent-[#25D366] shrink-0"
+                            checked={selectedContacts.has(c.phone)}
+                            onChange={() => {
+                              setSelectedContacts((prev) => {
+                                const n = new Set(prev);
+                                if (n.has(c.phone)) n.delete(c.phone); else n.add(c.phone);
+                                return n;
+                              });
+                            }}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{c.name}</span>
+                            <span className="block text-[11px] text-gray-500">{formatPhone(c.phone)}</span>
+                          </span>
+                        </label>
+                      ));
+                    })()}
                   </div>
                   <button
                     type="button"
+                    disabled={addingMembers || selectedContacts.size === 0}
                     onClick={() => addToList(list.id)}
-                    className="w-full min-h-[48px] rounded-2xl bg-[#25D366] text-black text-sm font-bold touch-manipulation"
+                    className="w-full min-h-[48px] rounded-2xl bg-[#25D366] text-black text-sm font-bold disabled:opacity-40 touch-manipulation relative z-20"
                   >
-                    <Users className="w-4 h-4 inline mr-1" /> Agregar a lista
+                    <Users className="w-4 h-4 inline mr-1" />
+                    {addingMembers ? 'Agregando…' : `Agregar seleccionados (${selectedContacts.size})`}
                   </button>
                 </div>
               )}
