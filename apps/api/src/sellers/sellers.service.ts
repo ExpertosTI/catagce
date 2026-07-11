@@ -135,12 +135,19 @@ export class SellersService {
     const existing = await this.db.query.sellerSettings.findFirst({
       where: eq(sellerSettings.sellerId, sellerId),
     });
+    const payload: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.step !== undefined) payload.onboardingStep = data.step;
+    if (data.completed !== undefined) payload.onboardingCompleted = data.completed;
     if (existing) {
       await this.db.update(sellerSettings)
-        .set({ ...data, updatedAt: new Date() })
+        .set(payload)
         .where(eq(sellerSettings.sellerId, sellerId));
     } else {
-      await this.db.insert(sellerSettings).values({ sellerId, ...data });
+      await this.db.insert(sellerSettings).values({
+        sellerId,
+        onboardingStep: data.step ?? 0,
+        onboardingCompleted: data.completed ?? false,
+      });
     }
     return this.getOnboarding(sellerId);
   }

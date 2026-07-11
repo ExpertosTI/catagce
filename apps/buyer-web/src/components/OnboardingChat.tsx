@@ -93,6 +93,7 @@ export function OnboardingChat() {
   const [typingId, setTypingId] = useState<string | null>(null);
   const [boot, setBoot] = useState(true);
   const [askUpload, setAskUpload] = useState<'logo' | 'product' | null>(null);
+  const [skipping, setSkipping] = useState(false);
   const setupRef = useRef<SetupDraft>({});
 
   useEffect(() => { setupRef.current = setup; }, [setup]);
@@ -141,9 +142,13 @@ export function OnboardingChat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, typingId, askUpload]);
 
-  const send = async (text: string, setupOverride?: SetupDraft) => {
+  const send = async (text: string, setupOverride?: SetupDraft, opts?: { force?: boolean }) => {
     const trimmed = text.trim();
-    if (!trimmed || loading || typingId) return;
+    if (!trimmed || loading) return;
+    // Allow omit/skip even while typewriter is running
+    const isOmit = /omitir|saltar|después|despues|skip|no tengo/i.test(trimmed);
+    if (typingId && !opts?.force && !isOmit) return;
+    if (typingId) setTypingId(null);
     setInput('');
     const currentSetup = setupOverride || setupRef.current;
     if (setupOverride) {
@@ -176,13 +181,13 @@ export function OnboardingChat() {
   };
 
   const onImageUploaded = async (url: string) => {
-    if (!url || loading || typingId) return;
+    if (!url || loading) return;
     if (askUpload === 'logo') {
       const next = mergeSetup(setupRef.current, { logoUrl: url });
-      await send('Listo, ya subí el logo', next);
+      await send('Listo, ya subí el logo', next, { force: true });
     } else if (askUpload === 'product') {
       const next = mergeSetup(setupRef.current, { productImageUrl: url });
-      await send('Listo, ya subí la foto del producto', next);
+      await send('Listo, ya subí la foto del producto', next, { force: true });
     }
   };
 
@@ -204,11 +209,19 @@ export function OnboardingChat() {
   };
 
   const skip = async () => {
-    await apiFetch('/sellers/onboarding', {
-      method: 'PATCH',
-      body: JSON.stringify({ step: 5, completed: true }),
-    }).catch(() => {});
-    router.push('/dashboard');
+    if (skipping) return;
+    setSkipping(true);
+    setTypingId(null);
+    try {
+      await apiFetch('/sellers/onboarding', {
+        method: 'PATCH',
+        body: JSON.stringify({ step: 5, completed: true }),
+      });
+      router.replace('/dashboard');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'No se pudo omitir. Intenta de nuevo.');
+      setSkipping(false);
+    }
   };
 
   const phases = ['Marca', 'Producto', 'Catálogo', 'Listo'];
@@ -219,7 +232,8 @@ export function OnboardingChat() {
     if (phase === 'done') return 3;
     return 0;
   })();
-  const inputLocked = loading || Boolean(typingId) || boot;
+  const inputLocked = loading || boot;
+  const chipsLocked = loading || boot;
 
   return (
     <div className="flex flex-col h-full max-w-2xl mx-auto w-full">
@@ -288,7 +302,7 @@ export function OnboardingChat() {
         <div ref={bottomRef} />
       </div>
 
-      {askUpload && !done && !typingId && !loading && (
+      {askUpload && !done && !loading && (
         <div className="mt-4 glass rounded-2xl p-4 msg-in">
           <ImageUpload
             value={
@@ -299,6 +313,13 @@ export function OnboardingChat() {
             onChange={onImageUploaded}
             label={askUpload === 'logo' ? 'Logo de tu empresa' : 'Foto del producto'}
           />
+          <button
+            type="button"
+            onClick={() => send(askUpload === 'logo' ? 'Omitir logo por ahora' : 'Omitir foto por ahora', undefined, { force: true })}
+            className="mt-3 w-full text-sm text-gray-400 hover:text-white py-2"
+          >
+            Omitir {askUpload === 'logo' ? 'logo' : 'foto'}
+          </button>
         </div>
       )}
 
@@ -318,13 +339,13 @@ export function OnboardingChat() {
         </div>
       )}
 
-      {suggestions.length > 0 && !done && !typingId && !loading && (
+      {suggestions.length > 0 && !done && !chipsLocked && (
         <div className="flex flex-wrap gap-2 mt-4 msg-in">
           {suggestions.map((s) => (
             <button
               key={s}
               type="button"
-              onClick={() => send(s)}
+              onClick={() => send(s, undefined, { force: true })}
               className="text-xs px-3 py-1.5 rounded-full border border-white/20 text-gray-300 hover:bg-white/10 hover:border-[#00D1FF]/40 transition"
             >
               {s}
@@ -340,7 +361,7 @@ export function OnboardingChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send(input))}
-              placeholder={typingId ? 'Esperando al asistente...' : 'Escribe tu respuesta...'}
+              placeholder={loading ? 'Esperando al asistente...' : 'Escribe tu respuesta...'}
               disabled={inputLocked}
               className="flex-1 h-12 px-4 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00D1FF]/40 text-sm disabled:opacity-50"
             />
@@ -365,7 +386,7 @@ export function OnboardingChat() {
       </div>
 
       <div className="flex gap-3 mt-4">
-        {!done && readyToApply && !typingId && (
+        {!done && readyToApply && (
           <button
             type="button"
             onClick={apply}
@@ -377,8 +398,13 @@ export function OnboardingChat() {
           </button>
         )}
         {!done && (
-          <button type="button" onClick={skip} className="text-sm text-gray-500 hover:text-gray-300 ml-auto">
-            Omitir por ahora
+          <button
+            type="button"
+            onClick={skip}
+            disabled={skipping}
+            className="text-sm text-gray-500 hover:text-gray-300 ml-auto disabled:opacity-50"
+          >
+            {skipping ? 'Saliendo…' : 'Omitir por ahora'}
           </button>
         )}
       </div>

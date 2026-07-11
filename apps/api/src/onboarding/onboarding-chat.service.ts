@@ -147,14 +147,29 @@ function extractFromMessage(message: string, phase: OnboardingPhase): Onboarding
   const nameMatch = message.match(/(?:se llama|negocio(?:\s+se\s+llama)?|marca)\s+([A-Za-z0-9ÁÉÍÓÚáéíóúñÑ .&-]{2,40})/i);
   if (nameMatch) setup.businessName = nameMatch[1].replace(/[,.].*$/, '').trim();
 
-  // Bare business name when in brand and no price
-  if (phase === 'brand' && !setup.businessName && !/\d/.test(message) && message.trim().length >= 2 && message.trim().length <= 40) {
-    if (!/colores|azul|naranja|omitir/i.test(lower) || /se llama|negocio|marca/i.test(lower)) {
-      const bare = message.replace(/colores?.*/i, '').replace(/[,.].*$/, '').trim();
-      if (/negocio|se llama|marca/i.test(lower) || bare.split(/\s+/).length <= 5) {
-        // keep nameMatch result; if "Solo tengo el nombre" style handled elsewhere
-      }
+  // Bare business name in brand phase
+  if (phase === 'brand' && !setup.businessName) {
+    const bare = message
+      .replace(/#([0-9A-Fa-f]{6})/g, '')
+      .replace(/\b(colores?|azul|naranja|verde|rojo|blue|orange|green|red)\b/gi, '')
+      .replace(/^(mi\s+negocio\s+(se\s+llama\s+)?|se\s+llama\s+|marca\s+)/i, '')
+      .replace(/[,.].*$/, '')
+      .trim();
+    if (
+      bare.length >= 2
+      && bare.length <= 40
+      && !/\d{3,}/.test(bare)
+      && !isSkip(message)
+      && !/^(solo|ok|si|sí)$/i.test(bare)
+    ) {
+      setup.businessName = bare;
     }
+  }
+
+  // Defaults if user only has name for now
+  if (phase === 'brand' && /solo\s+(tengo\s+)?(el\s+)?nombre/i.test(lower)) {
+    if (!setup.primaryColor) setup.primaryColor = '#00D1FF';
+    if (!setup.accentColor) setup.accentColor = '#FF8A00';
   }
 
   const priceMatch = message.match(/(?:rd\$?\s*|\$\s*|precio\s*(?:de\s*)?)(\d+(?:[.,]\d{1,2})?)/i)
@@ -376,19 +391,43 @@ export class OnboardingChatService {
     const extracted = extractFromMessage(message, phase);
     let accumulated = mergeSetup(clientSetup, extracted);
 
-    // Upload confirmations from UI
-    if (/sub[ií]|logo|imagen|foto/i.test(lower) && (accumulated.logoUrl || accumulated.productImageUrl)) {
-      // keep extracted urls
+    // Skip logo / product photo immediately (no Gemini — avoids loops)
+    if (isSkip(message)) {
+      if (phase === 'logo' || (!hasLogo(accumulated) && phaseIndex(phase) <= phaseIndex('logo'))) {
+        accumulated.logoSkipped = true;
+        return this.normalizeResponse(
+          this.replyForPhase('product', accumulated, sellerName),
+          accumulated,
+          'product',
+          sellerName,
+        );
+      }
+      if (phase === 'product_photo' || (phaseIndex(phase) === phaseIndex('product_photo'))) {
+        accumulated.productImageSkipped = true;
+        return this.normalizeResponse(
+          this.replyForPhase('catalog', accumulated, sellerName),
+          accumulated,
+          'catalog',
+          sellerName,
+        );
+      }
     }
 
-    // After brand fields → logo
+    // After brand fields → advance without Gemini when possible
     if (phase === 'brand' && (accumulated.businessName || accumulated.primaryColor)) {
-      phase = inferPhase(accumulated);
+      if (!accumulated.primaryColor) accumulated.primaryColor = '#00D1FF';
+      if (!accumulated.accentColor) accumulated.accentColor = '#FF8A00';
+      phase = 'logo';
+      return this.normalizeResponse(
+        this.replyForPhase('logo', accumulated, sellerName),
+        accumulated,
+        'logo',
+        sellerName,
+      );
     }
 
     // Logo done → product
     if (phase === 'logo' && hasLogo(accumulated)) {
-      phase = 'product';
       return this.normalizeResponse(
         this.replyForPhase('product', accumulated, sellerName),
         accumulated,
@@ -399,13 +438,11 @@ export class OnboardingChatService {
 
     // Affirm after product text → product_photo (not catalog)
     if (affirming && accumulated.productName && accumulated.productPrice && phaseIndex(phase) <= phaseIndex('product')) {
-      phase = 'product_photo';
       return this.replyForPhase('product_photo', accumulated, sellerName);
     }
 
     // Product filled → photo
     if (phase === 'product' && accumulated.productName && accumulated.productPrice) {
-      phase = 'product_photo';
       return this.normalizeResponse(
         this.replyForPhase('product_photo', accumulated, sellerName),
         accumulated,
@@ -416,7 +453,6 @@ export class OnboardingChatService {
 
     // Photo done → catalog
     if (phase === 'product_photo' && hasProductImage(accumulated)) {
-      phase = 'catalog';
       return this.normalizeResponse(
         this.replyForPhase('catalog', accumulated, sellerName),
         accumulated,
@@ -431,6 +467,16 @@ export class OnboardingChatService {
         { reply: '', setup: accumulated, phase: 'done', readyToApply: true, suggestions: [] },
         accumulated,
         'done',
+        sellerName,
+      );
+    }
+
+    // Deterministic reply for known phases — avoid Gemini re-asking the same step
+    if (phase === 'logo' || phase === 'product_photo' || phase === 'product' || phase === 'catalog' || phase === 'brand') {
+      return this.normalizeResponse(
+        this.replyForPhase(phase, accumulated, sellerName),
+        accumulated,
+        phase,
         sellerName,
       );
     }
@@ -462,7 +508,8 @@ ${transcript}
 Usuario: ${message}
 
 Si phase es logo o product_photo, askUpload debe ser "logo" o "product".
-Nunca preguntes de nuevo por producto si ya está en setup.`;
+Nunca preguntes de nuevo por producto si ya está en setup.
+Si el usuario dice omitir/saltar, marca logoSkipped o productImageSkipped y avanza.`;
 
     try {
       const result = await model.generateContent(prompt);
