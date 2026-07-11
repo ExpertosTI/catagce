@@ -3,7 +3,12 @@ import { createHmac, timingSafeEqual } from 'crypto';
 type PrefillPayload = { phone: string; name?: string; exp: number };
 
 function secret() {
-  return process.env.JWT_SECRET || process.env.GOOGLE_AI_API_KEY || 'catagce-prefill';
+  const s = process.env.PREFILL_HMAC_SECRET || process.env.JWT_SECRET || '';
+  if (s && s.length >= 16) return s;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('PREFILL_HMAC_SECRET o JWT_SECRET requerido para prefill');
+  }
+  return 'catagce-prefill-dev-only';
 }
 
 function b64url(input: Buffer | string) {

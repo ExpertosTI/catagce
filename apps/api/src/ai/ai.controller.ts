@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
 import { AiAssistantService } from './ai-assistant.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
+import { Throttle } from '../common/security/security.util';
 
 @Controller('ai')
 export class AiController {
@@ -20,6 +21,7 @@ export class AiController {
   }
 
   @Post('chat')
+  @Throttle(12, 60_000)
   chat(
     @CurrentUser() user: UserPayload,
     @Body() body: { message: string; sessionId?: string },

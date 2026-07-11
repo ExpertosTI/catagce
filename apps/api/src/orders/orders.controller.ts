@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, ForbiddenException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
-import { Public } from '../common/decorators/public.decorator';
+import { Throttle } from '../common/security/security.util';
 
 @Controller('orders')
 export class OrdersController {
@@ -12,18 +12,27 @@ export class OrdersController {
     return this.ordersService.findAll(user.sellerId);
   }
 
+  /** Solo vendedores autenticados — pedidos públicos van por /public/orders */
   @Post()
-  @Public()
-  create(@Body() body: any) {
-    return this.ordersService.create(body);
+  @Throttle(30, 60_000)
+  create(@CurrentUser() user: UserPayload, @Body() body: any) {
+    if (body?.sellerId && body.sellerId !== user.sellerId) {
+      throw new ForbiddenException('sellerId no coincide con la sesión');
+    }
+    return this.ordersService.create({ ...body, sellerId: user.sellerId });
   }
 
   @Patch(':id/status')
+  @Throttle(60, 60_000)
   updateStatus(
     @Param('id') id: string,
     @CurrentUser() user: UserPayload,
     @Body('status') status: string,
   ) {
+    const allowed = ['submitted', 'reserved', 'confirmed', 'rejected', 'cancelled', 'draft_capture'];
+    if (!allowed.includes(String(status))) {
+      throw new ForbiddenException('Estado inválido');
+    }
     return this.ordersService.updateStatus(id, user.sellerId, status, user.userId);
   }
 }

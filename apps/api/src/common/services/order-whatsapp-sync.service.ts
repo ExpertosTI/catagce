@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, desc } from 'drizzle-orm';
 import {
   orders,
   sellers,
@@ -199,11 +199,15 @@ export class OrderWhatsAppSyncService {
   async findOrderByRef(sellerId: string, ref: string) {
     const needle = ref.toLowerCase().replace(/[^a-f0-9]/g, '').slice(0, 8);
     if (needle.length < 8) return null;
-    const all = await this.db.query.orders.findMany({
+    // Prefijo de UUID sin guiones → buscar por LIKE en id (uuid)
+    const withDashes = `${needle.slice(0, 8)}`;
+    const recent = await this.db.query.orders.findMany({
       where: eq(orders.sellerId, sellerId),
       with: { items: true },
+      orderBy: [desc(orders.createdAt)],
+      limit: 200,
     });
-    return all.find((o: any) => orderRef(o.id) === needle) || null;
+    return recent.find((o: any) => orderRef(o.id) === withDashes) || null;
   }
 
   trackingUrl(orderId: string) {

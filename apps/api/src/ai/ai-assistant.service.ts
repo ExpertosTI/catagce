@@ -1,6 +1,6 @@
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
-import { eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { sellerSettings, aiChatSessions, aiChatMessages } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { AiToolsService } from './ai-tools.service';
@@ -112,6 +112,9 @@ export class AiAssistantService {
   }
 
   async chat(sellerId: string, userId: string, message: string, sessionId?: string) {
+    const cleanMessage = String(message || '').trim().slice(0, 4000);
+    if (!cleanMessage) throw new BadRequestException('Mensaje vacío');
+
     const settings = await this.db.query.sellerSettings.findFirst({
       where: eq(sellerSettings.sellerId, sellerId),
     });
@@ -124,21 +127,25 @@ export class AiAssistantService {
     }
 
     let session = sessionId
-      ? await this.db.query.aiChatSessions.findFirst({ where: eq(aiChatSessions.id, sessionId) })
+      ? await this.db.query.aiChatSessions.findFirst({
+          where: and(eq(aiChatSessions.id, sessionId), eq(aiChatSessions.sellerId, sellerId)),
+        })
       : null;
 
     if (!session) {
       [session] = await this.db.insert(aiChatSessions).values({
-        sellerId, userId, title: message.slice(0, 50),
+        sellerId, userId, title: cleanMessage.slice(0, 50),
       }).returning();
     }
 
     const history = await this.db.query.aiChatMessages.findMany({
       where: eq(aiChatMessages.sessionId, session.id),
+      orderBy: [asc(aiChatMessages.createdAt)],
+      limit: 24,
     });
 
     await this.db.insert(aiChatMessages).values({
-      sessionId: session.id, role: 'user', content: message,
+      sessionId: session.id, role: 'user', content: cleanMessage,
     });
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -148,13 +155,13 @@ export class AiAssistantService {
       tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
     });
 
-    const chatHistory = history.map((m: any) => ({
+    const chatHistory = history.slice(-20).map((m: any) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
+      parts: [{ text: String(m.content || '').slice(0, 4000) }],
     }));
 
     const chat = model.startChat({ history: chatHistory });
-    let result = await chat.sendMessage(message);
+    let result = await chat.sendMessage(cleanMessage);
     let iterations = 0;
     const actionsPerformed: string[] = [];
 

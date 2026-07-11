@@ -22,6 +22,7 @@ import { WhatsAppConnectModule } from './whatsapp-connect/whatsapp-connect.modul
 import { EvolutionWebhookModule } from './evolution-webhook/evolution-webhook.module';
 import { OrderSyncModule } from './order-sync/order-sync.module';
 import { AuthGuard } from './common/guards/auth.guard';
+import { ThrottleGuard } from './common/security/security.util';
 import { BullModule } from '@nestjs/bullmq';
 
 @Module({
@@ -57,6 +58,9 @@ import { BullModule } from '@nestjs/bullmq';
     }),
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: ThrottleGuard },
+  ],
 })
 export class AppModule {}

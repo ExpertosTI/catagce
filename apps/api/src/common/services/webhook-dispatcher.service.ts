@@ -3,6 +3,7 @@ import { createHmac } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { webhooks, webhookDeliveries } from '@catagce/db';
 import { DRIZZLE } from '../../database/database.module';
+import { assertSafeOutboundUrl } from '../security/security.util';
 
 @Injectable()
 export class WebhookDispatcherService {
@@ -16,7 +17,7 @@ export class WebhookDispatcherService {
     const activeHooks = hooks.filter(
       (h: { isActive: boolean; events: string[] }) =>
         h.isActive && h.events.includes(event),
-    );
+    ).slice(0, 10);
 
     await Promise.allSettled(
       activeHooks.map((hook: { id: string; url: string; secret: string | null }) =>
@@ -30,22 +31,30 @@ export class WebhookDispatcherService {
     event: string,
     payload: Record<string, unknown>,
   ) {
-    const body = JSON.stringify({ event, timestamp: new Date().toISOString(), data: payload });
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'X-Catagce-Event': event,
-    };
-
-    if (hook.secret) {
-      const signature = createHmac('sha256', hook.secret).update(body).digest('hex');
-      headers['X-Catagce-Signature'] = `sha256=${signature}`;
-    }
-
     let statusCode = 0;
     let success = false;
 
     try {
-      const response = await fetch(hook.url, { method: 'POST', headers, body });
+      assertSafeOutboundUrl(hook.url);
+      const body = JSON.stringify({ event, timestamp: new Date().toISOString(), data: payload });
+      if (body.length > 100_000) return;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Catagce-Event': event,
+      };
+
+      if (hook.secret) {
+        const signature = createHmac('sha256', hook.secret).update(body).digest('hex');
+        headers['X-Catagce-Signature'] = `sha256=${signature}`;
+      }
+
+      const response = await fetch(hook.url, {
+        method: 'POST',
+        headers,
+        body,
+        signal: AbortSignal.timeout(8000),
+      });
       statusCode = response.status;
       success = response.ok;
     } catch {

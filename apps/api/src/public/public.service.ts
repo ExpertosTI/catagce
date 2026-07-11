@@ -1,15 +1,20 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   catalogPublications,
+  catalogProducts,
   orders,
   products,
 } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { OrdersService } from '../orders/orders.service';
 import { OrderWhatsAppSyncService } from '../common/services/order-whatsapp-sync.service';
-import { normalizePhoneDigits } from '../common/utils/phone.util';
+import { isValidPhone, normalizePhoneDigits } from '../common/utils/phone.util';
 import { orderRef, verifyBuyerPrefill } from '../common/utils/signed-prefill';
+import { clampInt } from '../common/security/security.util';
+
+const MAX_ORDER_ITEMS = 40;
+const MAX_QTY = 999;
 
 @Injectable()
 export class PublicService {
@@ -80,11 +85,24 @@ export class PublicService {
       throw new NotFoundException('Token de catálogo inválido');
     }
 
+    if (!data.buyerName?.trim() || data.buyerName.trim().length > 80) {
+      throw new BadRequestException('Nombre de comprador inválido');
+    }
+    if (data.notes && data.notes.length > 500) {
+      throw new BadRequestException('Notas demasiado largas');
+    }
+
     if (!data.items?.length) {
       throw new BadRequestException('El pedido debe incluir al menos un producto');
     }
+    if (data.items.length > MAX_ORDER_ITEMS) {
+      throw new BadRequestException(`Máximo ${MAX_ORDER_ITEMS} productos por pedido`);
+    }
 
     const phone = normalizePhoneDigits(data.buyerPhone);
+    if (!isValidPhone(phone)) {
+      throw new BadRequestException('WhatsApp inválido (RD: 809, 829 o 849)');
+    }
     const source = data.source || 'whatsapp_link';
     const idempotencyKey = this.orderSync.buildIdempotencyKey(data.token, phone, data.items);
 
@@ -110,17 +128,39 @@ export class PublicService {
     let totalAmount = 0;
     const orderItemsData: Array<{ productId: string; quantity: string; unitPrice: string }> = [];
 
+    const catalogId = publication.catalog.id;
+    const sellerId = publication.catalog.sellerId;
+    const productIds = [...new Set(data.items.map((i) => i.productId))];
+    const links = await this.db.query.catalogProducts.findMany({
+      where: and(
+        eq(catalogProducts.catalogId, catalogId),
+        inArray(catalogProducts.productId, productIds),
+      ),
+    });
+    const allowed = new Set(links.map((l: { productId: string }) => l.productId));
+
+    const productRows = await this.db.query.products.findMany({
+      where: and(eq(products.sellerId, sellerId), inArray(products.id, productIds)),
+    });
+    const byId = new Map<string, any>(productRows.map((p: any) => [p.id, p]));
+
     for (const item of data.items) {
-      const product = await this.db.query.products.findFirst({
-        where: eq(products.id, item.productId),
-      });
+      const qty = clampInt(item.quantity, 1, MAX_QTY, 0);
+      if (!qty) throw new BadRequestException('Cantidad inválida');
+      if (!allowed.has(item.productId)) {
+        throw new BadRequestException('Producto no pertenece a este catálogo');
+      }
+      const product = byId.get(item.productId);
       if (!product) throw new BadRequestException(`Producto ${item.productId} no encontrado`);
 
-      const unitPrice = parseFloat(product.b2bPrice || product.basePrice);
-      totalAmount += unitPrice * item.quantity;
+      const unitPrice = parseFloat(String(product.b2bPrice || product.basePrice));
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new BadRequestException('Precio de producto inválido');
+      }
+      totalAmount += unitPrice * qty;
       orderItemsData.push({
         productId: item.productId,
-        quantity: String(item.quantity),
+        quantity: String(qty),
         unitPrice: String(unitPrice),
       });
     }

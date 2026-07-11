@@ -8,9 +8,21 @@ import { normalizePhoneDigits, isValidPhone } from '../common/utils/phone.util';
 import { BroadcastRunnerService } from './broadcast-runner.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { parseMediaUrls, serializeMediaUrls } from './media-urls.util';
+import { clampInt } from '../common/security/security.util';
+
+const MAX_LIST_MEMBERS_CAMPAIGN = 500;
+const DELAY_MIN_FLOOR = 30;
+const DELAY_MAX_CEIL = 300;
 
 function randDelay(min: number, max: number) {
   return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function normalizeDelays(minSec?: number, maxSec?: number) {
+  const min = clampInt(minSec, DELAY_MIN_FLOOR, DELAY_MAX_CEIL, 45);
+  let max = clampInt(maxSec, DELAY_MIN_FLOOR, DELAY_MAX_CEIL, 90);
+  if (max < min) max = min;
+  return { min, max };
 }
 
 @Injectable()
@@ -120,19 +132,24 @@ export class BroadcastService {
     });
     if (!list) throw new NotFoundException('Lista no encontrada');
     if (!list.members?.length) throw new BadRequestException('La lista no tiene contactos');
+    if (list.members.length > MAX_LIST_MEMBERS_CAMPAIGN) {
+      throw new BadRequestException(`Máximo ${MAX_LIST_MEMBERS_CAMPAIGN} contactos por campaña`);
+    }
 
     const urls = body.mediaUrls?.length
-      ? body.mediaUrls
+      ? body.mediaUrls.slice(0, 8)
       : (body.mediaUrl ? [body.mediaUrl] : []);
+
+    const { min, max } = normalizeDelays(body.delayMinSec, body.delayMaxSec);
 
     const [campaign] = await this.db.insert(broadcastCampaigns).values({
       sellerId,
       listId: body.listId,
-      name: body.name.trim(),
-      messageText: body.messageText.trim(),
+      name: body.name.trim().slice(0, 120),
+      messageText: body.messageText.trim().slice(0, 4000),
       mediaUrl: serializeMediaUrls(urls),
-      delayMinSec: body.delayMinSec ?? 45,
-      delayMaxSec: body.delayMaxSec ?? 90,
+      delayMinSec: min,
+      delayMaxSec: max,
       status: 'draft',
     }).returning();
 
@@ -184,11 +201,11 @@ export class BroadcastService {
 
     await this.db.update(broadcastCampaigns).set({
       listId,
-      name: body.name?.trim() || campaign.name,
-      messageText: body.messageText?.trim() || campaign.messageText,
-      mediaUrl: serializeMediaUrls(urls),
-      delayMinSec: body.delayMinSec ?? campaign.delayMinSec ?? 45,
-      delayMaxSec: body.delayMaxSec ?? campaign.delayMaxSec ?? 90,
+      name: (body.name?.trim() || campaign.name).slice(0, 120),
+      messageText: (body.messageText?.trim() || campaign.messageText).slice(0, 4000),
+      mediaUrl: serializeMediaUrls(urls.slice(0, 8)),
+      delayMinSec: normalizeDelays(body.delayMinSec ?? campaign.delayMinSec, body.delayMaxSec ?? campaign.delayMaxSec).min,
+      delayMaxSec: normalizeDelays(body.delayMinSec ?? campaign.delayMinSec, body.delayMaxSec ?? campaign.delayMaxSec).max,
     }).where(and(eq(broadcastCampaigns.id, id), eq(broadcastCampaigns.sellerId, sellerId)));
 
     return this.getCampaign(sellerId, id);
@@ -218,6 +235,9 @@ export class BroadcastService {
     if (campaign.status === 'running') return campaign;
     const members = campaign.list?.members || [];
     if (!members.length) throw new BadRequestException('Lista vacía');
+    if (members.length > MAX_LIST_MEMBERS_CAMPAIGN) {
+      throw new BadRequestException(`Máximo ${MAX_LIST_MEMBERS_CAMPAIGN} contactos por campaña`);
+    }
 
     if (!this.whatsapp.adminConfigured()) {
       throw new BadRequestException('WhatsApp no está configurado en el servidor');
@@ -232,8 +252,7 @@ export class BroadcastService {
 
     await this.db.delete(broadcastJobs).where(eq(broadcastJobs.campaignId, id));
 
-    const min = campaign.delayMinSec ?? 45;
-    const max = campaign.delayMaxSec ?? 90;
+    const { min, max } = normalizeDelays(campaign.delayMinSec, campaign.delayMaxSec);
     let cumulativeDelayMs = 0;
 
     for (let i = 0; i < members.length; i++) {

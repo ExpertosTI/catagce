@@ -5,13 +5,14 @@ import { AuthService } from './auth.service';
 import { VerificationService } from './verification.service';
 import { AuditService } from '../common/services/audit.service';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { requireJwtSecret } from '../common/security/security.util';
 
 @Module({
   imports: [
     WhatsAppModule,
     JwtModule.register({
       global: true,
-      secret: process.env.JWT_SECRET || 'catagce-dev-secret-change-in-production',
+      secret: requireJwtSecret(),
       signOptions: { expiresIn: '7d' },
     }),
   ],

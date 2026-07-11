@@ -28,7 +28,7 @@ export class CatalogsService {
   }
 
   async findBySlug(slug: string) {
-    return this.db.query.catalogs.findFirst({
+    const catalog = await this.db.query.catalogs.findFirst({
       where: eq(catalogs.slug, slug),
       with: {
         catalogProducts: { with: { product: { with: { stockLevels: true } } } },
@@ -36,6 +36,18 @@ export class CatalogsService {
         publications: true,
       },
     });
+    if (!catalog) return null;
+    const pubs = catalog.publications || [];
+    const active = pubs.find((p: any) => p.isActive !== false) || pubs[0];
+    // No devolver array de publications con tokens; solo el token activo para pedir
+    const { publications: _pubs, ...rest } = catalog;
+    return {
+      ...rest,
+      orderToken: active?.token || null,
+      publications: active?.token
+        ? [{ token: active.token, isActive: true }]
+        : [],
+    };
   }
 
   async create(sellerId: string, data: { name: string; slug: string; description?: string; productIds?: string[] }) {
@@ -122,16 +134,21 @@ export class CatalogsService {
         `Elige productos, confirma tu pedido y queda registrado automáticamente. Luego puedes escribirnos por este chat con tu Ref.`;
 
     const results: Array<{ phone: string; ok: boolean; error?: string }> = [];
-    for (const raw of body.phones || []) {
+    const phones = (body.phones || []).slice(0, 20);
+    for (let i = 0; i < phones.length; i++) {
+      const raw = phones[i];
       const phone = normalizePhoneDigits(raw);
       if (!isValidPhone(phone)) {
         results.push({ phone: raw, ok: false, error: 'invalid_phone' });
         continue;
       }
       const sent = body.imageUrl
-        ? await this.whatsapp.sendMedia(phone, { caption: text, mediaUrl: body.imageUrl }, creds)
-        : await this.whatsapp.sendText(phone, text, creds);
+        ? await this.whatsapp.sendMedia(phone, { caption: text.slice(0, 3500), mediaUrl: body.imageUrl }, creds)
+        : await this.whatsapp.sendText(phone, text.slice(0, 3500), creds);
       results.push({ phone, ok: sent.ok, error: sent.ok ? undefined : sent.error });
+      if (i < phones.length - 1) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
     }
 
     const sent = results.filter((r) => r.ok).length;

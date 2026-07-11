@@ -123,7 +123,7 @@ export class OrdersService {
   async updateStatus(id: string, sellerId: string, status: string, actorUserId?: string) {
     const [order] = await this.db.update(orders)
       .set({ status, updatedAt: new Date() })
-      .where(eq(orders.id, id))
+      .where(and(eq(orders.id, id), eq(orders.sellerId, sellerId)))
       .returning();
 
     if (!order) return null;

@@ -80,6 +80,7 @@ export class WhatsAppService {
     try {
       res = await fetch(url, {
         ...init,
+        signal: init?.signal || AbortSignal.timeout(20_000),
         headers: {
           'Content-Type': 'application/json',
           apikey: c.apiKey,
@@ -112,6 +113,7 @@ export class WhatsAppService {
     try {
       res = await fetch(`${baseUrl}${path}`, {
         ...init,
+        signal: init?.signal || AbortSignal.timeout(20_000),
         headers: {
           'Content-Type': 'application/json',
           apikey: key,

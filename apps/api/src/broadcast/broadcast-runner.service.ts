@@ -36,15 +36,19 @@ export class BroadcastRunnerService implements OnModuleInit {
       const pending = await this.db.query.broadcastJobs.findMany({
         where: eq(broadcastJobs.status, 'pending'),
         with: { campaign: true },
+        limit: 40,
       });
 
       const now = Date.now();
+      let sentThisTick = 0;
       for (const job of pending) {
+        if (sentThisTick >= 5) break;
         const campaign = job.campaign;
         if (!campaign || campaign.status !== 'running') continue;
         const scheduled = job.scheduledAt ? new Date(job.scheduledAt).getTime() : 0;
         if (scheduled > now) continue;
         await this.sendJob(job.id, job.phone, campaign);
+        sentThisTick += 1;
       }
     } catch (err) {
       console.warn('[broadcast] tick error', err);
