@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Catagce | B2B Catalog Sales Operating System",
-  description: "Transform your inventory into a high-converting sales channel with branded catalogs and zero-login ordering.",
+  title: "Catagce | Catálogos y pedidos por WhatsApp",
+  description: "Comparte catálogos, recibe pedidos sincronizados en Inbox, difusión con pausa y avisos al admin. El sistema B2B de Renace.tech.",
 };
 
 export default function RootLayout({

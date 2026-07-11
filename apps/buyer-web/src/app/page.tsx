@@ -1,204 +1,222 @@
 'use client';
 
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
-  Box, Zap, ArrowRight, ShieldCheck, Smartphone, BarChart3, MessageCircle, Layers,
+  Box, ArrowRight, MessageCircle, Radio, Package, Warehouse,
+  FileOutput, BookOpen, Send, ShoppingBag, Play, Users, Settings,
 } from 'lucide-react';
 
+const ORDER_STATUSES = [
+  { key: 'submitted', label: 'Nuevo', color: '#00D1FF' },
+  { key: 'reserved', label: 'Reservado', color: '#FF8A00' },
+  { key: 'confirmed', label: 'Confirmado', color: '#22c55e' },
+  { key: 'rejected', label: 'Rechazado', color: '#ef4444' },
+] as const;
+
+const FEATURES = [
+  { id: 'catalogos', label: 'Catálogos', icon: BookOpen, accent: '#00D1FF' },
+  { id: 'pedidos', label: 'Pedidos', icon: FileOutput, accent: '#FF8A00' },
+  { id: 'inbox', label: 'Inbox', icon: MessageCircle, accent: '#25D366' },
+  { id: 'difusion', label: 'Difusión', icon: Radio, accent: '#FF8A00' },
+  { id: 'inventario', label: 'Inventario', icon: Package, accent: '#00D1FF' },
+  { id: 'aviso', label: 'Aviso admin', icon: Send, accent: '#25D366' },
+  { id: 'contactos', label: 'Contactos', icon: Users, accent: '#00D1FF' },
+  { id: 'config', label: 'Config WA', icon: Settings, accent: '#25D366' },
+] as const;
+
+type FeatureId = (typeof FEATURES)[number]['id'];
+
 export default function LandingPage() {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 120]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const [feature, setFeature] = useState<FeatureId>('pedidos');
+  const [statusIdx, setStatusIdx] = useState(0);
+  const [inboxFilter, setInboxFilter] = useState<'pedidos' | 'todos'>('pedidos');
+  const [difusionTab, setDifusionTab] = useState<'listas' | 'campanas'>('listas');
+  const [inboxAction, setInboxAction] = useState<'idle' | 'ok' | 'no'>('idle');
+
+  const active = FEATURES.find((f) => f.id === feature)!;
 
   return (
-    <div className="min-h-screen bg-[#050508] text-white selection:bg-[#00D1FF]/30 font-sans overflow-x-hidden">
-      {/* Deep ambient layers */}
+    <div className="min-h-screen bg-[#050508] text-white selection:bg-[#00D1FF]/30 overflow-x-hidden">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#00D1FF]/15 rounded-full blur-[140px]" />
-        <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] bg-[#FF8A00]/10 rounded-full blur-[120px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,#000_60%,transparent_100%)]" />
+        <div className="absolute top-[-15%] left-1/3 w-[560px] h-[560px] bg-[#00D1FF]/10 rounded-full blur-[130px]" />
+        <div className="absolute bottom-[10%] right-0 w-[380px] h-[380px] bg-[#FF8A00]/08 rounded-full blur-[100px]" />
       </div>
 
-      <header className="relative z-20 flex items-center justify-between px-6 md:px-10 py-6 max-w-7xl mx-auto">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 bg-[#00D1FF] rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(0,209,255,0.4)] group-hover:rotate-6 transition-transform">
-            <Box className="text-black w-6 h-6" />
+      <header className="relative z-20 flex items-center justify-between px-5 md:px-10 py-5 max-w-6xl mx-auto">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-[#00D1FF] rounded-lg flex items-center justify-center">
+            <Box className="text-black w-4 h-4" />
           </div>
-          <span className="text-xl font-black tracking-tighter">CATAGCE<span className="text-[#00D1FF]">.</span></span>
+          <span className="text-lg font-black tracking-tight">
+            Catagce<span className="text-[#00D1FF]">.</span>
+          </span>
         </Link>
-        <nav className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-gray-500">
-          <a href="#features" className="hover:text-[#00D1FF] transition-colors">Funciones</a>
-          <a href="#vision" className="hover:text-[#00D1FF] transition-colors">Visión</a>
-        </nav>
-        <Link
-          href="/register"
-          className="px-5 py-2.5 bg-[#00D1FF] text-black rounded-xl font-black text-sm uppercase tracking-wide hover:shadow-[0_0_40px_rgba(0,209,255,0.5)] hover:-translate-y-0.5 transition-all"
-        >
-          Empezar gratis
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/login" className="px-3 py-2 text-sm text-gray-400 hover:text-white">
+            Entrar
+          </Link>
+          <Link
+            href="/register"
+            className="px-4 py-2 bg-[#00D1FF] text-black rounded-xl font-bold text-sm"
+          >
+            Empezar
+          </Link>
+        </div>
       </header>
 
-      <main ref={heroRef} className="relative z-10">
+      <main className="relative z-10">
         {/* Hero */}
-        <section className="px-6 md:px-10 pt-16 pb-32 max-w-7xl mx-auto">
-          <motion.div style={{ y: heroY, opacity: heroOpacity }} className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-[10px] font-black uppercase tracking-[0.2em] text-[#00D1FF] border border-[#00D1FF]/25 rounded-full bg-[#00D1FF]/5"
-              >
-                <span className="w-2 h-2 bg-[#00D1FF] rounded-full animate-pulse" />
-                Potenciado por Renace.tech
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-5xl md:text-7xl xl:text-8xl font-black tracking-tighter leading-[0.9] mb-8"
-              >
-                VENDE
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-[#00D1FF] to-gray-500">
-                  MÁS RÁPIDO.
-                </span>
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-lg md:text-xl text-gray-400 mb-10 max-w-lg leading-relaxed"
-              >
-                Catálogos interactivos para WhatsApp, inventario en vivo y pedidos B2B sin fricción.
-              </motion.p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4"
-              >
-                <Link
-                  href="/register"
-                  className="group px-8 py-4 bg-[#00D1FF] text-black rounded-xl font-black text-lg flex items-center justify-center gap-2 hover:shadow-[0_8px_40px_rgba(0,209,255,0.45)] hover:-translate-y-1 transition-all"
-                >
-                  Crear catálogo <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link href="/login" className="px-8 py-4 border border-white/15 rounded-xl font-bold text-gray-400 hover:text-white hover:border-white/30 transition-all text-center">
-                  Iniciar sesión
-                </Link>
-              </motion.div>
-            </div>
-
-            {/* Hero visual — layered depth */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.25, duration: 0.7 }}
-              className="relative hidden lg:block h-[480px]"
+        <section className="px-5 md:px-10 pt-12 md:pt-20 pb-16 max-w-6xl mx-auto text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[#00D1FF] font-black text-5xl sm:text-6xl md:text-7xl tracking-tight mb-5"
+          >
+            Catagce<span className="text-white">.</span>
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.06 }}
+            className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-300 max-w-2xl mx-auto mb-4"
+          >
+            Catálogo, WhatsApp y pedidos en un solo flujo
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.12 }}
+            className="text-gray-500 text-sm sm:text-base max-w-md mx-auto mb-8"
+          >
+            Elige una función abajo y mira cómo se ve en la app.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+          >
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#00D1FF] text-black rounded-xl font-bold hover:-translate-y-0.5 transition-transform"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-[#00D1FF]/20 to-transparent rounded-3xl blur-3xl" />
-              <motion.div
-                animate={{ y: [0, -12, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute top-8 left-8 right-8 bottom-24 rounded-2xl border border-white/15 bg-[#0d0d12]/90 backdrop-blur-xl p-6 shadow-2xl"
-              >
-                <div className="flex items-center gap-2 mb-6">
-                  <MessageCircle className="w-5 h-5 text-[#00D1FF]" />
-                  <span className="text-sm font-bold">Pedido WhatsApp</span>
-                </div>
-                <div className="space-y-3">
-                  {['Camiseta polo × 12', 'Catálogo Mayorista 2026', 'Total: RD$18,400'].map((line, i) => (
-                    <div key={line} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                      <div className={`w-2 h-2 rounded-full ${i === 2 ? 'bg-[#00D1FF]' : 'bg-gray-600'}`} />
-                      <span className={i === 2 ? 'text-[#00D1FF] font-bold' : 'text-gray-300 text-sm'}>{line}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-              <motion.div
-                animate={{ y: [0, 8, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                className="absolute bottom-4 right-4 w-48 p-4 rounded-xl border border-[#FF8A00]/30 bg-[#FF8A00]/10 backdrop-blur-lg"
-              >
-                <BarChart3 className="w-6 h-6 text-[#FF8A00] mb-2" />
-                <p className="text-2xl font-black">+38%</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest">conversión</p>
-              </motion.div>
-              <motion.div
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                className="absolute top-4 right-12 w-40 p-3 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg"
-              >
-                <Layers className="w-5 h-5 text-[#00D1FF] mb-1" />
-                <p className="text-xs text-gray-400">Stock sincronizado</p>
-              </motion.div>
-            </motion.div>
+              Crear cuenta <ArrowRight className="w-4 h-4" />
+            </Link>
           </motion.div>
         </section>
 
-        {/* Features — elevated cards */}
-        <section id="features" className="px-6 md:px-10 py-24 max-w-7xl mx-auto">
-          <motion.h2
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-3xl md:text-4xl font-black tracking-tighter text-center mb-16"
-          >
-            Todo lo que tu negocio B2B necesita
-          </motion.h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <FeatureCard icon={<Smartphone className="w-8 h-8" />} title="WhatsApp First" desc="Tus clientes compran en 2 clics desde WhatsApp. Sin apps, sin registros." delay={0} />
-            <FeatureCard icon={<BarChart3 className="w-8 h-8" />} title="Analítica Live" desc="Sabe cuándo abren tu catálogo y cierra ventas en el momento justo." delay={0.1} />
-            <FeatureCard icon={<ShieldCheck className="w-8 h-8" />} title="Control Total" desc="Inventario por unidad, caja o docena. Nunca más digas 'no hay' después del pedido." delay={0.2} />
+        {/* Visual feature picker */}
+        <section id="funciones" className="px-5 md:px-10 pb-20 max-w-6xl mx-auto">
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {FEATURES.map((f) => {
+              const Icon = f.icon;
+              const on = feature === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => {
+                    setFeature(f.id);
+                    setInboxAction('idle');
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold border transition-all ${
+                    on
+                      ? 'border-transparent text-black'
+                      : 'border-white/10 bg-white/[0.03] text-gray-400 hover:text-white hover:border-white/20'
+                  }`}
+                  style={on ? { backgroundColor: f.accent } : undefined}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {f.label}
+                </button>
+              );
+            })}
           </div>
-        </section>
 
-        {/* Vision */}
-        <section id="vision" className="px-6 md:px-10 py-32 max-w-7xl mx-auto">
-          <div className="relative rounded-3xl overflow-hidden border border-white/10">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#00D1FF]/10 via-transparent to-[#FF8A00]/10" />
-            <div className="relative p-12 md:p-20 text-center">
-              <Zap className="w-12 h-12 text-[#00D1FF] mx-auto mb-8" />
-              <h2 className="text-2xl md:text-4xl font-black tracking-tighter max-w-3xl mx-auto leading-tight">
-                No es solo un catálogo. Es el sistema operativo de tu negocio B2B.
-              </h2>
-              <div className="flex flex-wrap justify-center gap-12 mt-12">
-                {[
-                  { v: '100%', l: 'Seguro' },
-                  { v: '0.5s', l: 'Velocidad' },
-                  { v: '24/7', l: 'Soporte' },
-                ].map((s) => (
-                  <div key={s.l} className="text-center">
-                    <p className="text-3xl font-black text-[#00D1FF]">{s.v}</p>
-                    <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">{s.l}</p>
-                  </div>
-                ))}
-              </div>
-              <Link
-                href="/register"
-                className="inline-flex mt-12 px-8 py-4 bg-white text-black rounded-xl font-black hover:bg-[#00D1FF] transition-colors"
-              >
-                Empezar ahora — es gratis
-              </Link>
+          <div className="rounded-2xl border border-white/10 bg-[#0c0c10]/95 overflow-hidden max-w-xl mx-auto">
+            <div className="px-4 py-3 border-b border-white/5 flex items-center gap-2">
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: active.accent }}
+              />
+              <span className="text-sm font-bold">{active.label}</span>
+              <span className="text-[10px] text-gray-600 ml-auto">Demo interactiva</span>
+            </div>
+
+            <div className="p-4 min-h-[280px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={feature}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {feature === 'catalogos' && <DemoCatalogos />}
+                  {feature === 'pedidos' && (
+                    <DemoPedidos statusIdx={statusIdx} setStatusIdx={setStatusIdx} />
+                  )}
+                  {feature === 'inbox' && (
+                    <DemoInbox
+                      filter={inboxFilter}
+                      setFilter={setInboxFilter}
+                      action={inboxAction}
+                      setAction={setInboxAction}
+                    />
+                  )}
+                  {feature === 'difusion' && (
+                    <DemoDifusion tab={difusionTab} setTab={setDifusionTab} />
+                  )}
+                  {feature === 'inventario' && <DemoInventario />}
+                  {feature === 'aviso' && <DemoAviso />}
+                  {feature === 'contactos' && <DemoContactos />}
+                  {feature === 'config' && <DemoConfig />}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </section>
+
+        {/* Flow — lean */}
+        <section className="px-5 md:px-10 py-16 max-w-6xl mx-auto">
+          <div className="grid sm:grid-cols-3 gap-6 text-center sm:text-left">
+            {[
+              { n: '1', t: 'Compartes', d: 'Catálogo o difusión por WhatsApp' },
+              { n: '2', t: 'Cliente pide', d: 'Enlace → pedido en la app al instante' },
+              { n: '3', t: 'Gestionas', d: 'Inbox + estados + aviso al admin' },
+            ].map((s) => (
+              <div key={s.n}>
+                <p className="text-[#00D1FF] font-black text-2xl mb-1">{s.n}</p>
+                <p className="font-bold mb-1">{s.t}</p>
+                <p className="text-sm text-gray-500">{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="px-5 md:px-10 py-20 max-w-6xl mx-auto text-center">
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-3">
+            Listo para vender por WhatsApp
+          </h2>
+          <p className="text-gray-500 text-sm mb-8">Onboarding guiado · Tu número · Pedidos sincronizados</p>
+          <Link
+            href="/register"
+            className="inline-flex px-8 py-3.5 bg-[#00D1FF] text-black rounded-xl font-black"
+          >
+            Crear Catagce gratis
+          </Link>
+        </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 py-16 px-6 md:px-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Box className="w-5 h-5 text-[#00D1FF]" />
-            <span className="font-black tracking-tighter">CATAGCE</span>
-          </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-600">
-            © 2026 Renace.tech · República Dominicana
+      <footer className="relative z-10 border-t border-white/10 py-10 px-5">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+          <span className="font-black tracking-tight flex items-center gap-2">
+            <Box className="w-4 h-4 text-[#00D1FF]" /> Catagce.
+          </span>
+          <p className="text-[10px] uppercase tracking-widest text-gray-600">
+            © 2026 Renace.tech
           </p>
         </div>
       </footer>
@@ -206,24 +224,261 @@ export default function LandingPage() {
   );
 }
 
-function FeatureCard({
-  icon, title, desc, delay,
-}: { icon: React.ReactNode; title: string; desc: string; delay: number }) {
+function DemoCatalogos() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay }}
-      whileHover={{ y: -8, transition: { duration: 0.2 } }}
-      className="group relative p-8 rounded-2xl border border-white/10 bg-[#0c0c10]/80 backdrop-blur-sm hover:border-[#00D1FF]/30 hover:shadow-[0_20px_60px_rgba(0,209,255,0.12)] transition-all"
-    >
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-[#00D1FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="relative">
-        <div className="text-[#00D1FF] mb-6 group-hover:scale-110 transition-transform origin-left">{icon}</div>
-        <h3 className="text-xl font-black tracking-tight mb-3 uppercase">{title}</h3>
-        <p className="text-gray-500 leading-relaxed">{desc}</p>
+    <div className="space-y-3 text-xs">
+      <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+        <span className="font-semibold">Mayorista 2026</span>
+        <span className="text-[#00D1FF] text-[10px] font-bold">Publicado</span>
       </div>
-    </motion.div>
+      <div className="p-3 rounded-xl bg-[#25D366]/10 border border-[#25D366]/25 leading-relaxed">
+        ¡Hola! Te comparto nuestro catálogo.
+        <br />
+        <span className="text-[#00D1FF]">catagce.renace.tech/order/…</span>
+      </div>
+      <div className="w-full py-2.5 rounded-xl bg-[#25D366] text-black text-center font-bold flex items-center justify-center gap-1.5">
+        <MessageCircle className="w-3.5 h-3.5" /> Compartir por WhatsApp
+      </div>
+    </div>
+  );
+}
+
+function DemoPedidos({
+  statusIdx,
+  setStatusIdx,
+}: {
+  statusIdx: number;
+  setStatusIdx: (i: number) => void;
+}) {
+  const s = ORDER_STATUSES[statusIdx];
+  return (
+    <div className="space-y-3 text-xs">
+      <p className="text-[10px] text-gray-500">Elige el estado</p>
+      <div className="flex flex-wrap gap-1.5">
+        {ORDER_STATUSES.map((st, i) => (
+          <button
+            key={st.key}
+            type="button"
+            onClick={() => setStatusIdx(i)}
+            className="px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all"
+            style={{
+              color: st.color,
+              borderColor: statusIdx === i ? st.color : 'rgba(255,255,255,0.1)',
+              backgroundColor: statusIdx === i ? `${st.color}22` : 'transparent',
+            }}
+          >
+            {st.label}
+          </button>
+        ))}
+      </div>
+      <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10">
+        <div className="flex flex-wrap gap-2 mb-2">
+          <span
+            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+            style={{ backgroundColor: `${s.color}22`, color: s.color }}
+          >
+            {s.label}
+          </span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#25D366]/15 text-[#25D366] font-semibold">
+            WhatsApp link
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-sm font-semibold">AMARTE</p>
+            <p className="text-[10px] text-gray-500 font-mono">#06f57375</p>
+          </div>
+          <p className="text-lg font-black text-[#00D1FF]">$160</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DemoInbox({
+  filter,
+  setFilter,
+  action,
+  setAction,
+}: {
+  filter: 'pedidos' | 'todos';
+  setFilter: (f: 'pedidos' | 'todos') => void;
+  action: 'idle' | 'ok' | 'no';
+  setAction: (a: 'idle' | 'ok' | 'no') => void;
+}) {
+  return (
+    <div className="space-y-3 text-xs">
+      <div className="flex gap-2">
+        {(['pedidos', 'todos'] as const).map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setFilter(f)}
+            className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+              filter === f ? 'bg-[#25D366] text-black' : 'border border-white/10 text-gray-500'
+            }`}
+          >
+            {f === 'pedidos' ? 'Pedidos WA' : 'Todos'}
+          </button>
+        ))}
+      </div>
+      <div className="p-3 rounded-xl border border-[#25D366]/35 bg-[#25D366]/5">
+        <div className="flex justify-between">
+          <p className="font-bold">AMARTE</p>
+          {filter === 'pedidos' && (
+            <span className="bg-[#25D366] text-black text-[9px] font-bold px-1.5 rounded-full">1</span>
+          )}
+        </div>
+        <p className="text-[10px] text-[#25D366] font-semibold mt-1">Pedido #06f57375 · $160</p>
+      </div>
+      {action === 'idle' ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setAction('ok')}
+            className="flex-1 py-2 rounded-lg bg-green-500/20 text-green-400 font-bold text-[10px]"
+          >
+            Confirmar
+          </button>
+          <button
+            type="button"
+            onClick={() => setAction('no')}
+            className="flex-1 py-2 rounded-lg bg-red-500/20 text-red-400 font-bold text-[10px]"
+          >
+            Rechazar
+          </button>
+        </div>
+      ) : (
+        <p className={`text-center text-[11px] font-bold ${action === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+          {action === 'ok' ? 'Pedido confirmado' : 'Pedido rechazado'}
+          <button type="button" onClick={() => setAction('idle')} className="ml-2 text-gray-500 underline font-normal">
+            reset
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function DemoDifusion({
+  tab,
+  setTab,
+}: {
+  tab: 'listas' | 'campanas';
+  setTab: (t: 'listas' | 'campanas') => void;
+}) {
+  return (
+    <div className="space-y-3 text-xs">
+      <div className="flex gap-2">
+        {(['listas', 'campanas'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+              tab === t ? 'bg-[#FF8A00] text-black' : 'bg-white/5 text-gray-500'
+            }`}
+          >
+            {t === 'listas' ? 'Listas' : 'Campañas'}
+          </button>
+        ))}
+      </div>
+      {tab === 'listas' ? (
+        <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+          <p className="font-semibold">Clientes VIP</p>
+          <p className="text-[10px] text-gray-500">24 contactos</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-2 rounded-lg bg-black/40 border border-white/10">
+              <p className="text-[9px] text-gray-500">Pausa min</p>
+              <p className="font-bold">45 s</p>
+            </div>
+            <div className="p-2 rounded-lg bg-black/40 border border-white/10">
+              <p className="text-[9px] text-gray-500">Pausa max</p>
+              <p className="font-bold">90 s</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-[#00D1FF]">
+            <Play className="w-3 h-3" /> 8/24 enviados
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DemoInventario() {
+  return (
+    <div className="space-y-2 text-xs">
+      {[
+        { n: 'Camiseta polo', s: 48, ok: true },
+        { n: 'Loción 250ml', s: 4, ok: false },
+        { n: 'Gorra snapback', s: 22, ok: true },
+      ].map((p) => (
+        <div key={p.n} className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center gap-2">
+            <Warehouse className="w-3.5 h-3.5 text-gray-500" />
+            <span className="font-semibold">{p.n}</span>
+          </div>
+          <span className={`text-[10px] font-bold ${p.ok ? 'text-[#00D1FF]' : 'text-[#FF8A00]'}`}>
+            Stock {p.s}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DemoAviso() {
+  return (
+    <div className="p-3 rounded-xl bg-[#0b1410] border border-[#25D366]/25 text-[11px] leading-relaxed space-y-1">
+      <p className="font-bold text-[#25D366]">Nuevo pedido Catagce</p>
+      <p className="text-gray-300">Cliente: AMARTE</p>
+      <p className="text-gray-300">Total: $160.00</p>
+      <p className="font-mono text-gray-400">Ref: #06f57375</p>
+      <p className="text-[#00D1FF]">/dashboard/orders</p>
+    </div>
+  );
+}
+
+function DemoContactos() {
+  return (
+    <div className="space-y-2 text-xs">
+      {['AMARTE', 'Distribuidora Norte', 'Boutique Sol'].map((n, i) => (
+        <div key={n} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/10">
+          <div className="w-8 h-8 rounded-full bg-[#00D1FF]/20 flex items-center justify-center text-[10px] font-bold text-[#00D1FF]">
+            {n.slice(0, 2)}
+          </div>
+          <div>
+            <p className="font-semibold">{n}</p>
+            <p className="text-[10px] text-gray-500">1849…{100 + i}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DemoConfig() {
+  return (
+    <div className="space-y-3 text-xs">
+      <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="w-4 h-4 text-[#25D366]" />
+          <span className="font-semibold">WhatsApp negocio</span>
+        </div>
+        <span className="text-[10px] font-bold text-[#25D366]">Conectado</span>
+      </div>
+      <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+        <p className="text-[10px] text-gray-500 mb-1">Aviso pedidos al admin</p>
+        <p className="font-mono text-sm">+1 849 ··· ····</p>
+      </div>
+      <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[#00D1FF]/20 bg-[#00D1FF]/5">
+        <ShoppingBag className="w-3.5 h-3.5 text-[#00D1FF]" />
+        <span className="text-[10px] text-gray-400">Webhook Evolution activo</span>
+      </div>
+    </div>
   );
 }
