@@ -9,6 +9,18 @@
 
 body {
   @apply antialiased bg-[#0A0A0A] text-white;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* App-like when installed */
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+  }
+  input, textarea, [contenteditable] {
+    user-select: text;
+  }
 }
 
 @layer utilities {
@@ -25,5 +37,8 @@ body {
     background: rgba(26, 26, 26, 0.8);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
