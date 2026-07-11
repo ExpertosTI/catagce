@@ -5,9 +5,10 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { WhatsAppConnectModule } from '../whatsapp-connect/whatsapp-connect.module';
 import { OrdersModule } from '../orders/orders.module';
 import { OrderSyncModule } from '../order-sync/order-sync.module';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
-  imports: [WhatsAppModule, WhatsAppConnectModule, OrdersModule, OrderSyncModule],
+  imports: [WhatsAppModule, WhatsAppConnectModule, OrdersModule, OrderSyncModule, PlansModule],
   controllers: [WhatsAppInboxController],
   providers: [WhatsAppInboxService],
   exports: [WhatsAppInboxService],

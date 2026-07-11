@@ -1,7 +1,9 @@
-# Evolution API (tu evoapi) — clave GLOBAL de admin (puede crear instancias).
-# Cada vendedor de Catagce crea su propia instancia y escanea QR en Config → WhatsApp.
+# Evolution API (tu evoapi) — clave GLOBAL de admin (AUTHENTICATION_API_KEY).
+# NO uses el token de una instancia (ej. 45FCC9… del panel RENACE.TECH).
 EVOLUTION_API_URL=https://evoapi.renace.tech
 EVOLUTION_API_KEY=tu-api-key-global
-# Instancia de plataforma (OTP login/registro Catagce). Debe existir y estar open.
-# RENACE.TECH ya no existe — usar renace-biz (8093487921).
-EVOLUTION_INSTANCE=renace-biz
+# Instancia corporativa (OTP / notify plataforma). Nombre exacto en Evolution Manager.
+# Producción (Connected): RENACE.TECH — JID 18495684958@s.whatsapp.net
+EVOLUTION_INSTANCE=RENACE.TECH
+# Destinos admin (ops), separados por coma — upsert en .env del API, no en git:
+# PLATFORM_NOTIFY_PHONES=1849…

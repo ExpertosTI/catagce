@@ -5,10 +5,12 @@ import { OrdersService } from './orders.service';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
 import { InventoryModule } from '../inventory/inventory.module';
 import { AuditService } from '../common/services/audit.service';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
   imports: [
     InventoryModule,
+    PlansModule,
     BullModule.registerQueue({ name: 'notifications' }),
   ],
   controllers: [OrdersController],
