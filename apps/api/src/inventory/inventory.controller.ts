@@ -1,12 +1,8 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
-import { RequireFeature } from '../common/decorators/feature.decorator';
-import { FeatureGuard } from '../common/guards/feature.guard';
 
 @Controller('inventory')
-@RequireFeature('inventory')
-@UseGuards(FeatureGuard)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 

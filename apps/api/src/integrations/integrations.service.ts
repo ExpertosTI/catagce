@@ -15,6 +15,7 @@ interface ExternalProduct {
   basePrice: string;
   imageUrl?: string | null;
   qty?: number;
+  category?: string | null;
 }
 
 @Injectable()
@@ -60,12 +61,18 @@ export class IntegrationsService {
     try {
       if (integration.type === 'odoo') {
         const raw = await this.odooService.fetchProducts(integration.config as OdooConfig);
-        externalProducts = raw.map((p) => ({
-          externalId: String(p.id), name: p.name,
-          sku: p.default_code ? String(p.default_code) : null,
-          description: p.description_sale ? String(p.description_sale) : null,
-          basePrice: String(p.list_price || 0), qty: p.qty_available,
-        }));
+        externalProducts = raw.map((p) => {
+          const categ = Array.isArray(p.categ_id) ? String(p.categ_id[1] || '') : '';
+          return {
+            externalId: String(p.id),
+            name: p.name,
+            sku: p.default_code ? String(p.default_code) : null,
+            description: p.description_sale ? String(p.description_sale) : null,
+            basePrice: String(p.list_price || 0),
+            qty: p.qty_available,
+            category: categ || null,
+          };
+        });
       } else if (integration.type === 'shopify') {
         externalProducts = await this.shopifyService.fetchProducts(integration.config as ShopifyConfig);
       } else if (integration.type === 'woocommerce') {
@@ -109,6 +116,7 @@ export class IntegrationsService {
       const productData = {
         name: item.name, sku: item.sku, description: item.description,
         basePrice: item.basePrice, imageUrl: item.imageUrl,
+        category: item.category ?? null,
         externalId: item.externalId, externalSource: source,
       };
 

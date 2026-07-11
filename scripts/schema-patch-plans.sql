@@ -49,11 +49,16 @@ INSERT INTO plan_features (plan_code, feature_key, enabled, limit_value) VALUES
   ('free', 'catalogs', true, 2),
   ('free', 'whatsapp_connect', true, NULL),
   ('free', 'catalog_wa_share', true, NULL),
-  ('free', 'broadcast', false, NULL),
+  ('free', 'broadcast', true, NULL),
   ('free', 'ai', false, NULL),
-  ('free', 'inventory', false, NULL),
+  ('free', 'inventory', true, NULL),
   ('free', 'analytics', true, 1)
 ON CONFLICT (plan_code, feature_key) DO NOTHING;
+
+-- Producto existente: Difusión e Inventario no deben quedar bloqueados en Free
+UPDATE plan_features
+SET enabled = true, updated_at = now()
+WHERE plan_code = 'free' AND feature_key IN ('broadcast', 'inventory');
 
 INSERT INTO plan_features (plan_code, feature_key, enabled, limit_value) VALUES
   ('pro', 'products', true, 500),

@@ -61,7 +61,12 @@ export class OdooService {
       'product.template',
       'read',
       [productIds],
-      { fields: ['id', 'name', 'list_price', 'default_code', 'description_sale', 'qty_available'] },
+      {
+        fields: [
+          'id', 'name', 'list_price', 'default_code', 'description_sale',
+          'qty_available', 'categ_id',
+        ],
+      },
     ]);
 
     return products as Array<{
@@ -71,6 +76,37 @@ export class OdooService {
       default_code: string | false;
       description_sale: string | false;
       qty_available: number;
+      categ_id: [number, string] | false;
+    }>;
+  }
+
+  /** Categorías de producto (product.category) */
+  async fetchCategories(config: OdooConfig) {
+    const uid = await this.authenticate(config);
+    const ids = await this.jsonRpc(config.url, 'object', 'execute_kw', [
+      config.database,
+      uid,
+      config.apiKey,
+      'product.category',
+      'search',
+      [[]],
+      { limit: 500 },
+    ]);
+    if (!ids?.length) return [];
+    const rows = await this.jsonRpc(config.url, 'object', 'execute_kw', [
+      config.database,
+      uid,
+      config.apiKey,
+      'product.category',
+      'read',
+      [ids],
+      { fields: ['id', 'name', 'complete_name', 'parent_id'] },
+    ]);
+    return rows as Array<{
+      id: number;
+      name: string;
+      complete_name?: string;
+      parent_id: [number, string] | false;
     }>;
   }
 }

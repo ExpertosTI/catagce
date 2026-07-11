@@ -18,10 +18,11 @@ type NavItem = {
   feature?: string;
 };
 
+/** Barra principal (móvil); en escritorio se unen con moreNav */
 const primaryNav: NavItem[] = [
   { href: '/dashboard/orders', icon: FileOutput, label: 'Pedidos' },
   { href: '/dashboard/whatsapp', icon: MessageCircle, label: 'Inbox' },
-  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión', feature: 'broadcast' },
+  { href: '/dashboard/difusion', icon: Radio, label: 'Difusión' },
   { href: '/dashboard/catalogs', icon: BookOpen, label: 'Catálogos' },
 ];
 
@@ -29,12 +30,32 @@ const moreNavBase: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'Inicio' },
   { href: '/dashboard/products', icon: LayoutGrid, label: 'Productos' },
   { href: '/dashboard/contacts', icon: Users, label: 'Contactos' },
-  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario', feature: 'inventory' },
+  { href: '/dashboard/inventory', icon: Warehouse, label: 'Inventario' },
   { href: '/dashboard/settings', icon: Settings, label: 'Config' },
 ];
 
 function isActive(pathname: string, href: string) {
   return pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+}
+
+function NavLink({
+  href,
+  icon: Icon,
+  label,
+  active,
+  compact,
+}: NavItem & { active: boolean; compact?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[3.25rem] px-1 py-1.5 rounded-2xl transition-colors touch-manipulation ${
+        active ? 'text-[#FF8A00] bg-[#FF8A00]/10' : 'text-gray-500 hover:text-white active:text-white'
+      } ${compact ? '' : 'md:min-w-[4.5rem]'}`}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="text-[10px] font-medium leading-tight truncate max-w-full">{label}</span>
+    </Link>
+  );
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -43,18 +64,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const { me, hasFeature, isPlatformAdmin } = useMe();
 
-  const visiblePrimary = useMemo(
-    () => primaryNav.filter((item) => !item.feature || hasFeature(item.feature)),
-    [hasFeature, me],
-  );
-
   const moreNav = useMemo(() => {
-    const items = moreNavBase.filter((item) => !item.feature || hasFeature(item.feature));
+    const items = [...moreNavBase];
     if (isPlatformAdmin) {
       items.push({ href: '/dashboard/platform/plans', icon: Shield, label: 'Platform' });
     }
     return items;
-  }, [hasFeature, isPlatformAdmin, me]);
+  }, [isPlatformAdmin]);
+
+  /** Escritorio: todos los iconos en la barra inferior */
+  const desktopNav = useMemo(() => {
+    const seen = new Set<string>();
+    const out: NavItem[] = [];
+    for (const item of [...primaryNav, ...moreNav]) {
+      if (seen.has(item.href)) continue;
+      seen.add(item.href);
+      out.push(item);
+    }
+    return out;
+  }, [moreNav]);
 
   const moreActive = moreNav.some((item) => isActive(pathname, item.href));
 
@@ -111,10 +139,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </button>
       </header>
 
-      <main className="px-3 sm:px-6 md:px-12 py-4 sm:py-8 max-w-3xl mx-auto w-full">{children}</main>
+      <main className="px-3 sm:px-6 md:px-8 lg:px-12 py-4 sm:py-8 max-w-6xl mx-auto w-full">{children}</main>
 
+      {/* Sheet «Más» solo móvil */}
       {moreOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end md:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -160,23 +189,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
-        <div className="max-w-2xl mx-auto glass rounded-[1.5rem] px-1.5 py-1.5 shadow-2xl">
-          <div className="flex items-stretch gap-0.5">
-            {visiblePrimary.map(({ href, icon: Icon, label }) => {
-              const active = isActive(pathname, href);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[3.25rem] px-1 py-1.5 rounded-2xl transition-colors touch-manipulation ${
-                    active ? 'text-[#FF8A00] bg-[#FF8A00]/10' : 'text-gray-500 active:text-white'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium leading-tight truncate max-w-full">{label}</span>
-                </Link>
-              );
-            })}
+        <div className="max-w-5xl mx-auto glass rounded-[1.5rem] px-1.5 py-1.5 shadow-2xl">
+          {/* Móvil: 4 + Más */}
+          <div className="flex items-stretch gap-0.5 md:hidden">
+            {primaryNav.map((item) => (
+              <NavLink key={item.href} {...item} active={isActive(pathname, item.href)} compact />
+            ))}
             <button
               type="button"
               onClick={() => setMoreOpen((v) => !v)}
@@ -189,6 +207,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <MoreHorizontal className="w-5 h-5" />
               <span className="text-[10px] font-medium leading-tight">Más</span>
             </button>
+          </div>
+
+          {/* Escritorio: todos los iconos */}
+          <div className="hidden md:flex items-stretch gap-0.5 overflow-x-auto">
+            {desktopNav.map((item) => (
+              <NavLink key={item.href} {...item} active={isActive(pathname, item.href)} />
+            ))}
           </div>
         </div>
       </nav>

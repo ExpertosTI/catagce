@@ -1,8 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { BroadcastService } from './broadcast.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
-import { RequireFeature } from '../common/decorators/feature.decorator';
-import { FeatureGuard } from '../common/guards/feature.guard';
 
 type CampaignBody = {
   listId: string;
@@ -15,8 +13,6 @@ type CampaignBody = {
 };
 
 @Controller('broadcast')
-@RequireFeature('broadcast')
-@UseGuards(FeatureGuard)
 export class BroadcastController {
   constructor(private readonly broadcast: BroadcastService) {}
 
