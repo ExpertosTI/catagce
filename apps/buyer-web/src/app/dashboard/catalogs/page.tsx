@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Copy, Check, Plus, ExternalLink, MessageCircle } from 'lucide-react';
+import { Copy, Check, Plus, ExternalLink, MessageCircle, Pencil } from 'lucide-react';
+import Link from 'next/link';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ShareCatalogModal } from '@/components/ShareCatalogModal';
 import { apiFetch } from '@/lib/api';
@@ -112,10 +113,16 @@ export default function CatalogsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/dashboard/catalogs/${catalog.id}`}
+                    className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-[#FF8A00] text-black font-bold rounded-xl text-sm touch-manipulation"
+                  >
+                    <Pencil className="w-4 h-4" /> Productos
+                  </Link>
                   <a
                     href={`/catalog/${catalog.slug}`}
                     target="_blank"
-                    className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl text-sm hover:bg-white/10 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-white/5 rounded-xl text-sm hover:bg-white/10 transition-colors"
                   >
                     <ExternalLink className="w-4 h-4" /> Ver
                   </a>
@@ -124,7 +131,7 @@ export default function CatalogsPage() {
                       <button
                         type="button"
                         onClick={() => copyShareLink(token)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl text-sm hover:bg-white/10 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-white/5 rounded-xl text-sm hover:bg-white/10 transition-colors"
                       >
                         {copied === token ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                         {copied === token ? 'Copiado' : 'Copiar link'}
@@ -132,7 +139,7 @@ export default function CatalogsPage() {
                       <button
                         type="button"
                         onClick={() => setShareCatalog({ id: catalog.id, name: catalog.name })}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#25D366] text-black font-bold rounded-xl text-sm"
+                        className="flex items-center gap-2 px-4 py-2 min-h-[44px] bg-[#25D366] text-black font-bold rounded-xl text-sm"
                       >
                         <MessageCircle className="w-4 h-4" />
                         WhatsApp

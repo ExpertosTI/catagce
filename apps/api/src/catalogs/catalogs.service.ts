@@ -1,8 +1,8 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { DRIZZLE } from '../database/database.module';
-import { catalogs, catalogProducts, catalogPublications, sellerSettings } from '@catagce/db';
-import { eq } from 'drizzle-orm';
+import { catalogs, catalogProducts, catalogPublications, sellerSettings, products } from '@catagce/db';
+import { and, eq, inArray } from 'drizzle-orm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
@@ -25,6 +25,43 @@ export class CatalogsService {
       where: eq(catalogs.sellerId, sellerId),
       with: { catalogProducts: true, publications: true },
     });
+  }
+
+  async findOneForSeller(id: string, sellerId: string) {
+    const catalog = await this.db.query.catalogs.findFirst({
+      where: and(eq(catalogs.id, id), eq(catalogs.sellerId, sellerId)),
+      with: {
+        catalogProducts: { with: { product: { with: { stockLevels: true } } } },
+        publications: true,
+      },
+    });
+    if (!catalog) throw new NotFoundException('Catálogo no encontrado');
+    return catalog;
+  }
+
+  /** Reemplaza la lista de productos del catálogo (orden = orden del array). */
+  async setProducts(catalogId: string, sellerId: string, productIds: string[]) {
+    await this.findOneForSeller(catalogId, sellerId);
+
+    const unique = [...new Set((productIds || []).filter(Boolean))];
+    if (unique.length) {
+      const owned = await this.db
+        .select({ id: products.id })
+        .from(products)
+        .where(and(eq(products.sellerId, sellerId), inArray(products.id, unique), eq(products.isActive, true)));
+      if (owned.length !== unique.length) {
+        throw new BadRequestException('Uno o más productos no pertenecen a tu cuenta');
+      }
+    }
+
+    await this.db.delete(catalogProducts).where(eq(catalogProducts.catalogId, catalogId));
+    if (unique.length) {
+      await this.db.insert(catalogProducts).values(
+        unique.map((productId, index) => ({ catalogId, productId, sortOrder: index })),
+      );
+    }
+
+    return this.findOneForSeller(catalogId, sellerId);
   }
 
   async findBySlug(slug: string) {
