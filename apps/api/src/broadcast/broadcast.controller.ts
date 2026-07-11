@@ -1,6 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { BroadcastService } from './broadcast.service';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
+
+type CampaignBody = {
+  listId: string;
+  name: string;
+  messageText: string;
+  mediaUrl?: string;
+  mediaUrls?: string[];
+  delayMinSec?: number;
+  delayMaxSec?: number;
+};
 
 @Controller('broadcast')
 export class BroadcastController {
@@ -40,20 +50,27 @@ export class BroadcastController {
   }
 
   @Post('campaigns')
-  createCampaign(
-    @CurrentUser() user: UserPayload,
-    @Body() body: {
-      listId: string; name: string; messageText: string;
-      mediaUrl?: string; mediaUrls?: string[];
-      delayMinSec?: number; delayMaxSec?: number;
-    },
-  ) {
+  createCampaign(@CurrentUser() user: UserPayload, @Body() body: CampaignBody) {
     return this.broadcast.createCampaign(user.sellerId, body);
   }
 
   @Get('campaigns/:id')
   getCampaign(@CurrentUser() user: UserPayload, @Param('id') id: string) {
     return this.broadcast.getCampaign(user.sellerId, id);
+  }
+
+  @Patch('campaigns/:id')
+  updateCampaign(
+    @CurrentUser() user: UserPayload,
+    @Param('id') id: string,
+    @Body() body: Partial<CampaignBody>,
+  ) {
+    return this.broadcast.updateCampaign(user.sellerId, id, body);
+  }
+
+  @Post('campaigns/:id/duplicate')
+  duplicate(@CurrentUser() user: UserPayload, @Param('id') id: string) {
+    return this.broadcast.duplicateCampaign(user.sellerId, id);
   }
 
   @Post('campaigns/:id/start')

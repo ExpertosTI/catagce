@@ -7,7 +7,7 @@ import { DRIZZLE } from '../database/database.module';
 import { normalizePhoneDigits, isValidPhone } from '../common/utils/phone.util';
 import { BroadcastRunnerService } from './broadcast-runner.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { serializeMediaUrls } from './media-urls.util';
+import { parseMediaUrls, serializeMediaUrls } from './media-urls.util';
 
 function randDelay(min: number, max: number) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -80,6 +80,7 @@ export class BroadcastService {
     });
     return campaigns.map((c: any) => ({
       ...c,
+      mediaUrls: parseMediaUrls(c.mediaUrl),
       stats: this.jobStats(c.jobs || []),
     }));
   }
@@ -133,7 +134,72 @@ export class BroadcastService {
       with: { list: { with: { members: true } }, jobs: true },
     });
     if (!campaign) throw new NotFoundException('Campaña no encontrada');
-    return { ...campaign, stats: this.jobStats(campaign.jobs || []) };
+    return {
+      ...campaign,
+      mediaUrls: parseMediaUrls(campaign.mediaUrl),
+      stats: this.jobStats(campaign.jobs || []),
+    };
+  }
+
+  async updateCampaign(sellerId: string, id: string, body: {
+    listId?: string;
+    name?: string;
+    messageText?: string;
+    mediaUrl?: string;
+    mediaUrls?: string[];
+    delayMinSec?: number;
+    delayMaxSec?: number;
+  }) {
+    const campaign = await this.getCampaign(sellerId, id);
+    if (campaign.status === 'running') {
+      throw new BadRequestException('Pausa la campaña antes de editarla');
+    }
+
+    const listId = body.listId ?? campaign.listId;
+    if (body.listId && body.listId !== campaign.listId) {
+      const list = await this.db.query.broadcastLists.findFirst({
+        where: and(eq(broadcastLists.id, body.listId), eq(broadcastLists.sellerId, sellerId)),
+        with: { members: true },
+      });
+      if (!list) throw new NotFoundException('Lista no encontrada');
+      if (!list.members?.length) throw new BadRequestException('La lista no tiene contactos');
+    }
+
+    const urls = body.mediaUrls
+      ? body.mediaUrls
+      : (body.mediaUrl !== undefined
+        ? (body.mediaUrl ? [body.mediaUrl] : [])
+        : parseMediaUrls(campaign.mediaUrl));
+
+    await this.db.update(broadcastCampaigns).set({
+      listId,
+      name: body.name?.trim() || campaign.name,
+      messageText: body.messageText?.trim() || campaign.messageText,
+      mediaUrl: serializeMediaUrls(urls),
+      delayMinSec: body.delayMinSec ?? campaign.delayMinSec ?? 45,
+      delayMaxSec: body.delayMaxSec ?? campaign.delayMaxSec ?? 90,
+    }).where(and(eq(broadcastCampaigns.id, id), eq(broadcastCampaigns.sellerId, sellerId)));
+
+    return this.getCampaign(sellerId, id);
+  }
+
+  async duplicateCampaign(sellerId: string, id: string) {
+    const source = await this.getCampaign(sellerId, id);
+    const baseName = String(source.name || 'Campaña').replace(/\s*\(copia(?:\s*\d+)?\)\s*$/i, '').trim();
+    const copyName = `${baseName} (copia)`;
+
+    const [campaign] = await this.db.insert(broadcastCampaigns).values({
+      sellerId,
+      listId: source.listId,
+      name: copyName,
+      messageText: source.messageText,
+      mediaUrl: source.mediaUrl,
+      delayMinSec: source.delayMinSec ?? 45,
+      delayMaxSec: source.delayMaxSec ?? 90,
+      status: 'draft',
+    }).returning();
+
+    return this.getCampaign(sellerId, campaign.id);
   }
 
   async startCampaign(sellerId: string, id: string) {

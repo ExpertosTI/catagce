@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Radio, Plus, Users, Play, Pause, List, MessageCircle, RotateCcw } from 'lucide-react';
+import { Radio, Plus, Users, Play, Pause, List, MessageCircle, RotateCcw, Copy, Pencil } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ImagePicker } from '@/components/ImagePicker';
 import { apiFetch } from '@/lib/api';
@@ -12,11 +12,37 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 type ListRow = { id: string; name: string; description?: string; members?: Array<{ id: string; name: string; phone: string }> };
 type CampaignJob = { id: string; phone: string; contactName?: string; status: string; error?: string };
 type Campaign = {
-  id: string; name: string; status: string; messageText: string; mediaUrl?: string;
-  list?: { name: string }; stats: { total: number; sent: number; pending: number; failed: number };
+  id: string;
+  name: string;
+  status: string;
+  messageText: string;
+  mediaUrl?: string;
+  mediaUrls?: string[];
+  listId?: string;
+  delayMinSec?: number;
+  delayMaxSec?: number;
+  list?: { id?: string; name: string };
+  stats: { total: number; sent: number; pending: number; failed: number };
   jobs?: CampaignJob[];
 };
 type Contact = { id: string; name: string; phone: string };
+
+const emptyForm = {
+  listId: '', name: '', messageText: '', mediaUrls: [] as string[], delayMinSec: 45, delayMaxSec: 90,
+};
+
+function parseMediaUrls(raw?: string | null, urls?: string[]): string[] {
+  if (urls?.length) return urls;
+  if (!raw?.trim()) return [];
+  const value = raw.trim();
+  if (value.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+    } catch { /* ignore */ }
+  }
+  return [value];
+}
 
 export default function DifusionPage() {
   const { ensureAuth, onApiError } = useRequireAuth();
@@ -28,10 +54,10 @@ export default function DifusionPage() {
   const [newListName, setNewListName] = useState('');
   const [selectedList, setSelectedList] = useState<string | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
-  const [campaignForm, setCampaignForm] = useState({
-    listId: '', name: '', messageText: '', mediaUrls: [] as string[], delayMinSec: 45, delayMaxSec: 90,
-  });
-  const [showNewCampaign, setShowNewCampaign] = useState(false);
+  const [campaignForm, setCampaignForm] = useState(emptyForm);
+  const [showCampaignForm, setShowCampaignForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [waStatus, setWaStatus] = useState<{ instance?: string; state?: string; connected?: boolean; ready?: boolean } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -61,6 +87,39 @@ export default function DifusionPage() {
     return () => clearInterval(timer);
   }, [campaigns, refresh]);
 
+  const closeCampaignForm = () => {
+    setShowCampaignForm(false);
+    setEditingId(null);
+    setCampaignForm(emptyForm);
+  };
+
+  const openNewCampaign = () => {
+    setError('');
+    setEditingId(null);
+    setCampaignForm(emptyForm);
+    setShowCampaignForm(true);
+  };
+
+  const openEditCampaign = (c: Campaign) => {
+    setError('');
+    if (c.status === 'running') {
+      setError('Pausa la campaña antes de editarla');
+      return;
+    }
+    setEditingId(c.id);
+    setCampaignForm({
+      listId: c.listId || c.list?.id || '',
+      name: c.name,
+      messageText: c.messageText,
+      mediaUrls: parseMediaUrls(c.mediaUrl, c.mediaUrls),
+      delayMinSec: c.delayMinSec ?? 45,
+      delayMaxSec: c.delayMaxSec ?? 90,
+    });
+    setShowCampaignForm(true);
+    setTab('campaigns');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const createList = async () => {
     if (!newListName.trim()) return;
     await apiFetch('/broadcast/lists', { method: 'POST', body: JSON.stringify({ name: newListName }) });
@@ -81,39 +140,69 @@ export default function DifusionPage() {
     refresh();
   };
 
-  const createCampaign = async () => {
+  const saveCampaign = async () => {
     if (!campaignForm.listId || !campaignForm.name.trim() || !campaignForm.messageText.trim()) {
       setError('Completa lista, nombre y mensaje');
       return;
     }
-    await apiFetch('/broadcast/campaigns', {
-      method: 'POST',
-      body: JSON.stringify({
+    setSaving(true);
+    setError('');
+    try {
+      const body = {
         listId: campaignForm.listId,
         name: campaignForm.name,
         messageText: campaignForm.messageText,
         mediaUrls: campaignForm.mediaUrls,
         delayMinSec: campaignForm.delayMinSec,
         delayMaxSec: campaignForm.delayMaxSec,
-      }),
-    });
-    setShowNewCampaign(false);
-    setCampaignForm({ listId: '', name: '', messageText: '', mediaUrls: [], delayMinSec: 45, delayMaxSec: 90 });
-    setTab('campaigns');
-    refresh();
+      };
+      if (editingId) {
+        await apiFetch(`/broadcast/campaigns/${editingId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(body),
+        });
+      } else {
+        await apiFetch('/broadcast/campaigns', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+      }
+      closeCampaignForm();
+      setTab('campaigns');
+      await refresh();
+    } catch (err) {
+      if (!onApiError(err)) setError(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const startCampaign = async (id: string) => {
+  const duplicateCampaign = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setError('');
+    try {
+      const copy = await apiFetch<Campaign>(`/broadcast/campaigns/${id}/duplicate`, { method: 'POST' });
+      await refresh();
+      openEditCampaign(copy);
+    } catch (err) {
+      if (!onApiError(err)) setError(getErrorMessage(err));
+    }
+  };
+
+  const startCampaign = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     await apiFetch(`/broadcast/campaigns/${id}/start`, { method: 'POST' });
     refresh();
   };
 
-  const pauseCampaign = async (id: string) => {
+  const pauseCampaign = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     await apiFetch(`/broadcast/campaigns/${id}/pause`, { method: 'POST' });
     refresh();
   };
 
-  const retryFailed = async (id: string) => {
+  const retryFailed = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     await apiFetch(`/broadcast/campaigns/${id}/retry-failed`, { method: 'POST' });
     refresh();
   };
@@ -239,14 +328,18 @@ export default function DifusionPage() {
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() => setShowNewCampaign(true)}
+            onClick={openNewCampaign}
             className="w-full py-3 rounded-xl bg-[#FF8A00] text-black font-bold flex items-center justify-center gap-2"
           >
             <MessageCircle className="w-5 h-5" /> Nueva campaña
           </button>
 
-          {showNewCampaign && (
-            <div className="glass rounded-2xl p-4 space-y-3">
+          {showCampaignForm && (
+            <div className="glass rounded-2xl p-4 space-y-3 border border-[#FF8A00]/30">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#FF8A00]">
+                <Pencil className="w-4 h-4" />
+                {editingId ? 'Editar campaña' : 'Nueva campaña'}
+              </div>
               <select
                 value={campaignForm.listId}
                 onChange={(e) => setCampaignForm({ ...campaignForm, listId: e.target.value })}
@@ -286,17 +379,36 @@ export default function DifusionPage() {
                 </label>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={createCampaign} className="flex-1 py-2 rounded-xl bg-[#25D366] text-black font-bold">Crear</button>
-                <button type="button" onClick={() => setShowNewCampaign(false)} className="px-4 py-2 text-gray-400">Cancelar</button>
+                <button
+                  type="button"
+                  onClick={saveCampaign}
+                  disabled={saving}
+                  className="flex-1 py-2 rounded-xl bg-[#25D366] text-black font-bold disabled:opacity-60"
+                >
+                  {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear'}
+                </button>
+                <button type="button" onClick={closeCampaignForm} className="px-4 py-2 text-gray-400">Cancelar</button>
               </div>
             </div>
           )}
 
           {campaigns.map((c) => (
-            <div key={c.id} className="glass rounded-2xl p-4">
+            <div
+              key={c.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => openEditCampaign(c)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openEditCampaign(c); }}
+              className={`glass rounded-2xl p-4 cursor-pointer transition-colors hover:border-[#00D1FF]/30 ${
+                editingId === c.id ? 'border border-[#FF8A00]/40' : ''
+              }`}
+            >
               <div className="flex justify-between items-start gap-2">
-                <div>
-                  <h3 className="font-bold">{c.name}</h3>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold flex items-center gap-2">
+                    {c.name}
+                    <span className="text-[10px] font-normal text-gray-500">tocar para editar</span>
+                  </h3>
                   <p className="text-xs text-gray-500">{c.list?.name} · {c.status}</p>
                   <p className="text-sm text-gray-400 mt-2 line-clamp-2">{c.messageText}</p>
                   <p className="text-xs mt-2 text-[#00D1FF]">
@@ -307,25 +419,33 @@ export default function DifusionPage() {
                       {j.contactName || j.phone}: {j.error || 'Error desconocido'}
                     </p>
                   ))}
-                  {(c.jobs || []).filter((j) => j.status === 'pending').map((j) => (
+                  {(c.jobs || []).filter((j) => j.status === 'pending').slice(0, 3).map((j) => (
                     <p key={j.id} className="text-xs mt-1 text-gray-500">
                       Pendiente: {j.contactName || j.phone}
                     </p>
                   ))}
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={(e) => duplicateCampaign(c.id, e)}
+                    className="p-2 rounded-lg bg-white/10 text-gray-300 hover:text-white"
+                    title="Duplicar campaña"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
                   {c.stats.failed > 0 && (
-                    <button type="button" onClick={() => retryFailed(c.id)} className="p-2 rounded-lg bg-white/10 text-[#00D1FF]" title="Reintentar fallidos">
+                    <button type="button" onClick={(e) => retryFailed(c.id, e)} className="p-2 rounded-lg bg-white/10 text-[#00D1FF]" title="Reintentar fallidos">
                       <RotateCcw className="w-4 h-4" />
                     </button>
                   )}
                   {c.status !== 'running' && c.status !== 'completed' && (
-                    <button type="button" onClick={() => startCampaign(c.id)} className="p-2 rounded-lg bg-[#25D366] text-black">
+                    <button type="button" onClick={(e) => startCampaign(c.id, e)} className="p-2 rounded-lg bg-[#25D366] text-black" title="Iniciar">
                       <Play className="w-4 h-4" />
                     </button>
                   )}
                   {c.status === 'running' && (
-                    <button type="button" onClick={() => pauseCampaign(c.id)} className="p-2 rounded-lg bg-[#FF8A00] text-black">
+                    <button type="button" onClick={(e) => pauseCampaign(c.id, e)} className="p-2 rounded-lg bg-[#FF8A00] text-black" title="Pausar">
                       <Pause className="w-4 h-4" />
                     </button>
                   )}
@@ -334,7 +454,7 @@ export default function DifusionPage() {
             </div>
           ))}
 
-          {campaigns.length === 0 && !showNewCampaign && (
+          {campaigns.length === 0 && !showCampaignForm && (
             <p className="text-center text-gray-500 py-8">Crea una campaña para enviar a tu lista con pausa automática.</p>
           )}
         </div>
