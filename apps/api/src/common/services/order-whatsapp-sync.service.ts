@@ -7,11 +7,11 @@ import {
   whatsappLabels,
   whatsappTickets,
 } from '@catagce/db';
-import { DRIZZLE } from '../database/database.module';
-import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { WhatsAppConnectService } from '../whatsapp-connect/whatsapp-connect.service';
-import { normalizePhoneDigits, isValidPhone } from './phone.util';
-import { orderRef } from './signed-prefill';
+import { DRIZZLE } from '../../database/database.module';
+import { WhatsAppService } from '../../whatsapp/whatsapp.service';
+import { WhatsAppConnectService } from '../../whatsapp-connect/whatsapp-connect.service';
+import { normalizePhoneDigits, isValidPhone } from '../utils/phone.util';
+import { orderRef } from '../utils/signed-prefill';
 
 const WEB_URL = (process.env.PUBLIC_WEB_URL || 'https://catagce.renace.tech').replace(/\/$/, '');
 
