@@ -2,5 +2,6 @@
 # Cada vendedor de Catagce crea su propia instancia y escanea QR en Config → WhatsApp.
 EVOLUTION_API_URL=https://evoapi.renace.tech
 EVOLUTION_API_KEY=tu-api-key-global
-# Instancia de plataforma (OTP login/registro Catagce). Opcional si solo usas WhatsApp por vendedor.
-EVOLUTION_INSTANCE=RENACE.TECH
+# Instancia de plataforma (OTP login/registro Catagce). Debe existir y estar open.
+# RENACE.TECH ya no existe — usar renace-biz (8093487921).
+EVOLUTION_INSTANCE=renace-biz
