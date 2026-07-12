@@ -3,6 +3,7 @@
 # Valores evidenciado (no inventar):
 #   Evolution Manager: instancia RENACE.TECH (JID 18495684958)
 #   Diagnóstico del repo: admin@renace.tech
+# No reinicia ni reconecta Evolution (eso dejó state=close/connecting).
 set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd "$(dirname "$0")/.."
 

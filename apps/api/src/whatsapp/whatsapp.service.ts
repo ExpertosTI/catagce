@@ -175,12 +175,18 @@ export class WhatsAppService {
     return { ok: false, error: lastError, detail: lastDetail };
   }
 
-  /** Nombre visible en el chat (no el número). Evolution: POST /chat/updateProfileName/{instance} */
+  /** Nombre visible en el chat (no el número). Evolution: POST /chat/updateProfileName/{instance}
+   * Solo con sesión open — si close/connecting, no llamar (evita errores y no reconectar desde API).
+   */
   async updateProfileName(name: string, creds?: EvolutionCreds | null): Promise<SendResult> {
     const c = creds || platformEvolution();
     if (!c) return { ok: false, error: 'not_configured' };
     const trimmed = String(name || '').trim();
     if (!trimmed) return { ok: false, error: 'empty_name' };
+    const st = await this.status(c);
+    if (!st.ready) {
+      return { ok: false, error: 'not_open', detail: `state=${st.state || 'unknown'}` };
+    }
     const res = await this.evolutionFetch('/chat/updateProfileName/{instance}', {
       method: 'POST',
       body: JSON.stringify({ name: trimmed }),

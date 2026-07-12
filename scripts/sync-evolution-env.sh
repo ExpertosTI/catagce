@@ -4,6 +4,7 @@
 #   RENACE.TECH — JID 18495684958@s.whatsapp.net
 # URL/KEY se leen de .env + .evolution.local (no se inventan).
 # NO usar el token de instancia (45FCC9…) como EVOLUTION_API_KEY.
+# NO llama restart/connect/logout en evoapi — solo env del servicio Swarm.
 set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd "$(dirname "$0")/.."
 
