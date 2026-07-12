@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@ne
 import { PlansService } from '../plans/plans.service';
 import { SurveyService } from '../survey/survey.service';
 import { PlatformAdminService } from './platform-admin.service';
+import { PlatformWhatsAppService } from './platform-whatsapp.service';
 import { RequirePlatformAdmin } from '../common/decorators/feature.decorator';
 import { PlatformAdminGuard } from '../common/guards/platform-admin.guard';
 import { CurrentUser, UserPayload } from '../common/decorators/user.decorator';
@@ -12,6 +13,7 @@ export class PlatformController {
     private readonly plans: PlansService,
     private readonly survey: SurveyService,
     private readonly admin: PlatformAdminService,
+    private readonly platformWa: PlatformWhatsAppService,
   ) {}
 
   /** Seller autenticado: pedir upgrade / reportar pago */
@@ -109,5 +111,40 @@ export class PlatformController {
   @UseGuards(PlatformAdminGuard)
   patchSurvey(@Body() body: { isOpen?: boolean; endsAt?: string; extendDays?: number }) {
     return this.survey.updateMeta(body);
+  }
+
+  @Get('whatsapp')
+  @RequirePlatformAdmin()
+  @UseGuards(PlatformAdminGuard)
+  whatsappStatus() {
+    return this.platformWa.status();
+  }
+
+  @Post('whatsapp/link')
+  @RequirePlatformAdmin()
+  @UseGuards(PlatformAdminGuard)
+  whatsappLink(@Body() body: { instance: string; displayName?: string }) {
+    return this.platformWa.link(body.instance, body.displayName);
+  }
+
+  @Post('whatsapp/qr')
+  @RequirePlatformAdmin()
+  @UseGuards(PlatformAdminGuard)
+  whatsappQr() {
+    return this.platformWa.startQr();
+  }
+
+  @Post('whatsapp/display-name')
+  @RequirePlatformAdmin()
+  @UseGuards(PlatformAdminGuard)
+  whatsappDisplayName(@Body() body: { name: string }) {
+    return this.platformWa.setDisplayName(body.name);
+  }
+
+  @Post('whatsapp/unlink')
+  @RequirePlatformAdmin()
+  @UseGuards(PlatformAdminGuard)
+  whatsappUnlink() {
+    return this.platformWa.unlink();
   }
 }

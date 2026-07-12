@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/dashboard/platform/requests', label: 'Solicitudes' },
   { href: '/dashboard/platform/sellers', label: 'Sellers' },
   { href: '/dashboard/platform/plans', label: 'Planes' },
+  { href: '/dashboard/platform/whatsapp', label: 'WhatsApp' },
   { href: '/dashboard/platform/encuesta', label: 'Encuesta' },
 ] as const;
 

@@ -51,7 +51,7 @@ if [ -f scripts/catagce-schema-patch.sql ]; then
   fi
 fi
 
-for patch in scripts/schema-patch-plans.sql scripts/schema-patch-encuesta.sql scripts/schema-patch-plan-requests.sql; do
+for patch in scripts/schema-patch-plans.sql scripts/schema-patch-encuesta.sql scripts/schema-patch-plan-requests.sql scripts/schema-patch-platform-settings.sql; do
   if [ -f "$patch" ]; then
     echo "🗄️  Aplicando $patch ..."
     bash scripts/schema-patch.sh "$patch" || true

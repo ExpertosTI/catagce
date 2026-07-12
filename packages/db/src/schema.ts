@@ -90,6 +90,17 @@ export const platformAdmins = pgTable('platform_admins', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+/** Singleton: WhatsApp de uso general (OTP login, avisos platform). Lo configura el platform admin. */
+export const platformSettings = pgTable('platform_settings', {
+  id: serial('id').primaryKey(),
+  evolutionInstance: text('evolution_instance'),
+  evolutionToken: text('evolution_token'),
+  evolutionStatus: text('evolution_status'),
+  evolutionPhone: text('evolution_phone'),
+  profileDisplayName: text('profile_display_name'),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 /** Solicitudes de upgrade / pago reportado por el seller */
 export const planChangeRequests = pgTable('plan_change_requests', {
   id: uuid('id').defaultRandom().primaryKey(),
