@@ -75,10 +75,18 @@ export class SellersService {
     const keys = await this.db.query.sellerApiKeys.findMany({
       where: eq(sellerApiKeys.sellerId, sellerId),
     });
-    return keys.map((k: { id: string; name: string; key: string; lastUsedAt: Date | null; createdAt: Date }) => ({
+    return keys.map((k: {
+      id: string;
+      name: string;
+      key: string | null;
+      keyPrefix: string | null;
+      lastUsedAt: Date | null;
+      createdAt: Date;
+    }) => ({
       id: k.id,
       name: k.name,
-      keyPreview: `${k.key.slice(0, 8)}...${k.key.slice(-4)}`,
+      keyPreview: k.keyPrefix
+        || (k.key ? `${k.key.slice(0, 8)}…${k.key.slice(-4)}` : '••••'),
       lastUsedAt: k.lastUsedAt,
       createdAt: k.createdAt,
     }));

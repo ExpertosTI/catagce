@@ -4,6 +4,7 @@ import { sellerSettings, sellers } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { EvolutionCreds, evolutionAdminKey, evolutionConfigured } from '../whatsapp/evolution-config';
+import { decryptSecret, encryptSecret } from '../common/security/crypto.util';
 
 function instanceNameFor(sellerId: string, slug?: string | null) {
   const base = (slug || sellerId.slice(0, 8))
@@ -67,22 +68,33 @@ export class WhatsAppConnectService {
     return this.db.query.sellerSettings.findFirst({ where: eq(sellerSettings.sellerId, sellerId) });
   }
 
-  private async upsertSettings(sellerId: string, patch: Record<string, unknown>) {
-    const existing = await this.getSettings(sellerId);
-    if (existing) {
-      await this.db.update(sellerSettings).set({ ...patch, updatedAt: new Date() })
-        .where(eq(sellerSettings.sellerId, sellerId));
-    } else {
-      await this.db.insert(sellerSettings).values({ sellerId, ...patch });
-    }
-  }
-
   async getCreds(sellerId: string): Promise<EvolutionCreds | null> {
     const settings = await this.getSettings(sellerId);
     if (settings?.evolutionInstance && settings?.evolutionToken) {
-      return { instance: settings.evolutionInstance, apiKey: settings.evolutionToken };
+      let apiKey = '';
+      try {
+        apiKey = decryptSecret(settings.evolutionToken) || '';
+      } catch {
+        apiKey = String(settings.evolutionToken);
+      }
+      if (!apiKey) return null;
+      return { instance: settings.evolutionInstance, apiKey };
     }
     return null;
+  }
+
+  private async upsertSettings(sellerId: string, patch: Record<string, unknown>) {
+    const next = { ...patch };
+    if (typeof next.evolutionToken === 'string' && next.evolutionToken) {
+      next.evolutionToken = encryptSecret(next.evolutionToken);
+    }
+    const existing = await this.getSettings(sellerId);
+    if (existing) {
+      await this.db.update(sellerSettings).set({ ...next, updatedAt: new Date() })
+        .where(eq(sellerSettings.sellerId, sellerId));
+    } else {
+      await this.db.insert(sellerSettings).values({ sellerId, ...next });
+    }
   }
 
   private async registerWebhook(creds: EvolutionCreds) {
@@ -165,10 +177,17 @@ export class WhatsAppConnectService {
     const seller = await this.getSeller(sellerId);
     let settings = await this.getSettings(sellerId);
     let instance = settings?.evolutionInstance || instanceNameFor(sellerId, seller.slug);
-    let token = settings?.evolutionToken || null;
+    let tokenPlain: string | null = null;
+    if (settings?.evolutionToken) {
+      try {
+        tokenPlain = decryptSecret(settings.evolutionToken);
+      } catch {
+        tokenPlain = String(settings.evolutionToken);
+      }
+    }
     let qr: string | null = null;
 
-    if (!token) {
+    if (!tokenPlain) {
       const created = await this.whatsapp.createInstance(instance);
       if (!created.ok) {
         // Instance may already exist — try fetch connect with admin key as instance name
@@ -183,25 +202,25 @@ export class WhatsAppConnectService {
           );
         }
         qr = extractQr(retry.data);
-        token = evolutionAdminKey();
+        tokenPlain = evolutionAdminKey();
         await this.upsertSettings(sellerId, {
           evolutionInstance: instance,
-          evolutionToken: token,
+          evolutionToken: tokenPlain,
           evolutionStatus: 'connecting',
         });
       } else {
-        token = extractHash(created.data) || evolutionAdminKey();
+        tokenPlain = extractHash(created.data) || evolutionAdminKey();
         qr = extractQr(created.data);
         instance = created.data?.instance?.instanceName || instance;
         await this.upsertSettings(sellerId, {
           evolutionInstance: instance,
-          evolutionToken: token,
+          evolutionToken: tokenPlain,
           evolutionStatus: 'connecting',
         });
       }
     }
 
-    const creds: EvolutionCreds = { instance, apiKey: token! };
+    const creds: EvolutionCreds = { instance, apiKey: tokenPlain! };
     if (!qr) {
       const conn = await this.whatsapp.connectInstance(creds);
       if (!conn.ok) {

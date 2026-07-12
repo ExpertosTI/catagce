@@ -4,9 +4,14 @@
 # 1) Meta Business Suite → WhatsApp → API Setup
 # 2) Crea plantilla AUTHENTICATION (ej. catagce_otp) y espera APPROVED
 # 3) Copia token permanente (system user) + Phone number ID
+# 4) Webhook callback: https://api.catagce.renace.tech/api/webhooks/meta
+#    Verify token = META_WA_VERIFY_TOKEN | App Secret = META_WA_APP_SECRET
 #
 META_WA_ACCESS_TOKEN=tu-token-permanente
 META_WA_PHONE_NUMBER_ID=123456789012345
+META_WA_APP_ID=
+META_WA_APP_SECRET=tu-app-secret
+META_WA_VERIFY_TOKEN=catagce-verify-cambia-esto
 # Opcional
 META_WA_WABA_ID=
 META_WA_OTP_TEMPLATE=catagce_otp
@@ -14,3 +19,6 @@ META_WA_OTP_LANG=es
 META_WA_GRAPH_VERSION=v21.0
 # cloud | evolution — canal preferido para OTP/avisos plataforma
 META_WA_NOTIFY_CHANNEL=cloud
+
+# AES-256-GCM para tokens en DB (hex 64 chars o passphrase). Obligatorio en prod si cifras.
+ENCRYPTION_KEY=

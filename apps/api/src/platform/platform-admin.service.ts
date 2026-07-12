@@ -255,7 +255,7 @@ export class PlatformAdminService {
     if (opts?.notifyWhatsApp !== false && seller.phone) {
       const res = await this.whatsapp.sendPlatformNotify(
         seller.phone,
-        `🔐 Restablecimiento de acceso Catagce\nEmail: ${owner.email}\nNueva contraseña temporal: ${temp}\nCámbiala al entrar en Configuración si puedes.`,
+        `🔐 Acceso Catagce restablecido.\nEmail: ${owner.email}\nLa contraseña temporal solo la ve el admin en el panel (no se envía por WhatsApp por seguridad).\nEntra en https://catagce.renace.tech/login y cámbiala en Configuración.`,
       );
       whatsappSent = Boolean(res && 'ok' in res && res.ok);
     }
@@ -267,6 +267,7 @@ export class PlatformAdminService {
       temporaryPassword: temp,
       whatsappSent,
       phone: seller.phone || null,
+      note: 'La contraseña temporal solo se muestra aquí al admin; no se envía por WhatsApp.',
     };
   }
 

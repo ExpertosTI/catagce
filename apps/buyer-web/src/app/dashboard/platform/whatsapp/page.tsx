@@ -221,11 +221,31 @@ export default function PlatformWhatsAppPage() {
       <h1 className="text-2xl font-bold mb-2">WhatsApp de plataforma</h1>
       <p className="text-sm text-gray-400 mb-6 max-w-2xl">
         Usa <strong className="text-white">Cloud API (Meta)</strong> para OTP y avisos oficiales (menos ban).
-        Evolution queda para sellers o como respaldo.
+        Evolution queda para sellers o como respaldo. Las difusiones Baileys del seller
+        <strong className="text-white"> no usan</strong> el número Cloud, pero sí pueden quemar el WA vinculado del seller.
       </p>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
       {msg && <p className="mb-4 text-sm text-[#00D1FF]">{msg}</p>}
+
+      <div className="glass rounded-2xl p-5 max-w-2xl mb-6 space-y-2 text-sm">
+        <h2 className="font-bold text-white">Webhook Meta (inbound / statuses)</h2>
+        <p className="text-gray-400">
+          En Meta App → WhatsApp → Configuration, callback URL:
+        </p>
+        <code className="block break-all rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-xs text-[#00D1FF]">
+          https://api.catagce.renace.tech/api/webhooks/meta
+        </code>
+        <p className="text-gray-400">
+          Verify token = <code className="text-gray-200">META_WA_VERIFY_TOKEN</code> en{' '}
+          <code className="text-gray-200">.meta-wa.local</code> del servidor.
+          App Secret = <code className="text-gray-200">META_WA_APP_SECRET</code> (firma{' '}
+          <code className="text-gray-200">X-Hub-Signature-256</code>).
+        </p>
+        <p className="text-xs text-gray-500">
+          Suscribe el campo <code className="text-gray-400">messages</code> para statuses delivered/read/failed.
+        </p>
+      </div>
 
       {status && (
         <div className={`mb-6 rounded-xl px-4 py-3 text-sm border max-w-2xl ${

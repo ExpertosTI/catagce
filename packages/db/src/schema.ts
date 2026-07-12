@@ -109,6 +109,17 @@ export const platformSettings = pgTable('platform_settings', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+/** Eventos Cloud API (statuses / inbound) */
+export const metaMessageEvents = pgTable('meta_message_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  wamid: text('wamid').notNull(),
+  phoneNumberId: text('phone_number_id'),
+  status: text('status').notNull(),
+  recipientId: text('recipient_id'),
+  payload: jsonb('payload'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 /** Solicitudes de upgrade / pago reportado por el seller */
 export const planChangeRequests = pgTable('plan_change_requests', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -175,7 +186,10 @@ export const sellerUsers = pgTable('seller_users', {
 export const sellerApiKeys = pgTable('seller_api_keys', {
   id: uuid('id').defaultRandom().primaryKey(),
   sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
-  key: text('key').notNull().unique(),
+  /** Legacy plaintext — dejar null tras migrar a key_hash */
+  key: text('key'),
+  keyHash: text('key_hash'),
+  keyPrefix: text('key_prefix'),
   name: text('name').notNull().default('Default'),
   lastUsedAt: timestamp('last_used_at'),
   createdAt: timestamp('created_at').defaultNow(),

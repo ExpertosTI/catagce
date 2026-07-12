@@ -8,20 +8,19 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { createHash, timingSafeEqual } from 'crypto';
+import { RedisService } from '../redis/redis.service';
 
 export const THROTTLE_KEY = 'throttle';
 export const Throttle = (limit: number, windowMs: number) =>
   SetMetadata(THROTTLE_KEY, { limit, windowMs });
 
 type Bucket = { count: number; resetAt: number };
+const memoryBuckets = new Map<string, Bucket>();
 
-const buckets = new Map<string, Bucket>();
-
-/** Limpieza periódica para no crecer sin límite en memoria */
 setInterval(() => {
   const now = Date.now();
-  for (const [k, b] of buckets) {
-    if (b.resetAt <= now) buckets.delete(k);
+  for (const [k, b] of memoryBuckets) {
+    if (b.resetAt <= now) memoryBuckets.delete(k);
   }
 }, 60_000).unref?.();
 
@@ -32,29 +31,43 @@ function clientKey(req: any): string {
   return `${ip}:${user}`;
 }
 
+function memoryIncr(key: string, windowMs: number): number {
+  const now = Date.now();
+  let bucket = memoryBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    bucket = { count: 0, resetAt: now + windowMs };
+    memoryBuckets.set(key, bucket);
+  }
+  bucket.count += 1;
+  return bucket.count;
+}
+
 @Injectable()
 export class ThrottleGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private redis: RedisService,
+  ) {}
 
-  canActivate(ctx: ExecutionContext): boolean {
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const meta = this.reflector.getAllAndOverride<{ limit: number; windowMs: number } | undefined>(
       THROTTLE_KEY,
       [ctx.getHandler(), ctx.getClass()],
     );
-    // Default global: 120 req / minuto por IP(+seller)
     const limit = meta?.limit ?? 120;
     const windowMs = meta?.windowMs ?? 60_000;
     const req = ctx.switchToHttp().getRequest();
     const route = `${req.method}:${req.route?.path || req.url?.split('?')[0] || ''}`;
-    const key = `${clientKey(req)}:${route}:${limit}:${windowMs}`;
-    const now = Date.now();
-    let bucket = buckets.get(key);
-    if (!bucket || bucket.resetAt <= now) {
-      bucket = { count: 0, resetAt: now + windowMs };
-      buckets.set(key, bucket);
+    const key = `throttle:${clientKey(req)}:${route}:${limit}:${windowMs}`;
+
+    let count = 0;
+    try {
+      count = await this.redis.incrWithTtl(key, windowMs);
+    } catch {
+      count = memoryIncr(key, windowMs);
     }
-    bucket.count += 1;
-    if (bucket.count > limit) {
+
+    if (count > limit) {
       throw new HttpException(
         { message: 'Demasiadas solicitudes. Intenta de nuevo en un momento.', statusCode: 429 },
         HttpStatus.TOO_MANY_REQUESTS,

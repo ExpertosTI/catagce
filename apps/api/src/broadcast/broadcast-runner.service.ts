@@ -5,6 +5,7 @@ import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { parseMediaUrls } from './media-urls.util';
 import { EvolutionCreds } from '../whatsapp/evolution-config';
+import { decryptSecret } from '../common/security/crypto.util';
 
 @Injectable()
 export class BroadcastRunnerService implements OnModuleInit {
@@ -24,7 +25,13 @@ export class BroadcastRunnerService implements OnModuleInit {
       where: eq(sellerSettings.sellerId, sellerId),
     });
     if (settings?.evolutionInstance && settings?.evolutionToken) {
-      return { instance: settings.evolutionInstance, apiKey: settings.evolutionToken };
+      let apiKey = '';
+      try {
+        apiKey = decryptSecret(settings.evolutionToken) || '';
+      } catch {
+        apiKey = String(settings.evolutionToken);
+      }
+      return { instance: settings.evolutionInstance, apiKey };
     }
     return null;
   }

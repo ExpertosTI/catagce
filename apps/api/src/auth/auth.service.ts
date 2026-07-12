@@ -11,6 +11,7 @@ import { DRIZZLE } from '../database/database.module';
 import { AuditService } from '../common/services/audit.service';
 import { VerificationService } from './verification.service';
 import { normalizePhoneDigits, waEmailFromPhone, isValidPhone } from '../common/utils/phone.util';
+import { apiKeyPrefix, hashApiKey } from '../common/security/crypto.util';
 
 @Injectable()
 export class AuthService {
@@ -93,7 +94,13 @@ export class AuthService {
       role: 'owner',
     }).returning();
 
-    await this.db.insert(sellerApiKeys).values({ sellerId: seller.id, key: apiKey, name: 'Default' });
+    await this.db.insert(sellerApiKeys).values({
+      sellerId: seller.id,
+      key: null,
+      keyHash: hashApiKey(apiKey),
+      keyPrefix: apiKeyPrefix(apiKey),
+      name: 'Default',
+    });
     await this.db.insert(sellerBranding).values({ sellerId: seller.id });
     await this.db.insert(sellerSettings).values({
       sellerId: seller.id,
@@ -131,13 +138,17 @@ export class AuthService {
 
     await this.db.update(sellerUsers).set({ lastLoginAt: new Date() }).where(eq(sellerUsers.id, user.id));
 
-    const [apiKeyRecord] = await this.db.select({ key: sellerApiKeys.key })
+    const [apiKeyRecord] = await this.db.select({
+      keyPrefix: sellerApiKeys.keyPrefix,
+    })
       .from(sellerApiKeys).where(eq(sellerApiKeys.sellerId, seller.id)).limit(1);
 
     const token = this.signToken(user, seller);
     return {
       token,
-      apiKey: apiKeyRecord?.key,
+      // No devolver plaintext; solo prefijo (la key se muestra una vez al crear)
+      apiKey: null,
+      apiKeyPrefix: apiKeyRecord?.keyPrefix || null,
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
       seller: { id: seller.id, name: seller.name, slug: seller.slug, email: seller.email },
     };
@@ -187,7 +198,13 @@ export class AuthService {
         role: 'owner',
       }).returning();
 
-      await this.db.insert(sellerApiKeys).values({ sellerId: seller.id, key: apiKey, name: 'Default' });
+      await this.db.insert(sellerApiKeys).values({
+        sellerId: seller.id,
+        key: null,
+        keyHash: hashApiKey(apiKey),
+        keyPrefix: apiKeyPrefix(apiKey),
+        name: 'Default',
+      });
       await this.db.insert(sellerBranding).values({ sellerId: seller.id });
       await this.db.insert(sellerSettings).values({ sellerId: seller.id });
 
@@ -258,7 +275,7 @@ export class AuthService {
         .where(eq(sellerUsers.id, user.id));
 
       const [apiKeyRecord] = await this.db
-        .select({ key: sellerApiKeys.key })
+        .select({ keyPrefix: sellerApiKeys.keyPrefix })
         .from(sellerApiKeys)
         .where(eq(sellerApiKeys.sellerId, seller.id))
         .limit(1);
@@ -266,7 +283,8 @@ export class AuthService {
       const token = this.signToken(user, seller);
       return {
         token,
-        apiKey: apiKeyRecord?.key,
+        apiKey: null,
+        apiKeyPrefix: apiKeyRecord?.keyPrefix || null,
         user: { id: user.id, email: user.email, name: user.name, role: user.role },
         seller: { id: seller.id, name: seller.name, slug: seller.slug, email: seller.email },
       };

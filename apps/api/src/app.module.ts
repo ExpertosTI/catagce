@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { HealthController } from './health.controller';
 import { DatabaseModule } from './database/database.module';
+import { RedisModule } from './common/redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
@@ -20,6 +21,7 @@ import { ContactsModule } from './contacts/contacts.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
 import { WhatsAppConnectModule } from './whatsapp-connect/whatsapp-connect.module';
 import { EvolutionWebhookModule } from './evolution-webhook/evolution-webhook.module';
+import { MetaWebhookModule } from './meta-webhook/meta-webhook.module';
 import { OrderSyncModule } from './order-sync/order-sync.module';
 import { PlansModule } from './plans/plans.module';
 import { PlatformModule } from './platform/platform.module';
@@ -31,6 +33,7 @@ import { BullModule } from '@nestjs/bullmq';
 @Module({
   imports: [
     DatabaseModule,
+    RedisModule,
     AuthModule,
     ProductsModule,
     CatalogsModule,
@@ -49,6 +52,7 @@ import { BullModule } from '@nestjs/bullmq';
     BroadcastModule,
     WhatsAppConnectModule,
     EvolutionWebhookModule,
+    MetaWebhookModule,
     OrderSyncModule,
     PlansModule,
     PlatformModule,

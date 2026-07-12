@@ -3,11 +3,12 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 import { sellerApiKeys, sellers } from '@catagce/db';
 import { DRIZZLE } from '../../database/database.module';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService } from '../../auth/auth.service';
+import { hashApiKey } from '../security/crypto.util';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -43,13 +44,23 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Autenticación requerida (JWT Bearer o x-api-key)');
     }
 
+    const hashed = hashApiKey(apiKey);
     const [keyRecord] = await this.db
       .select()
       .from(sellerApiKeys)
-      .where(eq(sellerApiKeys.key, apiKey))
+      .where(or(eq(sellerApiKeys.keyHash, hashed), eq(sellerApiKeys.key, apiKey)))
       .limit(1);
 
     if (!keyRecord) throw new UnauthorizedException('API key inválida');
+
+    // Migración lazy: plaintext → hash
+    if (keyRecord.key && !keyRecord.keyHash) {
+      await this.db.update(sellerApiKeys).set({
+        keyHash: hashed,
+        keyPrefix: apiKey.length <= 12 ? apiKey : `${apiKey.slice(0, 8)}…${apiKey.slice(-4)}`,
+        key: null,
+      }).where(eq(sellerApiKeys.id, keyRecord.id));
+    }
 
     const [seller] = await this.db
       .select()

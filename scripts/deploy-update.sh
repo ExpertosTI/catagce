@@ -8,6 +8,9 @@ avail_gb() { df -BG / | awk 'NR==2 {gsub(/G/,"",$4); print $4}'; }
 echo "📥 Sync código..."
 git fetch --all && git reset --hard origin/main
 
+echo "💾 Backup DB (pre-deploy)..."
+bash scripts/backup-db.sh || echo "⚠️  backup-db omitido/falló — continúa"
+
 free="$(avail_gb 2>/dev/null || echo 0)"
 echo "💾 Disco libre: ${free}G"
 if [ "${free}" -lt 4 ] 2>/dev/null; then
@@ -37,7 +40,7 @@ if [ -f .evolution.local ]; then
     esac
   done < .evolution.local
 fi
-# .meta-wa.local pisa META_WA_* (Cloud API oficial — OTP/avisos)
+# .meta-wa.local pisa META_WA_* + ENCRYPTION_KEY (Cloud API oficial — OTP/avisos)
 if [ -f .meta-wa.local ]; then
   while IFS= read -r line; do
     [[ -z "$line" || "$line" =~ ^# ]] && continue
@@ -45,7 +48,7 @@ if [ -f .meta-wa.local ]; then
     val="${line#*=}"
     key="$(echo "$key" | tr -d '[:space:]')"
     case "$key" in
-      META_WA_*)
+      META_WA_*|ENCRYPTION_KEY)
         [ -n "$val" ] && export "$key=$val"
         ;;
     esac
@@ -53,7 +56,8 @@ if [ -f .meta-wa.local ]; then
 fi
 set +a
 echo "📱 Evolution INSTANCE=${EVOLUTION_INSTANCE:-∅}"
-echo "☁️  Meta Cloud PHONE_ID=${META_WA_PHONE_NUMBER_ID:-∅} channel=${META_WA_NOTIFY_CHANNEL:-cloud}"
+echo "☁️  Meta Cloud PHONE_ID=${META_WA_PHONE_NUMBER_ID:-∅} channel=${META_WA_NOTIFY_CHANNEL:-cloud} verify=${META_WA_VERIFY_TOKEN:+set}"
+[ -n "${ENCRYPTION_KEY:-}" ] || echo "⚠️  ENCRYPTION_KEY vacío — tokens WA se guardarán en claro hasta configurarlo"
 
 docker compose build --parallel api web
 
@@ -66,7 +70,13 @@ if [ -f scripts/catagce-schema-patch.sql ]; then
   fi
 fi
 
-for patch in scripts/schema-patch-plans.sql scripts/schema-patch-encuesta.sql scripts/schema-patch-plan-requests.sql scripts/schema-patch-platform-settings.sql; do
+for patch in \
+  scripts/schema-patch-plans.sql \
+  scripts/schema-patch-encuesta.sql \
+  scripts/schema-patch-plan-requests.sql \
+  scripts/schema-patch-platform-settings.sql \
+  scripts/schema-patch-enterprise-p0.sql
+do
   if [ -f "$patch" ]; then
     echo "🗄️  Aplicando $patch ..."
     bash scripts/schema-patch.sh "$patch" || true
@@ -105,8 +115,22 @@ for svc in api web; do
   fi
 done
 
-sleep 8
-curl -sf https://api.catagce.renace.tech/api/health && echo " ✅ API OK" || echo " ⏳ API arrancando..."
+echo "🩺 Health check..."
+health_ok=0
+for i in 1 2 3 4 5 6 7 8; do
+  if curl -sf https://api.catagce.renace.tech/api/health/ready >/dev/null 2>&1; then
+    echo " ✅ API ready (/api/health/ready)"
+    health_ok=1
+    break
+  fi
+  if curl -sf https://api.catagce.renace.tech/api/health >/dev/null 2>&1; then
+    echo " ⏳ live OK, waiting ready… ($i)"
+  else
+    echo " ⏳ API arrancando… ($i)"
+  fi
+  sleep 5
+done
+[ "$health_ok" -eq 1 ] || echo " ⚠️  /health/ready no respondió a tiempo — revisa logs"
 
 if [ "$api_ok" -eq 0 ]; then
   echo ""
@@ -118,4 +142,5 @@ if [ "$api_ok" -eq 0 ]; then
 fi
 
 echo "✅ Listo — https://catagce.renace.tech"
+echo "   Webhook Meta: https://api.catagce.renace.tech/api/webhooks/meta"
 echo "   (reset DB: bash scripts/reset-and-seed-server.sh all — solo si lo necesitas)"

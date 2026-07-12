@@ -6,6 +6,7 @@ import * as bcrypt from 'bcryptjs';
 import { verificationCodes } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { RedisService } from '../common/redis/redis.service';
 import {
   isValidPhone,
   maskPhone,
@@ -20,23 +21,25 @@ const MAX_VERIFY_ATTEMPTS = 5;
 
 @Injectable()
 export class VerificationService {
-  private sendLog = new Map<string, number[]>();
-
   constructor(
     @Inject(DRIZZLE) private db: any,
     private whatsapp: WhatsAppService,
     private jwt: JwtService,
+    private redis: RedisService,
   ) {}
 
-  private assertSendRate(phone: string) {
-    const now = Date.now();
-    const key = phone;
-    const hits = (this.sendLog.get(key) || []).filter((t) => now - t < SEND_WINDOW_MS);
-    if (hits.length >= MAX_SENDS_PER_WINDOW) {
+  private async assertSendRate(phone: string) {
+    const key = `otp:send:${phone}`;
+    let hits = 0;
+    try {
+      hits = await this.redis.incrWithTtl(key, SEND_WINDOW_MS);
+    } catch {
+      // Redis caído: no bloquear OTP, pero tampoco abrir flood infinito en esta réplica
+      hits = 1;
+    }
+    if (hits > MAX_SENDS_PER_WINDOW) {
       throw new HttpException('Demasiados intentos. Espere unos minutos.', HttpStatus.TOO_MANY_REQUESTS);
     }
-    hits.push(now);
-    this.sendLog.set(key, hits);
   }
 
   async sendCode(phoneRaw: string, purpose: 'register' | 'login') {
@@ -57,7 +60,7 @@ export class VerificationService {
       );
     }
 
-    this.assertSendRate(phone);
+    await this.assertSendRate(phone);
 
     const code = String(randomInt(100000, 999999));
     const codeHash = await bcrypt.hash(code, 10);

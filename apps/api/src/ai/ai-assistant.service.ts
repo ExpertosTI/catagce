@@ -4,6 +4,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { sellerSettings, aiChatSessions, aiChatMessages } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { AiToolsService } from './ai-tools.service';
+import { decryptSecret, encryptSecret } from '../common/security/crypto.util';
 
 const SYSTEM_PROMPT = `Eres Catagce AI, el super-asistente inteligente de la plataforma Catagce B2B.
 Puedes ejecutar CUALQUIER acción en la aplicación usando las herramientas disponibles.
@@ -86,28 +87,40 @@ export class AiAssistantService {
     const settings = await this.db.query.sellerSettings.findFirst({
       where: eq(sellerSettings.sellerId, sellerId),
     });
+    let preview: string | null = null;
+    if (settings?.googleAiApiKey) {
+      try {
+        const plain = decryptSecret(settings.googleAiApiKey) || '';
+        preview = plain.length > 10 ? `${plain.slice(0, 6)}…${plain.slice(-4)}` : '••••';
+      } catch {
+        preview = '••••';
+      }
+    }
     return {
       aiEnabled: settings?.aiEnabled ?? true,
       aiModel: settings?.aiModel ?? process.env.GOOGLE_AI_MODEL ?? 'gemini-2.5-flash',
-      hasApiKey: !!settings?.googleAiApiKey,
-      apiKeyPreview: settings?.googleAiApiKey
-        ? `${settings.googleAiApiKey.slice(0, 6)}...${settings.googleAiApiKey.slice(-4)}`
-        : null,
+      hasApiKey: Boolean(settings?.googleAiApiKey),
+      apiKeyPreview: preview,
     };
   }
 
   async updateConfig(sellerId: string, data: { googleAiApiKey?: string; aiModel?: string; aiEnabled?: boolean }) {
+    const patch: Record<string, unknown> = { ...data, updatedAt: new Date() };
+    if (typeof data.googleAiApiKey === 'string' && data.googleAiApiKey.trim()) {
+      patch.googleAiApiKey = encryptSecret(data.googleAiApiKey.trim());
+    } else {
+      delete patch.googleAiApiKey;
+    }
     const existing = await this.db.query.sellerSettings.findFirst({
       where: eq(sellerSettings.sellerId, sellerId),
     });
     if (existing) {
-      const [updated] = await this.db.update(sellerSettings)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(sellerSettings.sellerId, sellerId))
-        .returning();
+      await this.db.update(sellerSettings)
+        .set(patch)
+        .where(eq(sellerSettings.sellerId, sellerId));
       return this.getConfig(sellerId);
     }
-    await this.db.insert(sellerSettings).values({ sellerId, ...data });
+    await this.db.insert(sellerSettings).values({ sellerId, ...patch });
     return this.getConfig(sellerId);
   }
 
@@ -119,7 +132,14 @@ export class AiAssistantService {
       where: eq(sellerSettings.sellerId, sellerId),
     });
 
-    const apiKey = settings?.googleAiApiKey || process.env.GOOGLE_AI_API_KEY;
+    let apiKey = process.env.GOOGLE_AI_API_KEY || '';
+    if (settings?.googleAiApiKey) {
+      try {
+        apiKey = decryptSecret(settings.googleAiApiKey) || apiKey;
+      } catch {
+        apiKey = String(settings.googleAiApiKey);
+      }
+    }
     if (!apiKey) {
       throw new BadRequestException(
         'Configura tu Google AI API Key en Configuración → Superpower AI. Obtén una en https://aistudio.google.com/apikey',

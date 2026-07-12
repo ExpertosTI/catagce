@@ -8,6 +8,7 @@ import {
   evolutionAdminKey,
   evolutionConfigured,
 } from '../whatsapp/evolution-config';
+import { encryptSecret } from '../common/security/crypto.util';
 
 function extractQr(data: any): string | null {
   return (
@@ -116,7 +117,7 @@ export class PlatformWhatsAppService {
       notifyChannel: body.notifyChannel === 'evolution' ? 'evolution' : 'cloud',
     };
     if (body.accessToken?.trim()) {
-      patch.metaAccessToken = body.accessToken.trim();
+      patch.metaAccessToken = encryptSecret(body.accessToken.trim());
     } else if (!process.env.META_WA_ACCESS_TOKEN && !(await this.row())?.metaAccessToken) {
       throw new BadRequestException('Access token requerido (o META_WA_ACCESS_TOKEN en .env)');
     }
@@ -152,7 +153,7 @@ export class PlatformWhatsAppService {
 
     await this.save({
       evolutionInstance: instance,
-      evolutionToken: key,
+      evolutionToken: encryptSecret(key),
       evolutionStatus: 'unknown',
       profileDisplayName: String(displayName || 'RENACE.TECH').trim() || 'RENACE.TECH',
     });
@@ -195,7 +196,7 @@ export class PlatformWhatsAppService {
       }
       await this.save({
         evolutionInstance: instance,
-        evolutionToken: token,
+        evolutionToken: encryptSecret(String(token)),
         evolutionStatus: 'connecting',
       });
     }

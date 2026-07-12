@@ -9,6 +9,7 @@ import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { PlansService } from '../plans/plans.service';
 import { isValidPhone, normalizePhoneDigits } from '../common/utils/phone.util';
+import { decryptSecret } from '../common/security/crypto.util';
 
 const WEB_URL = (process.env.PUBLIC_WEB_URL || 'https://catagce.renace.tech').replace(/\/$/, '');
 
@@ -172,9 +173,16 @@ export class CatalogsService {
     const settings = await this.db.query.sellerSettings.findFirst({
       where: eq(sellerSettings.sellerId, sellerId),
     });
-    const creds = settings?.evolutionInstance && settings?.evolutionToken
-      ? { instance: settings.evolutionInstance, apiKey: settings.evolutionToken }
-      : null;
+    let creds: { instance: string; apiKey: string } | null = null;
+    if (settings?.evolutionInstance && settings?.evolutionToken) {
+      let apiKey = '';
+      try {
+        apiKey = decryptSecret(settings.evolutionToken) || '';
+      } catch {
+        apiKey = String(settings.evolutionToken);
+      }
+      if (apiKey) creds = { instance: settings.evolutionInstance, apiKey };
+    }
 
     if (!creds) {
       throw new BadRequestException('Conecta tu WhatsApp en Configuración para compartir');

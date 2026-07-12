@@ -7,7 +7,9 @@ import { requireJwtSecret } from './common/security/security.util';
 async function bootstrap() {
   requireJwtSecret();
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   app.useBodyParser('json', { limit: '256kb' });
   app.useBodyParser('urlencoded', { limit: '256kb', extended: true });
   app.setGlobalPrefix('api');

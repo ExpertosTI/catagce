@@ -13,6 +13,7 @@ import {
   platformEvolution,
 } from './evolution-config';
 import { MetaCloudWhatsAppService } from './meta-cloud-whatsapp.service';
+import { decryptSecret } from '../common/security/crypto.util';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/uploads';
 
@@ -49,8 +50,14 @@ export class WhatsAppService {
   async metaOverlayFromDb() {
     const row = await this.platformRow();
     if (!row?.metaPhoneNumberId && !row?.metaAccessToken) return null;
+    let accessToken: string | undefined;
+    try {
+      accessToken = decryptSecret(row.metaAccessToken) || undefined;
+    } catch {
+      accessToken = row.metaAccessToken || undefined;
+    }
     return {
-      accessToken: row.metaAccessToken || undefined,
+      accessToken,
       phoneNumberId: row.metaPhoneNumberId || undefined,
       wabaId: row.metaWabaId || undefined,
       otpTemplate: row.metaOtpTemplate || undefined,
@@ -72,7 +79,13 @@ export class WhatsAppService {
     try {
       const row = await this.platformRow();
       if (row?.evolutionInstance) {
-        const apiKey = String(row.evolutionToken || '').trim() || evolutionAdminKey();
+        let apiKey = '';
+        try {
+          apiKey = decryptSecret(row.evolutionToken) || '';
+        } catch {
+          apiKey = String(row.evolutionToken || '');
+        }
+        apiKey = apiKey.trim() || evolutionAdminKey();
         if (apiKey) return { instance: row.evolutionInstance, apiKey };
       }
     } catch {
