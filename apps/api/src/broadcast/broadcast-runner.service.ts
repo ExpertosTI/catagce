@@ -1,12 +1,16 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { broadcastCampaigns, broadcastJobs, sellerSettings } from '@catagce/db';
+import { broadcastCampaigns, broadcastJobs } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { WhatsAppConnectService } from '../whatsapp-connect/whatsapp-connect.service';
 import { parseMediaUrls } from './media-urls.util';
 import { EvolutionCreds } from '../whatsapp/evolution-config';
-import { decryptSecret } from '../common/security/crypto.util';
 
+/**
+ * Difusiones: SIEMPRE Evolution del seller (Baileys).
+ * Nunca Meta Cloud ni el número de plataforma.
+ */
 @Injectable()
 export class BroadcastRunnerService implements OnModuleInit {
   private ticking = false;
@@ -14,6 +18,7 @@ export class BroadcastRunnerService implements OnModuleInit {
   constructor(
     @Inject(DRIZZLE) private db: any,
     private whatsapp: WhatsAppService,
+    private connect: WhatsAppConnectService,
   ) {}
 
   onModuleInit() {
@@ -21,19 +26,7 @@ export class BroadcastRunnerService implements OnModuleInit {
   }
 
   private async sellerCreds(sellerId: string): Promise<EvolutionCreds | null> {
-    const settings = await this.db.query.sellerSettings.findFirst({
-      where: eq(sellerSettings.sellerId, sellerId),
-    });
-    if (settings?.evolutionInstance && settings?.evolutionToken) {
-      let apiKey = '';
-      try {
-        apiKey = decryptSecret(settings.evolutionToken) || '';
-      } catch {
-        apiKey = String(settings.evolutionToken);
-      }
-      return { instance: settings.evolutionInstance, apiKey };
-    }
-    return null;
+    return this.connect.getCreds(sellerId);
   }
 
   async processDueJobs() {
@@ -78,6 +71,7 @@ export class BroadcastRunnerService implements OnModuleInit {
       }).where(eq(broadcastJobs.id, jobId));
       return;
     }
+    // Pass explicit seller creds (never undefined → platform fallback)
     const result = await this.whatsapp.sendBundle(phone, {
       text: campaign.messageText,
       mediaUrls,

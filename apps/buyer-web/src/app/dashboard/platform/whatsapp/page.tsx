@@ -388,7 +388,8 @@ export default function PlatformWhatsAppPage() {
         <summary className="cursor-pointer font-bold text-gray-300">Evolution (legacy / sellers)</summary>
         <div className="mt-4 space-y-4">
           <p className="text-sm text-gray-400">
-            Solo si aún no tienes Cloud API. Riesgo de ban de sesión Baileys.
+            Solo respaldo de OTP si Cloud no está listo. Las difusiones/catálogos de cada seller usan
+            <strong className="text-gray-300"> su propio</strong> WhatsApp Evolution, no este número.
           </p>
           <label className="block text-sm">
             <span className="text-gray-400">Instancia Evolution</span>

@@ -180,7 +180,7 @@ export class PlatformAdminService {
         body.action === 'approve'
           ? `✅ Tu plan fue actualizado a *${req.toPlan}*. ¡Gracias por tu pago!`
           : `❌ Tu solicitud de plan *${req.toPlan}* no fue aprobada.${body.adminNote ? ` Motivo: ${body.adminNote}` : ''}`;
-      await this.whatsapp.sendText(seller.phone, msg).catch(() => null);
+      await this.whatsapp.sendPlatformNotify(seller.phone, msg).catch(() => null);
     }
 
     return updated;

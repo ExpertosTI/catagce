@@ -47,6 +47,20 @@ export function decryptSecret(stored: string | null | undefined): string | null 
   ]).toString('utf8');
 }
 
+/**
+ * Lectura segura: plaintext legacy OK; enc:v1 sin clave/corrupto → null (nunca devolver ciphertext).
+ */
+export function resolveStoredSecret(stored: string | null | undefined): string | null {
+  if (stored == null || stored === '') return null;
+  const s = String(stored);
+  if (!s.startsWith(ENC_PREFIX)) return s;
+  try {
+    return decryptSecret(s);
+  } catch {
+    return null;
+  }
+}
+
 export function hashApiKey(apiKey: string): string {
   return createHash('sha256').update(String(apiKey)).digest('hex');
 }

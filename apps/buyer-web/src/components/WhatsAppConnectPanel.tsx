@@ -87,7 +87,9 @@ export function WhatsAppConnectPanel() {
         <div>
           <h3 className="font-bold">WhatsApp de tu negocio</h3>
           <p className="text-sm text-gray-400 mt-1">
-            Conecta el número de tu empresa escaneando un QR. Se usa para difusión, compartir catálogos y notificaciones.
+            Número de tu empresa (Evolution). Sirve para <strong className="text-gray-300">difusión</strong>,{' '}
+            <strong className="text-gray-300">catálogos</strong> e inbox. No es el WhatsApp Cloud de login/OTP de Catagce.
+            El uso intensivo de difusión puede afectar este número vinculado.
           </p>
         </div>
       </div>

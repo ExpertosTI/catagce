@@ -4,7 +4,7 @@ import { sellerSettings, sellers } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { EvolutionCreds, evolutionAdminKey, evolutionConfigured } from '../whatsapp/evolution-config';
-import { decryptSecret, encryptSecret } from '../common/security/crypto.util';
+import { encryptSecret, resolveStoredSecret } from '../common/security/crypto.util';
 
 function instanceNameFor(sellerId: string, slug?: string | null) {
   const base = (slug || sellerId.slice(0, 8))
@@ -71,12 +71,7 @@ export class WhatsAppConnectService {
   async getCreds(sellerId: string): Promise<EvolutionCreds | null> {
     const settings = await this.getSettings(sellerId);
     if (settings?.evolutionInstance && settings?.evolutionToken) {
-      let apiKey = '';
-      try {
-        apiKey = decryptSecret(settings.evolutionToken) || '';
-      } catch {
-        apiKey = String(settings.evolutionToken);
-      }
+      const apiKey = resolveStoredSecret(settings.evolutionToken);
       if (!apiKey) return null;
       return { instance: settings.evolutionInstance, apiKey };
     }
@@ -179,11 +174,7 @@ export class WhatsAppConnectService {
     let instance = settings?.evolutionInstance || instanceNameFor(sellerId, seller.slug);
     let tokenPlain: string | null = null;
     if (settings?.evolutionToken) {
-      try {
-        tokenPlain = decryptSecret(settings.evolutionToken);
-      } catch {
-        tokenPlain = String(settings.evolutionToken);
-      }
+      tokenPlain = resolveStoredSecret(settings.evolutionToken);
     }
     let qr: string | null = null;
 

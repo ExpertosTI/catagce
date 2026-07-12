@@ -1,15 +1,15 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { DRIZZLE } from '../database/database.module';
-import { catalogs, catalogProducts, catalogPublications, sellerSettings, products } from '@catagce/db';
+import { catalogs, catalogProducts, catalogPublications, products } from '@catagce/db';
 import { and, eq, inArray } from 'drizzle-orm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { WebhookDispatcherService } from '../common/services/webhook-dispatcher.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { WhatsAppConnectService } from '../whatsapp-connect/whatsapp-connect.service';
 import { PlansService } from '../plans/plans.service';
 import { isValidPhone, normalizePhoneDigits } from '../common/utils/phone.util';
-import { decryptSecret } from '../common/security/crypto.util';
 
 const WEB_URL = (process.env.PUBLIC_WEB_URL || 'https://catagce.renace.tech').replace(/\/$/, '');
 
@@ -20,6 +20,7 @@ export class CatalogsService {
     @InjectQueue('catalog-render') private renderQueue: Queue,
     private webhookDispatcher: WebhookDispatcherService,
     private whatsapp: WhatsAppService,
+    private connect: WhatsAppConnectService,
     private plans: PlansService,
   ) {}
 
@@ -170,19 +171,8 @@ export class CatalogsService {
     catalogId: string,
     body: { phones: string[]; message?: string; imageUrl?: string },
   ) {
-    const settings = await this.db.query.sellerSettings.findFirst({
-      where: eq(sellerSettings.sellerId, sellerId),
-    });
-    let creds: { instance: string; apiKey: string } | null = null;
-    if (settings?.evolutionInstance && settings?.evolutionToken) {
-      let apiKey = '';
-      try {
-        apiKey = decryptSecret(settings.evolutionToken) || '';
-      } catch {
-        apiKey = String(settings.evolutionToken);
-      }
-      if (apiKey) creds = { instance: settings.evolutionInstance, apiKey };
-    }
+    // Catálogos: Evolution del seller — nunca Cloud / número plataforma
+    const creds = await this.connect.getCreds(sellerId);
 
     if (!creds) {
       throw new BadRequestException('Conecta tu WhatsApp en Configuración para compartir');

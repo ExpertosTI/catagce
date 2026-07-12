@@ -13,7 +13,7 @@ import {
   platformEvolution,
 } from './evolution-config';
 import { MetaCloudWhatsAppService } from './meta-cloud-whatsapp.service';
-import { decryptSecret } from '../common/security/crypto.util';
+import { resolveStoredSecret } from '../common/security/crypto.util';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/uploads';
 
@@ -50,12 +50,7 @@ export class WhatsAppService {
   async metaOverlayFromDb() {
     const row = await this.platformRow();
     if (!row?.metaPhoneNumberId && !row?.metaAccessToken) return null;
-    let accessToken: string | undefined;
-    try {
-      accessToken = decryptSecret(row.metaAccessToken) || undefined;
-    } catch {
-      accessToken = row.metaAccessToken || undefined;
-    }
+    const accessToken = resolveStoredSecret(row.metaAccessToken) || undefined;
     return {
       accessToken,
       phoneNumberId: row.metaPhoneNumberId || undefined,
@@ -79,19 +74,22 @@ export class WhatsAppService {
     try {
       const row = await this.platformRow();
       if (row?.evolutionInstance) {
-        let apiKey = '';
-        try {
-          apiKey = decryptSecret(row.evolutionToken) || '';
-        } catch {
-          apiKey = String(row.evolutionToken || '');
-        }
-        apiKey = apiKey.trim() || evolutionAdminKey();
+        const apiKey = (resolveStoredSecret(row.evolutionToken) || '').trim() || evolutionAdminKey();
         if (apiKey) return { instance: row.evolutionInstance, apiKey };
       }
     } catch {
       // ignore
     }
     return platformEvolution();
+  }
+
+  /**
+   * undefined = usar creds de plataforma; null = seller desconectado (NO caer a plataforma).
+   * Evita que difusión/inbox del seller use el número corporativo.
+   */
+  private async evolutionCredsOrNull(creds?: EvolutionCreds | null): Promise<EvolutionCreds | null> {
+    if (creds === undefined) return this.resolvePlatformCreds();
+    return creds;
   }
 
   async status(creds?: EvolutionCreds | null) {
@@ -277,7 +275,7 @@ export class WhatsAppService {
   }
 
   async sendText(to: string, text: string, creds?: EvolutionCreds | null): Promise<SendResult> {
-    const c = creds === undefined ? await this.resolvePlatformCreds() : creds;
+    const c = await this.evolutionCredsOrNull(creds);
     if (!c) return { ok: false, error: 'not_configured' };
     if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
@@ -299,7 +297,7 @@ export class WhatsAppService {
    * Solo con sesión open — si close/connecting, no llamar (evita errores y no reconectar desde API).
    */
   async updateProfileName(name: string, creds?: EvolutionCreds | null): Promise<SendResult> {
-    const c = creds === undefined ? await this.resolvePlatformCreds() : creds;
+    const c = await this.evolutionCredsOrNull(creds);
     if (!c) return { ok: false, error: 'not_configured' };
     const trimmed = String(name || '').trim();
     if (!trimmed) return { ok: false, error: 'empty_name' };
@@ -343,7 +341,7 @@ export class WhatsAppService {
   }
 
   async sendMedia(to: string, opts: { caption?: string; mediaUrl: string }, creds?: EvolutionCreds | null): Promise<SendResult> {
-    const c = creds ?? await this.resolvePlatformCreds();
+    const c = await this.evolutionCredsOrNull(creds);
     if (!c) return { ok: false, error: 'not_configured' };
     if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
@@ -394,7 +392,7 @@ export class WhatsAppService {
   }
 
   async findChats(creds?: EvolutionCreds | null) {
-    const c = creds ?? await this.resolvePlatformCreds();
+    const c = await this.evolutionCredsOrNull(creds);
     if (!c) return { ok: false as const, error: 'not_configured', chats: [] as any[] };
     const res = await this.evolutionFetch('/chat/findChats/{instance}', { method: 'POST', body: '{}' }, c);
     if (!res.ok) return { ok: false as const, error: `http_${res.status}`, chats: [] as any[] };
@@ -403,7 +401,7 @@ export class WhatsAppService {
   }
 
   async findMessages(remoteJid: string, creds?: EvolutionCreds | null) {
-    const c = creds ?? await this.resolvePlatformCreds();
+    const c = await this.evolutionCredsOrNull(creds);
     if (!c) return { ok: false as const, error: 'not_configured', messages: [] as any[] };
     const res = await this.evolutionFetch('/chat/findMessages/{instance}', {
       method: 'POST',
@@ -428,7 +426,7 @@ export class WhatsAppService {
   }
 
   async findLabels(creds?: EvolutionCreds | null) {
-    const c = creds ?? await this.resolvePlatformCreds();
+    const c = await this.evolutionCredsOrNull(creds);
     if (!c) return { ok: false as const, error: 'not_configured', labels: [] as any[] };
     const res = await this.evolutionFetch('/label/findLabels/{instance}', { method: 'GET' }, c);
     if (!res.ok) return { ok: false as const, error: `http_${res.status}`, labels: [] as any[] };
@@ -437,7 +435,7 @@ export class WhatsAppService {
   }
 
   async handleLabel(number: string, labelId: string, action: 'add' | 'remove', creds?: EvolutionCreds | null) {
-    const c = creds ?? await this.resolvePlatformCreds();
+    const c = await this.evolutionCredsOrNull(creds);
     if (!c) return { ok: false as const, error: 'not_configured' };
     const phone = normalizePhoneDigits(number);
     const res = await this.evolutionFetch('/label/handleLabel/{instance}', {

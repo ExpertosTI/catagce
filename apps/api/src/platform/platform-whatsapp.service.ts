@@ -8,7 +8,7 @@ import {
   evolutionAdminKey,
   evolutionConfigured,
 } from '../whatsapp/evolution-config';
-import { encryptSecret } from '../common/security/crypto.util';
+import { encryptSecret, resolveStoredSecret } from '../common/security/crypto.util';
 
 function extractQr(data: any): string | null {
   return (
@@ -181,27 +181,32 @@ export class PlatformWhatsAppService {
 
     const settings = await this.row();
     let instance = settings?.evolutionInstance || 'catagce-platform';
-    let token = settings?.evolutionToken || evolutionAdminKey();
+    let tokenPlain =
+      resolveStoredSecret(settings?.evolutionToken) || evolutionAdminKey() || '';
     let qr: string | null = null;
 
     if (!settings?.evolutionInstance) {
       const created = await this.whatsapp.createInstance(instance);
       if (created.ok) {
-        token = (created.data?.hash?.apikey || created.data?.hash || evolutionAdminKey()) as string;
-        if (typeof token === 'object') token = evolutionAdminKey();
+        tokenPlain = (created.data?.hash?.apikey || created.data?.hash || evolutionAdminKey()) as string;
+        if (typeof tokenPlain === 'object') tokenPlain = evolutionAdminKey() || '';
         qr = extractQr(created.data);
         instance = created.data?.instance?.instanceName || instance;
       } else {
-        token = evolutionAdminKey();
+        tokenPlain = evolutionAdminKey() || '';
       }
       await this.save({
         evolutionInstance: instance,
-        evolutionToken: encryptSecret(String(token)),
+        evolutionToken: encryptSecret(String(tokenPlain)),
         evolutionStatus: 'connecting',
       });
     }
 
-    const creds: EvolutionCreds = { instance, apiKey: token! };
+    if (!tokenPlain) {
+      throw new BadRequestException('Token Evolution no disponible (revisa ENCRYPTION_KEY o re-vincula)');
+    }
+
+    const creds: EvolutionCreds = { instance, apiKey: tokenPlain };
     const live = await this.whatsapp.status(creds);
     if (live.connected) {
       await this.save({ evolutionStatus: 'open' });

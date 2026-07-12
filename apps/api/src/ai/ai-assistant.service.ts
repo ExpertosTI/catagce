@@ -4,7 +4,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { sellerSettings, aiChatSessions, aiChatMessages } from '@catagce/db';
 import { DRIZZLE } from '../database/database.module';
 import { AiToolsService } from './ai-tools.service';
-import { decryptSecret, encryptSecret } from '../common/security/crypto.util';
+import { resolveStoredSecret, encryptSecret } from '../common/security/crypto.util';
 
 const SYSTEM_PROMPT = `Eres Catagce AI, el super-asistente inteligente de la plataforma Catagce B2B.
 Puedes ejecutar CUALQUIER acción en la aplicación usando las herramientas disponibles.
@@ -90,7 +90,7 @@ export class AiAssistantService {
     let preview: string | null = null;
     if (settings?.googleAiApiKey) {
       try {
-        const plain = decryptSecret(settings.googleAiApiKey) || '';
+        const plain = resolveStoredSecret(settings.googleAiApiKey) || '';
         preview = plain.length > 10 ? `${plain.slice(0, 6)}…${plain.slice(-4)}` : '••••';
       } catch {
         preview = '••••';
@@ -134,11 +134,7 @@ export class AiAssistantService {
 
     let apiKey = process.env.GOOGLE_AI_API_KEY || '';
     if (settings?.googleAiApiKey) {
-      try {
-        apiKey = decryptSecret(settings.googleAiApiKey) || apiKey;
-      } catch {
-        apiKey = String(settings.googleAiApiKey);
-      }
+      apiKey = resolveStoredSecret(settings.googleAiApiKey) || apiKey;
     }
     if (!apiKey) {
       throw new BadRequestException(

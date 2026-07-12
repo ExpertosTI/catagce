@@ -117,8 +117,8 @@ export default function PlatformSellersPage() {
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {tempPw.whatsappSent
-              ? 'También se envió por WhatsApp al teléfono de la cuenta.'
-              : 'WhatsApp no enviado (sin teléfono o Evolution no listo). Compártela manualmente.'}
+              ? 'Aviso enviado por Cloud/WhatsApp de plataforma (sin incluir la contraseña).'
+              : 'Aviso WhatsApp no enviado. Comparte la contraseña solo por el panel.'}
           </p>
         </div>
       )}
