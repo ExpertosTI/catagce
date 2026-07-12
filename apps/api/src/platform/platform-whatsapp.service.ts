@@ -52,47 +52,86 @@ export class PlatformWhatsAppService {
   }
 
   async status() {
-    const platformOk = evolutionConfigured();
     const settings = await this.row();
-    const creds = await this.getCreds();
+    const live = await this.whatsapp.status();
+    const preferCloud = await this.whatsapp.preferCloudChannel();
 
-    if (!creds) {
-      return {
-        platformOk,
-        linked: false,
-        connected: false,
-        state: null,
-        instance: null,
-        phone: null,
-        profileDisplayName: settings?.profileDisplayName || 'RENACE.TECH',
-        message: !platformOk
-          ? 'Falta EVOLUTION_API_URL / EVOLUTION_API_KEY en el servidor'
-          : 'Vincula o conecta el WhatsApp de plataforma',
-      };
-    }
-
-    const live = await this.whatsapp.status(creds);
-    const connected = Boolean(live.connected);
-    const state = String(live.state || settings?.evolutionStatus || 'unknown');
-
-    if (connected && settings?.evolutionStatus !== 'open') {
-      await this.save({ evolutionStatus: 'open' });
-    } else if (!connected && settings?.evolutionStatus === 'open') {
-      await this.save({ evolutionStatus: state });
+    if (!preferCloud && settings?.evolutionInstance) {
+      const creds = await this.getCreds();
+      if (creds) {
+        const evo = await this.whatsapp.status(creds);
+        if (evo.connected && settings.evolutionStatus !== 'open') {
+          await this.save({ evolutionStatus: 'open' });
+        } else if (!evo.connected && settings.evolutionStatus === 'open') {
+          await this.save({ evolutionStatus: String(evo.state || 'unknown') });
+        }
+      }
     }
 
     return {
-      platformOk,
-      linked: true,
-      connected,
-      state,
-      instance: creds.instance,
+      platformOk: this.whatsapp.configured(),
+      channel: (live as any).channel || (preferCloud ? 'cloud' : 'evolution'),
+      linked: Boolean(settings?.evolutionInstance) || preferCloud,
+      connected: Boolean(live.ready),
+      state: live.state,
+      instance: live.instance,
       phone: settings?.evolutionPhone || null,
       profileDisplayName: settings?.profileDisplayName || 'RENACE.TECH',
-      message: connected
-        ? 'WhatsApp de plataforma listo (OTP y avisos)'
-        : 'Instancia vinculada pero no Connected en Evolution — abre el Manager o genera QR aquí',
+      notifyChannel: settings?.notifyChannel || process.env.META_WA_NOTIFY_CHANNEL || 'cloud',
+      meta: {
+        configured: preferCloud || Boolean(settings?.metaPhoneNumberId || process.env.META_WA_PHONE_NUMBER_ID),
+        phoneNumberId: settings?.metaPhoneNumberId || process.env.META_WA_PHONE_NUMBER_ID || null,
+        wabaId: settings?.metaWabaId || process.env.META_WA_WABA_ID || null,
+        otpTemplate: settings?.metaOtpTemplate || process.env.META_WA_OTP_TEMPLATE || 'catagce_otp',
+        otpLang: settings?.metaOtpLang || process.env.META_WA_OTP_LANG || 'es',
+        notifyTemplate: settings?.metaNotifyTemplate || process.env.META_WA_NOTIFY_TEMPLATE || null,
+        hasToken: Boolean(settings?.metaAccessToken || process.env.META_WA_ACCESS_TOKEN),
+      },
+      message: live.ready
+        ? ((live as any).channel === 'cloud'
+          ? 'Cloud API listo — OTP/avisos por número oficial Meta'
+          : 'Evolution Connected — listo')
+        : 'Configura Cloud API (recomendado) o conecta Evolution',
     };
+  }
+
+  async saveCloud(body: {
+    accessToken?: string;
+    phoneNumberId: string;
+    wabaId?: string;
+    otpTemplate?: string;
+    otpLang?: string;
+    notifyTemplate?: string;
+    notifyChannel?: string;
+  }) {
+    const phoneNumberId = String(body.phoneNumberId || '').trim();
+    if (!phoneNumberId) throw new BadRequestException('Phone Number ID requerido');
+
+    const patch: Record<string, unknown> = {
+      metaPhoneNumberId: phoneNumberId,
+      metaWabaId: body.wabaId?.trim() || null,
+      metaOtpTemplate: body.otpTemplate?.trim() || 'catagce_otp',
+      metaOtpLang: body.otpLang?.trim() || 'es',
+      metaNotifyTemplate: body.notifyTemplate?.trim() || null,
+      notifyChannel: body.notifyChannel === 'evolution' ? 'evolution' : 'cloud',
+    };
+    if (body.accessToken?.trim()) {
+      patch.metaAccessToken = body.accessToken.trim();
+    } else if (!process.env.META_WA_ACCESS_TOKEN && !(await this.row())?.metaAccessToken) {
+      throw new BadRequestException('Access token requerido (o META_WA_ACCESS_TOKEN en .env)');
+    }
+
+    await this.save(patch);
+    return this.status();
+  }
+
+  async testCloudOtp(phone: string) {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const sent = await this.whatsapp.sendPlatformOtp(phone, code);
+    if (!sent.ok) {
+      throw new BadRequestException(sent.detail || sent.error || 'Envío falló');
+    }
+    return { ok: true, masked: phone.slice(-4), note: 'Si llegó el OTP de prueba, Cloud API está OK (código de test no sirve para login).' };
   }
 
   /** Vincular instancia ya existente en evoapi (ej. RENACE.TECH) sin crear otra. */

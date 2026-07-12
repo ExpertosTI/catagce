@@ -1,0 +1,16 @@
+# WhatsApp Cloud API (Meta oficial) — OTP y notificaciones de plataforma.
+# NO es Evolution/Baileys. Reduce riesgo de ban de sesión no oficial.
+#
+# 1) Meta Business Suite → WhatsApp → API Setup
+# 2) Crea plantilla AUTHENTICATION (ej. catagce_otp) y espera APPROVED
+# 3) Copia token permanente (system user) + Phone number ID
+#
+META_WA_ACCESS_TOKEN=tu-token-permanente
+META_WA_PHONE_NUMBER_ID=123456789012345
+# Opcional
+META_WA_WABA_ID=
+META_WA_OTP_TEMPLATE=catagce_otp
+META_WA_OTP_LANG=es
+META_WA_GRAPH_VERSION=v21.0
+# cloud | evolution — canal preferido para OTP/avisos plataforma
+META_WA_NOTIFY_CHANNEL=cloud

@@ -32,6 +32,7 @@ export class AuthController {
       ready: s.ready,
       connected: s.connected,
       state: s.state,
+      channel: (s as any).channel || null,
       instance: s.instance ? String(s.instance).slice(0, 48) : null,
     };
   }

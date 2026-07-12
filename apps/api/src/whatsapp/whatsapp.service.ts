@@ -12,6 +12,7 @@ import {
   evolutionConfigured,
   platformEvolution,
 } from './evolution-config';
+import { MetaCloudWhatsAppService } from './meta-cloud-whatsapp.service';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/uploads';
 
@@ -21,10 +22,13 @@ type SendResult =
 
 @Injectable()
 export class WhatsAppService {
-  constructor(@Inject(DRIZZLE) private db: any) {}
+  constructor(
+    @Inject(DRIZZLE) private db: any,
+    private metaCloud: MetaCloudWhatsAppService,
+  ) {}
 
   configured() {
-    return evolutionConfigured();
+    return this.metaCloud.configured() || evolutionConfigured();
   }
 
   /** Platform can create instances even if default INSTANCE is empty */
@@ -32,26 +36,69 @@ export class WhatsAppService {
     return evolutionConfigured();
   }
 
-  /** Credenciales de uso general: platform_settings (admin) → fallback env EVOLUTION_INSTANCE */
-  async resolvePlatformCreds(): Promise<EvolutionCreds | null> {
+  private async platformRow() {
     try {
-      const row = await this.db.query.platformSettings.findFirst({
+      return await this.db.query.platformSettings.findFirst({
         where: eq(platformSettings.id, 1),
       });
+    } catch {
+      return null;
+    }
+  }
+
+  async metaOverlayFromDb() {
+    const row = await this.platformRow();
+    if (!row?.metaPhoneNumberId && !row?.metaAccessToken) return null;
+    return {
+      accessToken: row.metaAccessToken || undefined,
+      phoneNumberId: row.metaPhoneNumberId || undefined,
+      wabaId: row.metaWabaId || undefined,
+      otpTemplate: row.metaOtpTemplate || undefined,
+      otpLang: row.metaOtpLang || undefined,
+    };
+  }
+
+  async preferCloudChannel(): Promise<boolean> {
+    const row = await this.platformRow();
+    const channel = String(
+      row?.notifyChannel || process.env.META_WA_NOTIFY_CHANNEL || 'cloud',
+    ).toLowerCase();
+    if (channel === 'evolution') return false;
+    return this.metaCloud.configured(await this.metaOverlayFromDb()) || this.metaCloud.configured();
+  }
+
+  /** Credenciales Evolution de uso general: platform_settings → env */
+  async resolvePlatformCreds(): Promise<EvolutionCreds | null> {
+    try {
+      const row = await this.platformRow();
       if (row?.evolutionInstance) {
         const apiKey = String(row.evolutionToken || '').trim() || evolutionAdminKey();
         if (apiKey) return { instance: row.evolutionInstance, apiKey };
       }
     } catch {
-      // tabla aún no migrada
+      // ignore
     }
     return platformEvolution();
   }
 
   async status(creds?: EvolutionCreds | null) {
+    if (creds === undefined && await this.preferCloudChannel()) {
+      const cloud = await this.metaCloud.status(await this.metaOverlayFromDb());
+      if (cloud.ready) return cloud;
+    }
+
     const c = creds === undefined ? await this.resolvePlatformCreds() : creds;
     if (!c || !evolutionBaseUrl()) {
-      return { whatsapp: false, ready: false, instance: null, state: null, connected: false };
+      const cloud = await this.metaCloud.status(await this.metaOverlayFromDb());
+      if (cloud.ready) return cloud;
+      return {
+        whatsapp: false,
+        ready: false,
+        instance: null,
+        state: null,
+        connected: false,
+        channel: 'none' as const,
+      };
     }
     const conn = await this.evolutionFetch('/instance/connectionState/{instance}', { method: 'GET' }, c);
     if (!conn.ok && conn.status === 404) {
@@ -62,6 +109,7 @@ export class WhatsAppService {
         state: 'missing',
         connected: false,
         error: 'instance_not_found',
+        channel: 'evolution' as const,
       };
     }
     const state = conn.ok
@@ -74,7 +122,46 @@ export class WhatsAppService {
       instance: c.instance,
       state,
       connected: ready,
+      channel: 'evolution' as const,
     };
+  }
+
+  /** OTP plataforma: Cloud template si aplica */
+  async sendPlatformOtp(to: string, code: string): Promise<SendResult> {
+    if (await this.preferCloudChannel()) {
+      const sent = await this.metaCloud.sendOtp(to, code, await this.metaOverlayFromDb());
+      if (sent.ok) return { ok: true };
+      const row = await this.platformRow();
+      const channel = String(row?.notifyChannel || process.env.META_WA_NOTIFY_CHANNEL || 'cloud').toLowerCase();
+      if (channel === 'cloud') {
+        return { ok: false, error: sent.error, detail: sent.detail };
+      }
+    }
+    return this.sendText(to, `Tu código de acceso a Catagce es: ${code}\nVálido por 10 minutos.`);
+  }
+
+  async sendPlatformNotify(to: string, text: string): Promise<SendResult> {
+    if (await this.preferCloudChannel()) {
+      const row = await this.platformRow();
+      const tmpl = row?.metaNotifyTemplate || process.env.META_WA_NOTIFY_TEMPLATE || '';
+      if (tmpl) {
+        const sent = await this.metaCloud.sendUtilityTemplate(
+          to,
+          tmpl,
+          row?.metaOtpLang || process.env.META_WA_OTP_LANG || 'es',
+          [text.slice(0, 500)],
+          await this.metaOverlayFromDb(),
+        );
+        if (sent.ok) return { ok: true };
+      }
+      const free = await this.metaCloud.sendText(to, text, await this.metaOverlayFromDb());
+      if (free.ok) return { ok: true };
+      const channel = String(row?.notifyChannel || process.env.META_WA_NOTIFY_CHANNEL || 'cloud').toLowerCase();
+      if (channel === 'cloud') {
+        return { ok: false, error: free.error, detail: free.detail };
+      }
+    }
+    return this.sendText(to, text);
   }
 
   private parseEvolutionError(detail: string): string {

@@ -49,14 +49,11 @@ export class VerificationService {
       throw new BadRequestException('WhatsApp no está disponible en este momento');
     }
     const wa = await this.whatsapp.status();
-    if (wa.error === 'instance_not_found' || wa.state === 'missing') {
+    if (!wa.ready) {
       throw new BadRequestException(
-        'La instancia WhatsApp del servidor no existe en Evolution. Configura EVOLUTION_INSTANCE con un nombre válido y conectado.',
-      );
-    }
-    if (!wa.connected && String(wa.state).toLowerCase() !== 'open') {
-      throw new BadRequestException(
-        `WhatsApp de plataforma no conectado (estado: ${wa.state || 'desconocido'}). Reconecta la instancia en Evolution.`,
+        wa.channel === 'cloud'
+          ? 'WhatsApp Cloud API no está listo. Revisa token / Phone Number ID / plantilla OTP en Admin → WhatsApp.'
+          : `WhatsApp de plataforma no conectado (estado: ${wa.state || 'desconocido'}). Configura Cloud API o reconecta Evolution.`,
       );
     }
 
@@ -75,22 +72,15 @@ export class VerificationService {
       phone, codeHash, purpose, expiresAt, attempts: 0,
     });
 
-    const text = purpose === 'register'
-      ? `Tu código de registro en Catagce es: ${code}\nVálido por 10 minutos.`
-      : `Tu código de acceso a Catagce es: ${code}\nVálido por 10 minutos.`;
-
-    const sent = await this.whatsapp.sendText(phone, text);
+    const sent = await this.whatsapp.sendPlatformOtp(phone, code);
     if (!sent.ok) {
       let detail: string;
       if (sent.error === 'not_configured') {
         detail = 'WhatsApp no está configurado en el servidor';
       } else if (sent.error === 'invalid_phone') {
         detail = 'Número inválido. En RD usa 809, 829 o 849 (10 dígitos)';
-      } else if (/instance does not exist/i.test(sent.detail || '') || sent.error === 'http_404') {
-        detail =
-          'La instancia WhatsApp del servidor no está disponible. Revisa Evolution (EVOLUTION_INSTANCE) o vuelve a vincular el número de plataforma.';
       } else {
-        detail = `No se pudo enviar el código (${sent.error}${sent.detail ? `: ${sent.detail.slice(0, 120)}` : ''}). En RD: 809, 829 o 849.`;
+        detail = `No se pudo enviar el código (${sent.error}${sent.detail ? `: ${sent.detail.slice(0, 120)}` : ''}).`;
       }
       throw new BadRequestException(detail);
     }

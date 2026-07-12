@@ -37,8 +37,23 @@ if [ -f .evolution.local ]; then
     esac
   done < .evolution.local
 fi
+# .meta-wa.local pisa META_WA_* (Cloud API oficial — OTP/avisos)
+if [ -f .meta-wa.local ]; then
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="$(echo "$key" | tr -d '[:space:]')"
+    case "$key" in
+      META_WA_*)
+        [ -n "$val" ] && export "$key=$val"
+        ;;
+    esac
+  done < .meta-wa.local
+fi
 set +a
 echo "📱 Evolution INSTANCE=${EVOLUTION_INSTANCE:-∅}"
+echo "☁️  Meta Cloud PHONE_ID=${META_WA_PHONE_NUMBER_ID:-∅} channel=${META_WA_NOTIFY_CHANNEL:-cloud}"
 
 docker compose build --parallel api web
 

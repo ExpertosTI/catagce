@@ -253,7 +253,7 @@ export class PlatformAdminService {
 
     let whatsappSent = false;
     if (opts?.notifyWhatsApp !== false && seller.phone) {
-      const res = await this.whatsapp.sendText(
+      const res = await this.whatsapp.sendPlatformNotify(
         seller.phone,
         `🔐 Restablecimiento de acceso Catagce\nEmail: ${owner.email}\nNueva contraseña temporal: ${temp}\nCámbiala al entrar en Configuración si puedes.`,
       );
@@ -276,7 +276,7 @@ export class PlatformAdminService {
       .map((p) => p.trim())
       .filter(Boolean);
     for (const phone of phones) {
-      await this.whatsapp.sendText(phone, text).catch(() => null);
+      await this.whatsapp.sendPlatformNotify(phone, text).catch(() => null);
     }
   }
 

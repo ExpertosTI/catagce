@@ -98,6 +98,14 @@ export const platformSettings = pgTable('platform_settings', {
   evolutionStatus: text('evolution_status'),
   evolutionPhone: text('evolution_phone'),
   profileDisplayName: text('profile_display_name'),
+  /** cloud = Meta Cloud API (oficial); evolution = evoapi Baileys (legacy) */
+  notifyChannel: text('notify_channel').default('cloud'),
+  metaAccessToken: text('meta_access_token'),
+  metaPhoneNumberId: text('meta_phone_number_id'),
+  metaWabaId: text('meta_waba_id'),
+  metaOtpTemplate: text('meta_otp_template'),
+  metaOtpLang: text('meta_otp_lang'),
+  metaNotifyTemplate: text('meta_notify_template'),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 

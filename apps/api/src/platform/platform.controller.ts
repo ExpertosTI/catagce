@@ -120,6 +120,31 @@ export class PlatformController {
     return this.platformWa.status();
   }
 
+  @Post('whatsapp/cloud')
+  @RequirePlatformAdmin()
+  @UseGuards(PlatformAdminGuard)
+  whatsappCloud(
+    @Body()
+    body: {
+      accessToken?: string;
+      phoneNumberId: string;
+      wabaId?: string;
+      otpTemplate?: string;
+      otpLang?: string;
+      notifyTemplate?: string;
+      notifyChannel?: string;
+    },
+  ) {
+    return this.platformWa.saveCloud(body);
+  }
+
+  @Post('whatsapp/cloud/test-otp')
+  @RequirePlatformAdmin()
+  @UseGuards(PlatformAdminGuard)
+  whatsappCloudTest(@Body() body: { phone: string }) {
+    return this.platformWa.testCloudOtp(body.phone);
+  }
+
   @Post('whatsapp/link')
   @RequirePlatformAdmin()
   @UseGuards(PlatformAdminGuard)
