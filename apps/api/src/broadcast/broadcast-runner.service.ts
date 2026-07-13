@@ -42,7 +42,8 @@ export class BroadcastRunnerService implements OnModuleInit {
       const now = Date.now();
       let sentThisTick = 0;
       for (const job of pending) {
-        if (sentThisTick >= 5) break;
+        // 1 por tick: el gap real lo impone WhatsAppService; evita ráfagas si varios jobs vencen a la vez
+        if (sentThisTick >= 1) break;
         const campaign = job.campaign;
         if (!campaign || campaign.status !== 'running') continue;
         const scheduled = job.scheduledAt ? new Date(job.scheduledAt).getTime() : 0;

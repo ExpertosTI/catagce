@@ -11,7 +11,7 @@ import { parseMediaUrls, serializeMediaUrls } from './media-urls.util';
 import { clampInt } from '../common/security/security.util';
 
 const MAX_LIST_MEMBERS_CAMPAIGN = 500;
-const DELAY_MIN_FLOOR = 30;
+const DELAY_MIN_FLOOR = 45;
 const DELAY_MAX_CEIL = 300;
 
 function randDelay(min: number, max: number) {
@@ -291,12 +291,16 @@ export class BroadcastService {
     const failed = (campaign.jobs || []).filter((j: { status: string }) => j.status === 'failed');
     if (!failed.length) throw new BadRequestException('No hay envíos fallidos');
 
-    for (const job of failed) {
+    const { min, max } = normalizeDelays(campaign.delayMinSec, campaign.delayMaxSec);
+    let cumulativeDelayMs = 0;
+
+    for (let i = 0; i < failed.length; i++) {
+      if (i > 0) cumulativeDelayMs += randDelay(min, max) * 1000;
       await this.db.update(broadcastJobs).set({
         status: 'pending',
         error: null,
-        scheduledAt: new Date(),
-      }).where(eq(broadcastJobs.id, job.id));
+        scheduledAt: new Date(Date.now() + cumulativeDelayMs),
+      }).where(eq(broadcastJobs.id, failed[i].id));
     }
 
     await this.db.update(broadcastCampaigns).set({

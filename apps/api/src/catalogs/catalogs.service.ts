@@ -210,7 +210,7 @@ export class CatalogsService {
         : await this.whatsapp.sendText(phone, text.slice(0, 3500), creds);
       results.push({ phone, ok: sent.ok, error: sent.ok ? undefined : sent.error });
       if (i < phones.length - 1) {
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 3000));
       }
     }
 

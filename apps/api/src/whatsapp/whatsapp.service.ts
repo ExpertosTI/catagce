@@ -16,9 +16,25 @@ import { resolveStoredSecret } from '../common/security/crypto.util';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/uploads';
 
+/** Delay mínimo Evolution (ms). Anti-ban: typing delay en payload + gap entre envíos. */
+const EVOLUTION_SEND_DELAY_MS = Math.max(
+  1200,
+  Number(process.env.WA_SEND_DELAY_MS || 1200) || 1200,
+);
+const EVOLUTION_MEDIA_DELAY_MS = Math.max(
+  1500,
+  Number(process.env.WA_MEDIA_DELAY_MS || 1500) || 1500,
+);
+const EVOLUTION_SEND_GAP_MS = Math.max(
+  2000,
+  Number(process.env.WA_SEND_GAP_MS || 2000) || 2000,
+);
+
 type SendResult =
   | { ok: true }
   | { ok: false; error: string; detail?: string };
+
+const lastEvolutionSendAt = new Map<string, number>();
 
 @Injectable()
 export class WhatsAppService {
@@ -26,6 +42,14 @@ export class WhatsAppService {
     @Inject(DRIZZLE) private db: any,
     private metaCloud: MetaCloudWhatsAppService,
   ) {}
+
+  private async waitEvolutionGap(instance: string) {
+    const key = String(instance || 'default');
+    const last = lastEvolutionSendAt.get(key) || 0;
+    const wait = EVOLUTION_SEND_GAP_MS - (Date.now() - last);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastEvolutionSendAt.set(key, Date.now());
+  }
 
   configured() {
     return this.metaCloud.configured() || evolutionConfigured();
@@ -283,12 +307,14 @@ export class WhatsAppService {
     if (!c) return { ok: false, error: 'not_configured' };
     if (!isValidPhone(normalizePhoneDigits(to))) return { ok: false, error: 'invalid_phone' };
 
+    await this.waitEvolutionGap(c.instance);
+
     let lastError = 'send_failed';
     let lastDetail = '';
     for (const number of phoneSendVariants(to)) {
       const res = await this.evolutionFetch('/message/sendText/{instance}', {
         method: 'POST',
-        body: JSON.stringify({ number, text }),
+        body: JSON.stringify({ number, text, delay: EVOLUTION_SEND_DELAY_MS }),
       }, c);
       if (res.ok) return { ok: true };
       lastError = res.status ? `http_${res.status}` : 'send_failed';
@@ -354,6 +380,7 @@ export class WhatsAppService {
 
     let lastError = 'send_failed';
     let lastDetail = '';
+    await this.waitEvolutionGap(c.instance);
     for (const number of phoneSendVariants(to)) {
       const res = await this.evolutionFetch('/message/sendMedia/{instance}', {
         method: 'POST',
@@ -364,6 +391,7 @@ export class WhatsAppService {
           fileName: resolved.fileName,
           media: resolved.media,
           caption: opts.caption || '',
+          delay: EVOLUTION_MEDIA_DELAY_MS,
         }),
       }, c);
       if (res.ok) return { ok: true };
@@ -390,7 +418,7 @@ export class WhatsAppService {
       const caption = i === 0 ? text : '';
       const result = await this.sendMedia(to, { mediaUrl: mediaUrls[i], caption }, creds);
       if (!result.ok) return result;
-      if (i < mediaUrls.length - 1) await new Promise((r) => setTimeout(r, 1500));
+      if (i < mediaUrls.length - 1) await new Promise((r) => setTimeout(r, EVOLUTION_MEDIA_DELAY_MS));
     }
     return { ok: true };
   }

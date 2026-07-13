@@ -609,10 +609,10 @@ export default function DifusionPage() {
                 />
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <label className="block">Pausa min (s)
-                    <input type="number" inputMode="numeric" value={campaignForm.delayMinSec} onChange={(e) => setCampaignForm({ ...campaignForm, delayMinSec: Number(e.target.value) })} className="w-full mt-1 min-h-[44px] bg-black/40 border border-white/10 rounded-xl px-3" />
+                    <input type="number" inputMode="numeric" min={45} max={300} value={campaignForm.delayMinSec} onChange={(e) => setCampaignForm({ ...campaignForm, delayMinSec: Number(e.target.value) })} className="w-full mt-1 min-h-[44px] bg-black/40 border border-white/10 rounded-xl px-3" />
                   </label>
                   <label className="block">Pausa max (s)
-                    <input type="number" inputMode="numeric" value={campaignForm.delayMaxSec} onChange={(e) => setCampaignForm({ ...campaignForm, delayMaxSec: Number(e.target.value) })} className="w-full mt-1 min-h-[44px] bg-black/40 border border-white/10 rounded-xl px-3" />
+                    <input type="number" inputMode="numeric" min={45} max={300} value={campaignForm.delayMaxSec} onChange={(e) => setCampaignForm({ ...campaignForm, delayMaxSec: Number(e.target.value) })} className="w-full mt-1 min-h-[44px] bg-black/40 border border-white/10 rounded-xl px-3" />
                   </label>
                 </div>
                 <button
