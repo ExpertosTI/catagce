@@ -1,7 +1,7 @@
 import {
   Injectable, Inject, BadRequestException, ConflictException, OnModuleInit,
 } from '@nestjs/common';
-import { eq, desc, asc } from 'drizzle-orm';
+import { eq, desc, asc, sql } from 'drizzle-orm';
 import { createHash } from 'crypto';
 import {
   nameSurveyMeta, nameSurveyOptions, nameSurveyVotes, nameSurveySuggestions,
@@ -9,6 +9,10 @@ import {
 import { DRIZZLE } from '../database/database.module';
 
 const DEFAULT_NAMES = ['CatDif', 'RenDif', 'Catadif', 'Difcata', 'Cataluz'];
+
+function normalizeName(raw: string) {
+  return String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+}
 
 @Injectable()
 export class SurveyService implements OnModuleInit {
@@ -31,8 +35,34 @@ export class SurveyService implements OnModuleInit {
         const endsAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
         await this.db.insert(nameSurveyMeta).values({ isOpen: true, endsAt });
       }
+      await this.promoteSuggestionsToOptions();
     } catch (err) {
       console.warn('[survey] ensureSeed skipped:', (err as Error).message);
+    }
+  }
+
+  /** Convierte sugerencias del público en opciones votables */
+  private async promoteSuggestionsToOptions() {
+    const suggestions = await this.db
+      .select({ suggestion: nameSurveySuggestions.suggestion })
+      .from(nameSurveySuggestions)
+      .orderBy(desc(nameSurveySuggestions.createdAt))
+      .limit(200);
+
+    const existing = await this.db.select({ name: nameSurveyOptions.name }).from(nameSurveyOptions);
+    const seen = new Set(existing.map((o: { name: string }) => o.name.toLowerCase()));
+    let sortOrder = 100;
+
+    for (const row of suggestions) {
+      const name = normalizeName(row.suggestion);
+      if (name.length < 2) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      await this.db
+        .insert(nameSurveyOptions)
+        .values({ name, sortOrder: sortOrder++, isActive: true })
+        .onConflictDoNothing();
     }
   }
 
@@ -51,17 +81,29 @@ export class SurveyService implements OnModuleInit {
     return new Date(meta.endsAt).getTime() > Date.now();
   }
 
+  private optionSource(name: string): 'official' | 'community' {
+    return DEFAULT_NAMES.some((n) => n.toLowerCase() === name.toLowerCase())
+      ? 'official'
+      : 'community';
+  }
+
   async getPublicSurvey() {
+    await this.promoteSuggestionsToOptions().catch(() => null);
     const meta = await this.getMeta();
     const options = await this.db
       .select()
       .from(nameSurveyOptions)
       .where(eq(nameSurveyOptions.isActive, true))
-      .orderBy(asc(nameSurveyOptions.sortOrder));
+      .orderBy(asc(nameSurveyOptions.sortOrder), asc(nameSurveyOptions.name));
     return {
       isOpen: this.isSurveyOpen(meta),
       endsAt: meta.endsAt,
-      options: options.map((o: any) => ({ id: o.id, name: o.name, sortOrder: o.sortOrder })),
+      options: options.map((o: any) => ({
+        id: o.id,
+        name: o.name,
+        sortOrder: o.sortOrder,
+        source: this.optionSource(o.name),
+      })),
     };
   }
 
@@ -77,6 +119,15 @@ export class SurveyService implements OnModuleInit {
     if (!rank1 || !rank2 || !rank3) throw new BadRequestException('Debes elegir 3 nombres en orden');
     if (new Set([rank1, rank2, rank3]).size !== 3) {
       throw new BadRequestException('Los 3 nombres deben ser distintos');
+    }
+
+    const active = await this.db
+      .select({ id: nameSurveyOptions.id })
+      .from(nameSurveyOptions)
+      .where(eq(nameSurveyOptions.isActive, true));
+    const activeIds = new Set(active.map((o: { id: string }) => o.id));
+    if (![rank1, rank2, rank3].every((id) => activeIds.has(id))) {
+      throw new BadRequestException('Algún nombre elegido no es válido');
     }
 
     const voterKey = this.hashVoterKey(body.voterKey);
@@ -100,7 +151,7 @@ export class SurveyService implements OnModuleInit {
     const meta = await this.getMeta();
     if (!this.isSurveyOpen(meta)) throw new BadRequestException('La encuesta está cerrada');
 
-    const suggestion = String(body.suggestion || '').trim().slice(0, 80);
+    const suggestion = normalizeName(body.suggestion);
     if (suggestion.length < 2) throw new BadRequestException('Sugiere un nombre (mín. 2 caracteres)');
 
     const voterKey = this.hashVoterKey(body.voterKey);
@@ -108,10 +159,33 @@ export class SurveyService implements OnModuleInit {
       .insert(nameSurveySuggestions)
       .values({ voterKey, suggestion })
       .returning();
-    return { ok: true, id: row.id };
+
+    const maxSort = await this.db
+      .select({ m: sql<number>`coalesce(max(${nameSurveyOptions.sortOrder}), 100)` })
+      .from(nameSurveyOptions);
+    const nextSort = Number(maxSort?.[0]?.m || 100) + 1;
+    await this.db
+      .insert(nameSurveyOptions)
+      .values({ name: suggestion, sortOrder: nextSort, isActive: true })
+      .onConflictDoNothing();
+
+    const [opt] = await this.db
+      .select()
+      .from(nameSurveyOptions)
+      .where(eq(nameSurveyOptions.name, suggestion))
+      .limit(1);
+
+    return {
+      ok: true,
+      id: row.id,
+      option: opt
+        ? { id: opt.id, name: opt.name, sortOrder: opt.sortOrder, source: 'community' as const }
+        : null,
+    };
   }
 
   async getStats() {
+    await this.promoteSuggestionsToOptions().catch(() => null);
     const options = await this.db.select().from(nameSurveyOptions).where(eq(nameSurveyOptions.isActive, true));
     const votes = await this.db.select().from(nameSurveyVotes);
     const suggestions = await this.db
@@ -120,9 +194,20 @@ export class SurveyService implements OnModuleInit {
       .orderBy(desc(nameSurveySuggestions.createdAt))
       .limit(50);
 
-    const byId: Record<string, { id: string; name: string; points: number; first: number; second: number; third: number }> = {};
+    const byId: Record<string, {
+      id: string; name: string; points: number; first: number; second: number; third: number;
+      source: 'official' | 'community';
+    }> = {};
     for (const o of options) {
-      byId[o.id] = { id: o.id, name: o.name, points: 0, first: 0, second: 0, third: 0 };
+      byId[o.id] = {
+        id: o.id,
+        name: o.name,
+        points: 0,
+        first: 0,
+        second: 0,
+        third: 0,
+        source: this.optionSource(o.name),
+      };
     }
 
     for (const v of votes) {
