@@ -26,14 +26,27 @@ export class AuthController {
   @Throttle(30, 60_000)
   async whatsappStatus() {
     const s = await this.whatsapp.status();
-    // No filtrar secretos; solo estado de alto nivel
+    const ready = Boolean(s.ready);
+    let hint: string | null = null;
+    if (!ready) {
+      const channel = (s as any).channel || null;
+      const state = String(s.state || '');
+      if (channel === 'evolution' && state.toLowerCase() === 'close') {
+        hint = 'Sesión Evolution cerrada. Configura Meta Cloud (OTP) o reconecta la instancia de plataforma.';
+      } else if (channel === 'none' || !s.whatsapp) {
+        hint = 'WhatsApp de plataforma no configurado (Cloud o Evolution).';
+      } else {
+        hint = `WhatsApp no listo (canal=${channel || 'n/a'}, estado=${state || 'n/a'}).`;
+      }
+    }
     return {
       whatsapp: s.whatsapp,
-      ready: s.ready,
+      ready,
       connected: s.connected,
       state: s.state,
       channel: (s as any).channel || null,
       instance: s.instance ? String(s.instance).slice(0, 48) : null,
+      hint,
     };
   }
 

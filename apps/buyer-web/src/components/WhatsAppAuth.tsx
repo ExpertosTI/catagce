@@ -14,6 +14,7 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>('phone');
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [waHint, setWaHint] = useState('');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [masked, setMasked] = useState('');
@@ -30,11 +31,24 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
       .then((r) => r.json())
       .then((d) => {
         setAvailable(Boolean(d.ready));
-        if (!d.ready && typeof console !== 'undefined') {
-          console.info('[wa-status]', { instance: d.instance, state: d.state, ready: d.ready });
+        if (!d.ready) {
+          const ch = d.channel || 'whatsapp';
+          const st = d.state || 'offline';
+          setWaHint(
+            d.hint
+              || (ch === 'evolution' && st === 'close'
+                ? 'La sesión de plataforma está desconectada. Usa email / API Key, o pide al admin configurar Cloud API / reconectar WhatsApp.'
+                : 'OTP por WhatsApp no está listo. Usa email o API Key mientras tanto.'),
+          );
+          if (typeof console !== 'undefined') {
+            console.info('[wa-status]', { instance: d.instance, state: d.state, ready: d.ready, channel: d.channel });
+          }
         }
       })
-      .catch(() => setAvailable(false));
+      .catch(() => {
+        setAvailable(false);
+        setWaHint('No pudimos verificar WhatsApp. Usa email o API Key.');
+      });
   }, []);
 
   const afterAuth = async (token: string, apiKey: string) => {
@@ -149,6 +163,11 @@ export function WhatsAppAuth({ mode }: { mode: Mode }) {
           El acceso por WhatsApp no está disponible en este momento.
           {mode === 'register' ? ' Usa correo electrónico.' : ' Usa email o API Key.'}
         </p>
+        {waHint && (
+          <p className="mt-2 text-[11px] leading-relaxed text-[#9CA3AF] max-w-xs mx-auto">
+            {waHint}
+          </p>
+        )}
       </div>
     );
   }
