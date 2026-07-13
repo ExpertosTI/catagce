@@ -8,6 +8,7 @@ import {
 import { DRIZZLE } from '../database/database.module';
 import { AuthUser } from '../auth/auth.service';
 import { FiscalService } from '../fiscal/fiscal.service';
+import { CommerceNotifyService } from '../whatsapp/commerce-notify.service';
 import {
   ComprobanteType, MODIFICATION_TYPES, calculateTaxTotals,
   suggestComprobanteType, validateComprobanteForClient, DEFAULT_ITBIS_RATE,
@@ -18,6 +19,7 @@ export class InvoicesService {
   constructor(
     @Inject(DRIZZLE) private db: any,
     private fiscalService: FiscalService,
+    private commerceNotify: CommerceNotifyService,
   ) {}
 
   async list(user: AuthUser, filters?: { clientId?: string }) {
@@ -246,6 +248,10 @@ export class InvoicesService {
       }).where(eq(invoices.id, relatedInvoice.id));
     }
 
+    if (data.issue) {
+      void this.commerceNotify.notifyInvoiceIssued(user.companyId, invoice.id);
+    }
+
     if (data.issue && data.initialPayment?.amount && data.initialPayment.amount > 0) {
       return this.addPayment(user, invoice.id, data.initialPayment);
     }
@@ -341,6 +347,12 @@ export class InvoicesService {
       updatedAt: new Date(),
     }).where(eq(invoices.id, invoiceId));
 
+    void this.commerceNotify.notifyPaymentReceived(user.companyId, invoiceId, {
+      amount: data.amount.toFixed(2),
+      method: data.method,
+      reference: data.reference,
+    });
+
     return this.getById(user, invoiceId);
   }
 
@@ -415,7 +427,10 @@ export class InvoicesService {
 
 @Injectable()
 export class DispatchesService {
-  constructor(@Inject(DRIZZLE) private db: any) {}
+  constructor(
+    @Inject(DRIZZLE) private db: any,
+    private commerceNotify: CommerceNotifyService,
+  ) {}
 
   async create(user: AuthUser, data: {
     clientId: string;
@@ -485,6 +500,8 @@ export class DispatchesService {
         }).where(eq(stockLevels.id, stock.id));
       }
     }
+
+    void this.commerceNotify.notifyDispatchCompleted(user.companyId, dispatch.id);
 
     return dispatch;
   }

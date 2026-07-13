@@ -1,13 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, notInArray } from 'drizzle-orm';
 import {
   catalogs, clients, companies, orderRequestItems, orderRequests,
-  presaleItems, presales, products,
+  presaleItems, presales, products, invoices, invoiceItems,
+  dispatches, dispatchItems,
 } from '@ghome/db';
 import { DRIZZLE } from '../database/database.module';
 import { formatCurrency } from '../common/format-currency';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WhatsAppService } from './whatsapp.service';
+import { isValidPhone } from './phone.util';
+import {
+  buildDispatchMessage,
+  buildInvoiceIssuedMessage,
+  buildPaymentReceivedMessage,
+  InvoiceNotifyPayload,
+} from './invoice-notify.util';
 
 function siteUrl() {
   return (process.env.PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://generalhome.tech').replace(/\/$/, '');
@@ -29,6 +37,167 @@ export class CommerceNotifyService {
 
   private catalogUrl(slug: string) {
     return `${siteUrl()}/catalogo/${slug}`;
+  }
+
+  private portalInvoicesUrl() {
+    return `${siteUrl()}/portal/invoices`;
+  }
+
+  private async clientPhone(clientId: string) {
+    const [row] = await this.db.select({ phone: clients.phone, name: clients.name })
+      .from(clients).where(eq(clients.id, clientId)).limit(1);
+    return row;
+  }
+
+  /** Saldo CXC total del cliente (facturas emitidas / parciales / vencidas) */
+  private async clientTotalBalance(companyId: string, clientId: string) {
+    const rows = await this.db.select({
+      total: invoices.totalAmount,
+      paid: invoices.paidAmount,
+    })
+      .from(invoices)
+      .where(and(
+        eq(invoices.companyId, companyId),
+        eq(invoices.clientId, clientId),
+        notInArray(invoices.status, ['draft', 'cancelled']),
+      ));
+    let sum = 0;
+    for (const r of rows) {
+      sum += Math.max(0, parseFloat(r.total || '0') - parseFloat(r.paid || '0'));
+    }
+    return Math.round(sum * 100) / 100;
+  }
+
+  private async loadInvoiceForNotify(companyId: string, invoiceId: string): Promise<InvoiceNotifyPayload | null> {
+    const [row] = await this.db.select({
+      id: invoices.id,
+      reference: invoices.reference,
+      ncf: invoices.ncf,
+      comprobanteType: invoices.comprobanteType,
+      isFiscal: invoices.isFiscal,
+      invoiceType: invoices.invoiceType,
+      status: invoices.status,
+      totalAmount: invoices.totalAmount,
+      paidAmount: invoices.paidAmount,
+      dueDate: invoices.dueDate,
+      issuedAt: invoices.issuedAt,
+      clientId: invoices.clientId,
+      clientName: clients.name,
+      clientPhone: clients.phone,
+    })
+      .from(invoices)
+      .innerJoin(clients, eq(invoices.clientId, clients.id))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.companyId, companyId)))
+      .limit(1);
+    if (!row) return null;
+
+    const items = await this.db.select({
+      productName: products.name,
+      quantity: invoiceItems.quantity,
+      unitLabel: invoiceItems.unitLabel,
+      lineTotal: invoiceItems.lineTotal,
+    })
+      .from(invoiceItems)
+      .innerJoin(products, eq(invoiceItems.productId, products.id))
+      .where(eq(invoiceItems.invoiceId, invoiceId));
+
+    const clientTotalBalance = await this.clientTotalBalance(companyId, row.clientId);
+    return { ...row, items, clientTotalBalance };
+  }
+
+  private async sendClientWa(clientId: string, text: string) {
+    const client = await this.clientPhone(clientId);
+    if (!client?.phone || !isValidPhone(client.phone)) return { ok: false, error: 'no_phone' };
+    return this.whatsapp.sendText(client.phone, text);
+  }
+
+  /** Factura emitida → WhatsApp al cliente con líneas y saldo */
+  async notifyInvoiceIssued(companyId: string, invoiceId: string) {
+    const inv = await this.loadInvoiceForNotify(companyId, invoiceId);
+    if (!inv || inv.status === 'draft') return;
+
+    const company = await this.companyName(companyId);
+    const text = buildInvoiceIssuedMessage(company, inv, this.portalInvoicesUrl());
+
+    await this.notifications.create({
+      companyId,
+      audience: 'client',
+      clientId: inv.clientId,
+      type: 'invoice_issued',
+      invoiceId,
+      title: `Factura ${inv.reference}`,
+      body: `Total ${formatCurrency(inv.totalAmount)}`,
+    });
+
+    void this.sendClientWa(inv.clientId!, text);
+  }
+
+  /** Pago registrado → recibo + saldo pendiente */
+  async notifyPaymentReceived(
+    companyId: string,
+    invoiceId: string,
+    payment: { amount: string; method?: string; reference?: string | null },
+  ) {
+    const inv = await this.loadInvoiceForNotify(companyId, invoiceId);
+    if (!inv) return;
+
+    const company = await this.companyName(companyId);
+    const text = buildPaymentReceivedMessage(company, inv, payment);
+
+    await this.notifications.create({
+      companyId,
+      audience: 'client',
+      clientId: inv.clientId,
+      type: 'payment_received',
+      invoiceId,
+      title: 'Pago recibido',
+      body: `${formatCurrency(payment.amount)} — ${inv.reference}`,
+    });
+
+    void this.sendClientWa(inv.clientId!, text);
+  }
+
+  /** Despacho completado */
+  async notifyDispatchCompleted(companyId: string, dispatchId: string) {
+    const [row] = await this.db.select({
+      reference: dispatches.reference,
+      clientId: dispatches.clientId,
+      clientName: clients.name,
+      invoiceReference: invoices.reference,
+    })
+      .from(dispatches)
+      .innerJoin(clients, eq(dispatches.clientId, clients.id))
+      .leftJoin(invoices, eq(dispatches.invoiceId, invoices.id))
+      .where(and(eq(dispatches.id, dispatchId), eq(dispatches.companyId, companyId)))
+      .limit(1);
+    if (!row) return;
+
+    const items = await this.db.select({
+      productName: products.name,
+      quantity: dispatchItems.quantity,
+    })
+      .from(dispatchItems)
+      .innerJoin(products, eq(dispatchItems.productId, products.id))
+      .where(eq(dispatchItems.dispatchId, dispatchId));
+
+    const company = await this.companyName(companyId);
+    const text = buildDispatchMessage(company, {
+      reference: row.reference,
+      clientName: row.clientName,
+      invoiceReference: row.invoiceReference,
+      items,
+    });
+
+    await this.notifications.create({
+      companyId,
+      audience: 'client',
+      clientId: row.clientId,
+      type: 'dispatch_completed',
+      title: `Despacho ${row.reference}`,
+      body: `${items.length} producto(s)`,
+    });
+
+    void this.sendClientWa(row.clientId, text);
   }
 
   async shareCatalog(companyId: string, catalogId: string, toPhone: string, recipientName?: string) {
