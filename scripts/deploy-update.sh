@@ -55,9 +55,31 @@ if [ -f .meta-wa.local ]; then
   done < .meta-wa.local
 fi
 set +a
-echo "📱 Evolution INSTANCE=${EVOLUTION_INSTANCE:-∅}"
-echo "☁️  Meta Cloud PHONE_ID=${META_WA_PHONE_NUMBER_ID:-∅} channel=${META_WA_NOTIFY_CHANNEL:-cloud} verify=${META_WA_VERIFY_TOKEN:+set}"
-[ -n "${ENCRYPTION_KEY:-}" ] || echo "⚠️  ENCRYPTION_KEY vacío — tokens WA se guardarán en claro hasta configurarlo"
+
+# ENCRYPTION_KEY: generar una vez si falta (no pisar)
+if [ -z "${ENCRYPTION_KEY:-}" ]; then
+  if [ -f .env ] && grep -q '^ENCRYPTION_KEY=.\+' .env 2>/dev/null; then
+    # shellcheck disable=SC1091
+    set -a; source .env; set +a
+  fi
+fi
+if [ -z "${ENCRYPTION_KEY:-}" ]; then
+  ENCRYPTION_KEY="$(openssl rand -hex 32)"
+  touch .env
+  chmod 600 .env 2>/dev/null || true
+  if grep -q '^ENCRYPTION_KEY=' .env 2>/dev/null; then
+    sed -i.bak "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=${ENCRYPTION_KEY}|" .env
+    rm -f .env.bak
+  else
+    printf 'ENCRYPTION_KEY=%s\n' "$ENCRYPTION_KEY" >> .env
+  fi
+  export ENCRYPTION_KEY
+  echo "🔐 ENCRYPTION_KEY generado (upsert en .env)"
+fi
+
+echo "📱 Evolution INSTANCE=${EVOLUTION_INSTANCE:-∅} (vacío = solo QR en panel admin)"
+echo "☁️  Meta Cloud PHONE_ID=${META_WA_PHONE_NUMBER_ID:-∅} channel=${META_WA_NOTIFY_CHANNEL:-evolution} verify=${META_WA_VERIFY_TOKEN:+set}"
+echo "🔐 ENCRYPTION_KEY=${ENCRYPTION_KEY:+set}"
 
 docker compose build --parallel api web
 
