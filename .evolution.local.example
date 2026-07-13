@@ -1,9 +1,10 @@
 # Evolution API (tu evoapi) — clave GLOBAL de admin (AUTHENTICATION_API_KEY).
-# NO uses el token de una instancia (ej. 45FCC9… del panel RENACE.TECH).
+# NO uses el token de una instancia del Manager como EVOLUTION_API_KEY.
 EVOLUTION_API_URL=https://evoapi.renace.tech
 EVOLUTION_API_KEY=tu-api-key-global
-# Instancia corporativa (OTP / notify plataforma). Nombre exacto en Evolution Manager.
-# Producción (Connected): RENACE.TECH — JID 18495684958@s.whatsapp.net
-EVOLUTION_INSTANCE=RENACE.TECH
-# Destinos admin (ops), separados por coma — upsert en .env del API, no en git:
+# Opcional: ya NO se usa para enviar OTP automáticamente.
+# El número de notificaciones lo elige el platform admin escaneando QR en:
+#   /dashboard/platform/whatsapp
+# EVOLUTION_INSTANCE=
+# Destinos admin (quién recibe avisos ops), separados por coma — upsert en .env, no en git:
 # PLATFORM_NOTIFY_PHONES=1849…

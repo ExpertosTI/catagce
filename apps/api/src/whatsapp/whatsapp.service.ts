@@ -10,7 +10,6 @@ import {
   evolutionAdminKey,
   evolutionBaseUrl,
   evolutionConfigured,
-  platformEvolution,
 } from './evolution-config';
 import { MetaCloudWhatsAppService } from './meta-cloud-whatsapp.service';
 import { resolveStoredSecret } from '../common/security/crypto.util';
@@ -70,6 +69,11 @@ export class WhatsAppService {
   }
 
   /** Credenciales Evolution de uso general: platform_settings → env */
+  /**
+   * Credenciales del WA de notificaciones/OTP (Evolution).
+   * Solo lo que el platform admin vinculó en panel (QR) → platform_settings.
+   * Ya no cae a EVOLUTION_INSTANCE del env (evita hardcodear RENACE.TECH / número personal).
+   */
   async resolvePlatformCreds(): Promise<EvolutionCreds | null> {
     try {
       const row = await this.platformRow();
@@ -80,7 +84,7 @@ export class WhatsAppService {
     } catch {
       // ignore
     }
-    return platformEvolution();
+    return null;
   }
 
   /**

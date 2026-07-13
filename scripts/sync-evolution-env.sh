@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Sincroniza EVOLUTION_* en catagce_api (Swarm).
-# Instancia corporativa FIJA (evidencia Evolution Manager Connected):
-#   RENACE.TECH — JID 18495684958@s.whatsapp.net
+# Sincroniza EVOLUTION_API_URL + EVOLUTION_API_KEY en catagce_api (Swarm).
+# NO fuerza un número/instancia: el WhatsApp de notificaciones lo elige el
+# platform admin en /dashboard/platform/whatsapp (QR → platform_settings).
 # URL/KEY se leen de .env + .evolution.local (no se inventan).
 # NO usar el token de instancia (45FCC9…) como EVOLUTION_API_KEY.
 # NO llama restart/connect/logout en evoapi — solo env del servicio Swarm.
@@ -9,7 +9,6 @@ set -euo pipefail
 cd /opt/QuickCtgo 2>/dev/null || cd "$(dirname "$0")/.."
 
 SVC="${STACK_NAME:-catagce}_api"
-CORPORATE_INSTANCE="RENACE.TECH"
 
 EVOLUTION_API_URL=""
 EVOLUTION_API_KEY=""
@@ -33,27 +32,8 @@ read_kv_file() {
   done < "$file"
 }
 
-upsert_kv() {
-  local file="$1" key="$2" val="$3"
-  touch "$file"
-  chmod 600 "$file" 2>/dev/null || true
-  if grep -q "^${key}=" "$file" 2>/dev/null; then
-    sed -i.bak "s|^${key}=.*|${key}=${val}|" "$file"
-    rm -f "${file}.bak"
-  else
-    printf '%s=%s\n' "$key" "$val" >> "$file"
-  fi
-}
-
 read_kv_file .env
 read_kv_file .evolution.local
-
-# Forzar línea corporativa (antes quedaba renace-biz en .env y se reaplicaba)
-EVOLUTION_INSTANCE="$CORPORATE_INSTANCE"
-upsert_kv .evolution.local "EVOLUTION_INSTANCE" "$CORPORATE_INSTANCE"
-if [ -f .env ]; then
-  upsert_kv .env "EVOLUTION_INSTANCE" "$CORPORATE_INSTANCE"
-fi
 
 if [ -z "$EVOLUTION_API_URL" ] || [ -z "$EVOLUTION_API_KEY" ]; then
   echo "❌ Faltan EVOLUTION_API_URL o EVOLUTION_API_KEY en .env / .evolution.local" >&2
@@ -61,20 +41,27 @@ if [ -z "$EVOLUTION_API_URL" ] || [ -z "$EVOLUTION_API_KEY" ]; then
 fi
 
 echo "── sync-evolution-env: ${SVC} ────────────────────"
-echo "   INSTANCE=${EVOLUTION_INSTANCE} (forzado corporativo / 18495684958)"
 echo "   URL=${EVOLUTION_API_URL}"
-if [ "$EVOLUTION_INSTANCE" = "renace-biz" ]; then
-  echo "❌ Abort: instancia vieja renace-biz" >&2
-  exit 1
+if [ -n "$EVOLUTION_INSTANCE" ]; then
+  echo "   INSTANCE=${EVOLUTION_INSTANCE} (solo fallback; preferir QR en panel admin)"
+else
+  echo "   INSTANCE=(vacío — el número de notificaciones se configura en el panel)"
 fi
 
-docker service update --detach=false \
-  --env-rm EVOLUTION_API_URL \
-  --env-rm EVOLUTION_API_KEY \
-  --env-rm EVOLUTION_INSTANCE \
-  --env-add "EVOLUTION_API_URL=${EVOLUTION_API_URL}" \
-  --env-add "EVOLUTION_API_KEY=${EVOLUTION_API_KEY}" \
-  --env-add "EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE}" \
-  "$SVC"
+UPDATE_ARGS=(
+  --detach=false
+  --env-rm EVOLUTION_API_URL
+  --env-rm EVOLUTION_API_KEY
+  --env-rm EVOLUTION_INSTANCE
+  --env-add "EVOLUTION_API_URL=${EVOLUTION_API_URL}"
+  --env-add "EVOLUTION_API_KEY=${EVOLUTION_API_KEY}"
+)
 
-echo "✅ ${SVC} → EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE}"
+# Solo reinyectar INSTANCE si ya estaba en archivo (no inventar RENACE.TECH).
+if [ -n "$EVOLUTION_INSTANCE" ]; then
+  UPDATE_ARGS+=(--env-add "EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE}")
+fi
+
+docker service update "${UPDATE_ARGS[@]}" "$SVC"
+
+echo "✅ ${SVC} → Evolution URL/KEY sincronizados"

@@ -10,6 +10,9 @@ import {
 } from '../whatsapp/evolution-config';
 import { encryptSecret, resolveStoredSecret } from '../common/security/crypto.util';
 
+const DEFAULT_INSTANCE = 'catagce-platform';
+const DEFAULT_DISPLAY = 'Catagce';
+
 function extractQr(data: any): string | null {
   return (
     data?.qrcode?.base64
@@ -20,7 +23,23 @@ function extractQr(data: any): string | null {
   );
 }
 
-/** WhatsApp de uso general (OTP, avisos platform) — lo configura el platform admin. */
+function phoneFromJid(jid: string | null | undefined): string | null {
+  if (!jid) return null;
+  const digits = String(jid).split('@')[0].replace(/\D/g, '');
+  return digits.length >= 8 ? digits : null;
+}
+
+function phoneFromInstanceRow(row: any): string | null {
+  if (!row || typeof row !== 'object') return null;
+  return (
+    phoneFromJid(row.ownerJid || row.owner || row.wuid || row.wid)
+    || (row.number ? String(row.number).replace(/\D/g, '') : null)
+    || phoneFromJid(row.instance?.ownerJid)
+    || null
+  );
+}
+
+/** WhatsApp de uso general (OTP, avisos platform) — lo configura el platform admin vía QR. */
 @Injectable()
 export class PlatformWhatsAppService {
   constructor(
@@ -33,7 +52,11 @@ export class PlatformWhatsAppService {
       where: eq(platformSettings.id, 1),
     });
     if (!r) {
-      await this.db.insert(platformSettings).values({ id: 1, profileDisplayName: 'RENACE.TECH' });
+      await this.db.insert(platformSettings).values({
+        id: 1,
+        profileDisplayName: DEFAULT_DISPLAY,
+        notifyChannel: 'evolution',
+      });
       r = await this.db.query.platformSettings.findFirst({
         where: eq(platformSettings.id, 1),
       });
@@ -48,37 +71,65 @@ export class PlatformWhatsAppService {
       .where(eq(platformSettings.id, 1));
   }
 
+  private async detectLinkedPhone(instance: string): Promise<string | null> {
+    const probe = await this.whatsapp.adminFetch('/instance/fetchInstances', { method: 'GET' });
+    if (!probe.ok || !probe.data) return null;
+    const list = Array.isArray(probe.data) ? probe.data : [probe.data];
+    for (const item of list) {
+      const name =
+        item?.instance?.instanceName
+        || item?.instanceName
+        || item?.name
+        || item?.instance;
+      if (String(name) === instance) {
+        return phoneFromInstanceRow(item) || phoneFromInstanceRow(item?.instance);
+      }
+    }
+    return null;
+  }
+
   async getCreds(): Promise<EvolutionCreds | null> {
     return this.whatsapp.resolvePlatformCreds();
   }
 
   async status() {
     const settings = await this.row();
-    const live = await this.whatsapp.status();
     const preferCloud = await this.whatsapp.preferCloudChannel();
+    const live = await this.whatsapp.status();
+
+    let phone = settings?.evolutionPhone || null;
 
     if (!preferCloud && settings?.evolutionInstance) {
       const creds = await this.getCreds();
       if (creds) {
         const evo = await this.whatsapp.status(creds);
-        if (evo.connected && settings.evolutionStatus !== 'open') {
-          await this.save({ evolutionStatus: 'open' });
-        } else if (!evo.connected && settings.evolutionStatus === 'open') {
+        if (evo.connected) {
+          if (settings.evolutionStatus !== 'open') {
+            await this.save({ evolutionStatus: 'open' });
+          }
+          if (!phone) {
+            phone = await this.detectLinkedPhone(creds.instance);
+            if (phone) await this.save({ evolutionPhone: phone });
+          }
+        } else if (settings.evolutionStatus === 'open') {
           await this.save({ evolutionStatus: String(evo.state || 'unknown') });
         }
       }
     }
 
+    const linked = Boolean(settings?.evolutionInstance) || preferCloud;
+    const connected = Boolean(live.ready);
+
     return {
       platformOk: this.whatsapp.configured(),
       channel: (live as any).channel || (preferCloud ? 'cloud' : 'evolution'),
-      linked: Boolean(settings?.evolutionInstance) || preferCloud,
-      connected: Boolean(live.ready),
+      linked,
+      connected,
       state: live.state,
-      instance: live.instance,
-      phone: settings?.evolutionPhone || null,
-      profileDisplayName: settings?.profileDisplayName || 'RENACE.TECH',
-      notifyChannel: settings?.notifyChannel || process.env.META_WA_NOTIFY_CHANNEL || 'cloud',
+      instance: settings?.evolutionInstance || live.instance || null,
+      phone,
+      profileDisplayName: settings?.profileDisplayName || DEFAULT_DISPLAY,
+      notifyChannel: settings?.notifyChannel || process.env.META_WA_NOTIFY_CHANNEL || 'evolution',
       meta: {
         configured: preferCloud || Boolean(settings?.metaPhoneNumberId || process.env.META_WA_PHONE_NUMBER_ID),
         phoneNumberId: settings?.metaPhoneNumberId || process.env.META_WA_PHONE_NUMBER_ID || null,
@@ -88,11 +139,13 @@ export class PlatformWhatsAppService {
         notifyTemplate: settings?.metaNotifyTemplate || process.env.META_WA_NOTIFY_TEMPLATE || null,
         hasToken: Boolean(settings?.metaAccessToken || process.env.META_WA_ACCESS_TOKEN),
       },
-      message: live.ready
+      message: connected
         ? ((live as any).channel === 'cloud'
           ? 'Cloud API listo — OTP/avisos por número oficial Meta'
-          : 'Evolution Connected — listo')
-        : 'Configura Cloud API (recomendado) o conecta Evolution',
+          : `Notificaciones activas${phone ? ` desde +${phone}` : ''} — escaneado por admin`)
+        : settings?.evolutionInstance
+          ? 'Instancia vinculada — escanea el QR para conectar el número de notificaciones'
+          : 'Escanea un QR para elegir el número que enviará OTP y avisos',
     };
   }
 
@@ -132,10 +185,10 @@ export class PlatformWhatsAppService {
     if (!sent.ok) {
       throw new BadRequestException(sent.detail || sent.error || 'Envío falló');
     }
-    return { ok: true, masked: phone.slice(-4), note: 'Si llegó el OTP de prueba, Cloud API está OK (código de test no sirve para login).' };
+    return { ok: true, masked: phone.slice(-4), note: 'Si llegó el OTP de prueba, el canal de notificaciones está OK (código de test no sirve para login).' };
   }
 
-  /** Vincular instancia ya existente en evoapi (ej. RENACE.TECH) sin crear otra. */
+  /** Vincular instancia ya existente en evoapi (nombre libre; sin hardcode). */
   async link(instanceRaw: string, displayName?: string) {
     if (!evolutionConfigured()) {
       throw new BadRequestException('Evolution API no está configurada en el servidor');
@@ -151,41 +204,57 @@ export class PlatformWhatsAppService {
       throw new BadRequestException(probe.detail || 'No se pudo listar instancias Evolution');
     }
 
+    const profileDisplayName = String(displayName || DEFAULT_DISPLAY).trim() || DEFAULT_DISPLAY;
     await this.save({
       evolutionInstance: instance,
       evolutionToken: encryptSecret(key),
       evolutionStatus: 'unknown',
-      profileDisplayName: String(displayName || 'RENACE.TECH').trim() || 'RENACE.TECH',
+      evolutionPhone: null,
+      profileDisplayName,
+      notifyChannel: 'evolution',
     });
 
     const creds: EvolutionCreds = { instance, apiKey: key };
     const live = await this.whatsapp.status(creds);
-    await this.save({ evolutionStatus: String(live.state || 'unknown') });
+    const phone = live.connected ? await this.detectLinkedPhone(instance) : null;
+    await this.save({
+      evolutionStatus: String(live.state || 'unknown'),
+      ...(phone ? { evolutionPhone: phone } : {}),
+    });
 
-    if (live.connected) {
-      const name = String(displayName || 'RENACE.TECH').trim();
-      if (name) await this.whatsapp.updateProfileName(name, creds).catch(() => null);
+    if (live.connected && profileDisplayName) {
+      await this.whatsapp.updateProfileName(profileDisplayName, creds).catch(() => null);
     }
 
     return this.status();
   }
 
   /**
-   * QR solo si el admin lo pide. No se llama desde deploy.
-   * Usa la instancia ya vinculada o crea catagce-platform.
+   * QR para que el admin escanee el número que enviará OTP/avisos.
+   * Usa la instancia vinculada o crea catagce-platform.
    */
-  async startQr() {
+  async startQr(opts?: { fresh?: boolean }) {
     if (!evolutionConfigured()) {
       throw new BadRequestException('Evolution API no está configurada en el servidor');
     }
 
+    if (opts?.fresh) {
+      await this.save({
+        evolutionInstance: null,
+        evolutionToken: null,
+        evolutionStatus: null,
+        evolutionPhone: null,
+      });
+    }
+
     const settings = await this.row();
-    let instance = settings?.evolutionInstance || 'catagce-platform';
+    let instance = settings?.evolutionInstance || DEFAULT_INSTANCE;
     let tokenPlain =
       resolveStoredSecret(settings?.evolutionToken) || evolutionAdminKey() || '';
     let qr: string | null = null;
 
-    if (!settings?.evolutionInstance) {
+    if (!settings?.evolutionInstance || opts?.fresh) {
+      instance = DEFAULT_INSTANCE;
       const created = await this.whatsapp.createInstance(instance);
       if (created.ok) {
         tokenPlain = (created.data?.hash?.apikey || created.data?.hash || evolutionAdminKey()) as string;
@@ -193,12 +262,21 @@ export class PlatformWhatsAppService {
         qr = extractQr(created.data);
         instance = created.data?.instance?.instanceName || instance;
       } else {
+        // Puede existir: reutilizar y pedir connect
         tokenPlain = evolutionAdminKey() || '';
+        const connExisting = await this.whatsapp.adminFetch(
+          `/instance/connect/${encodeURIComponent(instance)}`,
+          { method: 'GET' },
+        );
+        if (connExisting.ok) qr = extractQr(connExisting.data);
       }
       await this.save({
         evolutionInstance: instance,
         evolutionToken: encryptSecret(String(tokenPlain)),
         evolutionStatus: 'connecting',
+        evolutionPhone: null,
+        notifyChannel: 'evolution',
+        profileDisplayName: settings?.profileDisplayName || DEFAULT_DISPLAY,
       });
     }
 
@@ -209,8 +287,21 @@ export class PlatformWhatsAppService {
     const creds: EvolutionCreds = { instance, apiKey: tokenPlain };
     const live = await this.whatsapp.status(creds);
     if (live.connected) {
-      await this.save({ evolutionStatus: 'open' });
-      return { connected: true, qr: null, instance, message: 'Ya está Connected' };
+      const phone = await this.detectLinkedPhone(instance);
+      await this.save({
+        evolutionStatus: 'open',
+        notifyChannel: 'evolution',
+        ...(phone ? { evolutionPhone: phone } : {}),
+      });
+      return {
+        connected: true,
+        qr: null,
+        instance,
+        phone,
+        message: phone
+          ? `Ya Connected — notificaciones desde +${phone}`
+          : 'Ya está Connected',
+      };
     }
 
     if (!qr) {
@@ -228,13 +319,14 @@ export class PlatformWhatsAppService {
       throw new BadRequestException('Sin QR. Revisa la instancia en evoapi Manager.');
     }
 
-    await this.save({ evolutionStatus: 'connecting' });
+    await this.save({ evolutionStatus: 'connecting', notifyChannel: 'evolution' });
     const qrSrc = qr.startsWith('data:') ? qr : `data:image/png;base64,${qr}`;
     return {
       connected: false,
       qr: qrSrc,
       instance,
-      message: 'Escanea el QR (WhatsApp → Dispositivos vinculados)',
+      phone: null,
+      message: 'Escanea con el WhatsApp que usaremos para OTP y avisos (Dispositivos vinculados)',
     };
   }
 
@@ -243,7 +335,7 @@ export class PlatformWhatsAppService {
     if (!trimmed) throw new BadRequestException('Nombre requerido');
     await this.save({ profileDisplayName: trimmed });
     const creds = await this.getCreds();
-    if (!creds) throw new BadRequestException('Vincula una instancia primero');
+    if (!creds) throw new BadRequestException('Vincula o escanea un número primero');
     const res = await this.whatsapp.updateProfileName(trimmed, creds);
     if (!res.ok) {
       throw new BadRequestException(
@@ -262,6 +354,9 @@ export class PlatformWhatsAppService {
       evolutionStatus: null,
       evolutionPhone: null,
     });
-    return { ok: true, message: 'WhatsApp de plataforma desvinculado (env EVOLUTION_INSTANCE queda como fallback)' };
+    return {
+      ok: true,
+      message: 'WhatsApp de notificaciones desvinculado. Escanea un QR para elegir otro número.',
+    };
   }
 }

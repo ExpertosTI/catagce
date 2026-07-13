@@ -155,8 +155,8 @@ export class PlatformController {
   @Post('whatsapp/qr')
   @RequirePlatformAdmin()
   @UseGuards(PlatformAdminGuard)
-  whatsappQr() {
-    return this.platformWa.startQr();
+  whatsappQr(@Body() body?: { fresh?: boolean }) {
+    return this.platformWa.startQr({ fresh: Boolean(body?.fresh) });
   }
 
   @Post('whatsapp/display-name')
