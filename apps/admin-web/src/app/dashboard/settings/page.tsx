@@ -250,7 +250,7 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs text-slate-500">
             Los pedidos del catálogo y la app móvil avisan al <strong>WhatsApp del negocio</strong> de arriba.
-            Los clientes reciben confirmación si tienen teléfono en su perfil.
+            Al <strong>emitir facturas</strong> o registrar <strong>pagos</strong>, el cliente recibe el detalle y saldo pendiente por WhatsApp (si tiene teléfono en su perfil).
           </p>
           {!form.phone?.trim() && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
